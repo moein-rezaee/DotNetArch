@@ -1,6 +1,4 @@
-<img src="assets/icon.png" width="256" height="256" style="display: block; margin: 0 auto;"/>
-
-# **DotNetArch: Simplify Clean Architecture Setup**  
+## <img src="assets/icon.png" width="48" height="48" style="vertical-align: middle;"/> **DotNetArch: Simplify Clean Architecture Setup**  
 
 #### **Introduction**  
 
