@@ -1,88 +1,117 @@
-namespace DotNetArch;
-
-using System;
-using System.IO;
-using System.Text;
-
 using System;
 using System.Diagnostics;
-
+using System.IO;
+using System.Runtime.InteropServices;
 class Program
 {
     static void Main(string[] args)
     {
-        Console.Write("Enter project name: ");
-        var projectName = Console.ReadLine()?.Trim();
+        Console.WriteLine("==========================================");
+        Console.WriteLine("🚀 Welcome to ScaffoldCleanArch Tool! 🚀");
+        Console.WriteLine("==========================================");
+        Console.WriteLine("A powerful solution scaffolding tool for Clean Architecture!");
+        Console.WriteLine("🔹 Generates a solution structure with core layers");
+        Console.WriteLine("🔹 Adds references between projects automatically");
+        Console.WriteLine("🔹 Ready to start coding your dream project!");
+        Console.WriteLine("==========================================\n");
 
-        if (string.IsNullOrEmpty(projectName))
+        Console.Write("Enter the name of your solution: ");
+        var solutionName = Console.ReadLine();
+
+        if (string.IsNullOrWhiteSpace(solutionName))
         {
-            Console.WriteLine("Project name cannot be empty.");
+            Console.WriteLine("Solution name cannot be empty!");
             return;
         }
 
-        try
+        // Create the solution folder
+        if (!Directory.Exists(solutionName))
         {
-            // Create solution
-            RunCommand($"dotnet new sln -n {projectName}");
-
-            // Create layers
-            var coreProject = $"{projectName}.Core";
-            var applicationProject = $"{projectName}.Application";
-            var infrastructureProject = $"{projectName}.Infrastructure";
-            var apiProject = $"{projectName}.API";
-
-            CreateLayer(coreProject, "classlib", projectName);
-            CreateLayer(applicationProject, "classlib", projectName);
-            CreateLayer(infrastructureProject, "classlib", projectName);
-            CreateLayer(apiProject, "webapi", projectName);
-
-            // Add references
-            RunCommand($"dotnet add {applicationProject} reference {coreProject}");
-            RunCommand($"dotnet add {infrastructureProject} reference {applicationProject}");
-            RunCommand($"dotnet add {apiProject} reference {applicationProject}");
-            RunCommand($"dotnet add {apiProject} reference {infrastructureProject}");
-
-            Console.WriteLine($"Project '{projectName}' with Clean Architecture structure created successfully!");
+            Directory.CreateDirectory(solutionName);
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error: {ex.Message}");
-        }
-    }
 
-    static void CreateLayer(string projectName, string template, string solutionName)
-    {
-        // Create project
-        RunCommand($"dotnet new {template} -n {projectName}");
-        // Add to solution
-        RunCommand($"dotnet sln {solutionName}.sln add {projectName}");
-    }
+        // Change working directory to the solution folder
+        Directory.SetCurrentDirectory(solutionName);
 
+        // Run `dotnet new` commands
+        RunCommand($"dotnet new sln -n {solutionName}");
+        RunCommand($"dotnet new classlib -n {solutionName}.Core");
+        RunCommand($"dotnet new classlib -n {solutionName}.Application");
+        RunCommand($"dotnet new classlib -n {solutionName}.Infrastructure");
+        RunCommand($"dotnet new webapi -n {solutionName}.API");
+
+        // Remove default classes
+        DeleteDefaultClass($"{solutionName}.Core");
+        DeleteDefaultClass($"{solutionName}.Application");
+        DeleteDefaultClass($"{solutionName}.Infrastructure");
+
+        // Add projects to the solution
+        RunCommand($"dotnet sln add {solutionName}.Core/{solutionName}.Core.csproj");
+        RunCommand($"dotnet sln add {solutionName}.Application/{solutionName}.Application.csproj");
+        RunCommand($"dotnet sln add {solutionName}.Infrastructure/{solutionName}.Infrastructure.csproj");
+        RunCommand($"dotnet sln add {solutionName}.API/{solutionName}.API.csproj");
+
+        // Add references between projects
+        RunCommand($"dotnet add {solutionName}.Application/{solutionName}.Application.csproj reference {solutionName}.Core/{solutionName}.Core.csproj");
+        RunCommand($"dotnet add {solutionName}.Infrastructure/{solutionName}.Infrastructure.csproj reference {solutionName}.Application/{solutionName}.Application.csproj");
+        RunCommand($"dotnet add {solutionName}.API/{solutionName}.API.csproj reference {solutionName}.Application/{solutionName}.Application.csproj");
+        RunCommand($"dotnet add {solutionName}.API/{solutionName}.API.csproj reference {solutionName}.Infrastructure/{solutionName}.Infrastructure.csproj");
+
+        Console.WriteLine("\n✅ Solution created successfully!");
+        Console.WriteLine("==========================================");
+        Console.WriteLine($"🌟 Navigate to the '{solutionName}' directory to explore your project.");
+        Console.WriteLine($"💻 Run 'dotnet build' to build the solution.");
+        Console.WriteLine($"🎉 Start coding your Clean Architecture project now!");
+        Console.WriteLine("==========================================");
+    }
     static void RunCommand(string command)
     {
+        string shell, shellArgs;
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            shell = "cmd.exe";
+            shellArgs = $"/c {command}";
+        }
+        else
+        {
+            shell = "/bin/bash"; // یا "/bin/zsh" برای مک و لینوکس
+            shellArgs = $"-c \"{command}\"";
+        }
+
         var process = new Process
         {
             StartInfo = new ProcessStartInfo
             {
-                FileName = "cmd.exe",
-                Arguments = $"/c {command}",
+                FileName = shell,
+                Arguments = shellArgs,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
-                CreateNoWindow = true
+                CreateNoWindow = true,
             }
         };
 
         process.Start();
-        string result = process.StandardOutput.ReadToEnd();
-        string error = process.StandardError.ReadToEnd();
         process.WaitForExit();
 
-        if (!string.IsNullOrEmpty(error))
+        if (process.ExitCode != 0)
         {
-            throw new Exception(error);
+            Console.WriteLine($"❌ Error: {process.StandardError.ReadToEnd()}");
         }
+        else
+        {
+            Console.WriteLine($"✅ {process.StandardOutput.ReadToEnd()}");
+        }
+    }
 
-        Console.WriteLine(result);
+    static void DeleteDefaultClass(string projectName)
+    {
+        var filePath = Path.Combine(projectName, "Class1.cs");
+        if (File.Exists(filePath))
+        {
+            File.Delete(filePath);
+            Console.WriteLine($"🗑️ Deleted default class: {filePath}");
+        }
     }
 }

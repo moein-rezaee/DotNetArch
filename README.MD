@@ -1,93 +1,144 @@
-# **DotNetArch: Project Scaffold CLI Tool**  
-**A .NET CLI tool for automating the creation of Clean Architecture projects and layers.**  
+# <img src="assets/icon.png" width="98" height="98" style="vertical-align: middle;"/> **DotNetArch - Simplify Clean Architecture Project Setup**  
 
-### **Features**  
-- Automatically creates a solution (`.sln`) with Clean Architecture layers:
-  - Core  
-  - Application  
-  - Infrastructure  
-  - API  
-- Sets up the proper project references between layers.  
-- Ensures a consistent project structure.  
+#### **Introduction**  
+
+DotNetArch is a .NET global tool designed to help developers quickly set up solutions following Clean Architecture principles and Domain-Driven Design (DDD). This tool streamlines the creation of well-structured .NET projects, saving time and effort while adhering to industry standards.  
 
 ---
 
-### **Installation**  
-#### **Pre-requisites:**  
-1. [.NET SDK](https://dotnet.microsoft.com/download) version 9.0 or higher.  
-2. A terminal or command-line interface (e.g., Command Prompt, PowerShell).  
+#### **Requirements**  
 
-#### **Clone the Repository**  
-To get started, clone this repository:  
+Before using DotNetArch, ensure your system meets the following requirements:  
+
+1. **.NET SDK**: Version 6.0 or higher (recommended: .NET 9.0).  
+   - Install it from the official [.NET Downloads page](https://dotnet.microsoft.com/download).  
+2. **Operating System**:  
+   - **Windows**: Windows 10 or higher.  
+   - **macOS**: macOS Catalina or higher.  
+   - **Linux**: Any distribution supporting .NET Core.  
+3. **Git**: Ensure Git is installed if you plan to clone or contribute.  
+
+To check your .NET version, run:  
+
+```bash
+dotnet --version
+```  
+
+---
+
+#### **How to Install and Use the NuGet Package**  
+
+**Step 1: Install the Tool**  
+You can install DotNetArch globally via NuGet with the following command:  
+
+```bash
+dotnet tool install --global DotNetArch
+```  
+
+**Step 2: Update the Tool**  
+To ensure you have the latest version of the tool:  
+
+```bash
+dotnet tool update --global DotNetArch
+```  
+
+**Step 3: Generate a Clean Architecture Solution**  
+Once installed, you can use the tool to create a solution structure:  
+
+```bash
+dotnet arch
+```  
+
+This command generates the following layers:  
+
+- **Core**  
+- **Application**  
+- **Infrastructure**  
+- **API**  
+
+---
+
+#### **How to Clone and Run the Project**  
+
+**Step 1: Clone the Repository**  
+
+To get the source code, clone the repository from GitHub:  
+
 ```bash
 git clone https://github.com/moein-rezaee/DotNetArch.git
 cd DotNetArch
-```
+```  
 
-#### **Build the Tool**  
-Run the following command to build the project:  
+**Step 2: Build the Project**  
+
+Ensure you have the .NET SDK installed. Then, build the project:  
+
 ```bash
 dotnet build
-```
+```  
+
+**Step 3: Run the Project**  
+
+To test the functionality, you can execute the project locally:  
+
+```bash
+dotnet run
+```  
 
 ---
 
-### **Usage**  
-1. Run the CLI tool:  
+#### **How to Contribute**  
+
+We welcome contributions to DotNetArch! Here’s how you can contribute:  
+
+1. **Fork the Repository**:  
+   Create a fork of the main repository to your GitHub account.  
+
+2. **Create a New Branch**:  
+   Use a meaningful branch name, such as `feature/add-new-command`.  
+
    ```bash
-   dotnet run
+   git checkout -b feature/add-new-command
    ```  
 
-2. Enter the desired name for your project when prompted.  
+3. **Make Your Changes**:  
+   Ensure your code adheres to .NET coding guidelines.  
 
-3. The tool will generate the following structure:  
-   ```
-   MyProject.sln
-   ├── MyProject.Core
-   ├── MyProject.Application
-   ├── MyProject.Infrastructure
-   └── MyProject.API
-   ```
+4. **Push and Submit a Pull Request**:  
+   Push your changes and open a pull request to the main repository.  
 
-4. Layer references will be set up as follows:  
-   - `Application` → `Core`  
-   - `Infrastructure` → `Application`  
-   - `API` → `Application` + `Infrastructure`  
-
----
-
-### **Future Enhancements**  
-- Add NuGet packages like `MediatR`, `FluentValidation`, etc.  
-- Support for other architectural styles such as Onion, Hexagonal, or Microservices.  
-- Template customization for adding pre-configured files and configurations.  
-
----
-
-### **Contributing**  
-We welcome contributions! Please follow the steps below to contribute:  
-1. Fork the repository.  
-2. Create a feature branch:  
    ```bash
-   git checkout -b feature/your-feature-name
+   git push origin feature/add-new-command
    ```  
-3. Commit your changes:  
-   ```bash
-   git commit -m "Add your message here"
-   ```  
-4. Push to your branch:  
-   ```bash
-   git push origin feature/your-feature-name
-   ```  
-5. Open a Pull Request.  
 
 ---
 
-### **License**  
-This project is licensed under the [MIT License](LICENSE). Feel free to use and distribute it as you like.  
+#### **Features**  
+
+- **Automated Project Setup**: Generate Clean Architecture solutions with a single command.  
+- **Cross-Platform**: Fully functional on Windows, macOS, and Linux.  
+- **Domain-Driven Design Support**: Includes pre-configured layers for DDD.  
+- **Ease of Use**: Intuitive and straightforward CLI commands.  
 
 ---
 
-### **Contact**  
-For questions or feedback, please contact me at: [me.rezaei1996@gmail.com](mailto:me.rezaei1996@gmail.com).  
+#### **Future Goals**  
+
+- Add support for other architectural patterns such as **Microservices** and **Event-Driven Design**.  
+- Improve customization options for solution templates.  
+- Add integration with popular libraries and frameworks like **Fluent Validation**, **MediatR**, and **MassTransit**.  
+- Provide GUI support for non-CLI users.  
 
 ---
+
+#### **Contact Me**  
+
+If you have any questions, suggestions, or issues, feel free to reach out:  
+
+- **GitHub Issues**: [Report Here](https://github.com/moein-rezaee/DotNetArch/issues)  
+- **Email**: me.rezaei1996@example.com  
+- **LinkedIn**: [Moein Rezaee](https://linkedin.com/in/moein-rezaee-26331a125)  
+
+---
+
+Start simplifying your .NET project setup today with **DotNetArch**! 🚀
