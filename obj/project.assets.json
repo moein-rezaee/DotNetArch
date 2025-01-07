@@ -1,0 +1,203 @@
+{
+  "version": 3,
+  "targets": {
+    "net9.0": {
+      "System.IO.Abstractions/21.2.1": {
+        "type": "package",
+        "dependencies": {
+          "TestableIO.System.IO.Abstractions": "21.2.1",
+          "TestableIO.System.IO.Abstractions.Wrappers": "21.2.1"
+        },
+        "compile": {
+          "lib/net8.0/System.IO.Abstractions.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/System.IO.Abstractions.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "TestableIO.System.IO.Abstractions/21.2.1": {
+        "type": "package",
+        "compile": {
+          "lib/net8.0/TestableIO.System.IO.Abstractions.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/TestableIO.System.IO.Abstractions.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "TestableIO.System.IO.Abstractions.Wrappers/21.2.1": {
+        "type": "package",
+        "dependencies": {
+          "TestableIO.System.IO.Abstractions": "21.2.1"
+        },
+        "compile": {
+          "lib/net8.0/TestableIO.System.IO.Abstractions.Wrappers.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/TestableIO.System.IO.Abstractions.Wrappers.dll": {
+            "related": ".xml"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "System.IO.Abstractions/21.2.1": {
+      "sha512": "fLz5LB8tl52AXw/e9rk3BV259TUHG/Yp7PgXGWQuiGvSERAv0ABXhtArSOEdx4K+VlXEh90zFgYYGcZza9VyFA==",
+      "type": "package",
+      "path": "system.io.abstractions/21.2.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "icon_256x256.png",
+        "lib/net462/System.IO.Abstractions.dll",
+        "lib/net462/System.IO.Abstractions.xml",
+        "lib/net6.0/System.IO.Abstractions.dll",
+        "lib/net6.0/System.IO.Abstractions.xml",
+        "lib/net7.0/System.IO.Abstractions.dll",
+        "lib/net7.0/System.IO.Abstractions.xml",
+        "lib/net8.0/System.IO.Abstractions.dll",
+        "lib/net8.0/System.IO.Abstractions.xml",
+        "lib/netstandard2.0/System.IO.Abstractions.dll",
+        "lib/netstandard2.0/System.IO.Abstractions.xml",
+        "lib/netstandard2.1/System.IO.Abstractions.dll",
+        "lib/netstandard2.1/System.IO.Abstractions.xml",
+        "system.io.abstractions.21.2.1.nupkg.sha512",
+        "system.io.abstractions.nuspec"
+      ]
+    },
+    "TestableIO.System.IO.Abstractions/21.2.1": {
+      "sha512": "47NQXrfVUF+0b8W5EMnERR7FpgWE04wuYR1s9WvlNyh1hnRMGDPOvmewBLIZUG88Rhj9buzG3VVR8sAgH7TzjA==",
+      "type": "package",
+      "path": "testableio.system.io.abstractions/21.2.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "icon_256x256.png",
+        "lib/net462/TestableIO.System.IO.Abstractions.dll",
+        "lib/net462/TestableIO.System.IO.Abstractions.xml",
+        "lib/net6.0/TestableIO.System.IO.Abstractions.dll",
+        "lib/net6.0/TestableIO.System.IO.Abstractions.xml",
+        "lib/net7.0/TestableIO.System.IO.Abstractions.dll",
+        "lib/net7.0/TestableIO.System.IO.Abstractions.xml",
+        "lib/net8.0/TestableIO.System.IO.Abstractions.dll",
+        "lib/net8.0/TestableIO.System.IO.Abstractions.xml",
+        "lib/netstandard2.0/TestableIO.System.IO.Abstractions.dll",
+        "lib/netstandard2.0/TestableIO.System.IO.Abstractions.xml",
+        "lib/netstandard2.1/TestableIO.System.IO.Abstractions.dll",
+        "lib/netstandard2.1/TestableIO.System.IO.Abstractions.xml",
+        "testableio.system.io.abstractions.21.2.1.nupkg.sha512",
+        "testableio.system.io.abstractions.nuspec"
+      ]
+    },
+    "TestableIO.System.IO.Abstractions.Wrappers/21.2.1": {
+      "sha512": "a0jzTAZRIic40USnf8b59EbJ6+hh/kndLV3mTxgSGBkjei/H9qjULOtk/ZHQtRD8lLaUav7ZsMZn6JiwCgDmEw==",
+      "type": "package",
+      "path": "testableio.system.io.abstractions.wrappers/21.2.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "icon_256x256.png",
+        "lib/net462/TestableIO.System.IO.Abstractions.Wrappers.dll",
+        "lib/net462/TestableIO.System.IO.Abstractions.Wrappers.xml",
+        "lib/net6.0/TestableIO.System.IO.Abstractions.Wrappers.dll",
+        "lib/net6.0/TestableIO.System.IO.Abstractions.Wrappers.xml",
+        "lib/net7.0/TestableIO.System.IO.Abstractions.Wrappers.dll",
+        "lib/net7.0/TestableIO.System.IO.Abstractions.Wrappers.xml",
+        "lib/net8.0/TestableIO.System.IO.Abstractions.Wrappers.dll",
+        "lib/net8.0/TestableIO.System.IO.Abstractions.Wrappers.xml",
+        "lib/netstandard2.0/TestableIO.System.IO.Abstractions.Wrappers.dll",
+        "lib/netstandard2.0/TestableIO.System.IO.Abstractions.Wrappers.xml",
+        "lib/netstandard2.1/TestableIO.System.IO.Abstractions.Wrappers.dll",
+        "lib/netstandard2.1/TestableIO.System.IO.Abstractions.Wrappers.xml",
+        "testableio.system.io.abstractions.wrappers.21.2.1.nupkg.sha512",
+        "testableio.system.io.abstractions.wrappers.nuspec"
+      ]
+    }
+  },
+  "projectFileDependencyGroups": {
+    "net9.0": [
+      "System.IO.Abstractions >= 21.2.1"
+    ]
+  },
+  "packageFolders": {
+    "C:\\Users\\Administrator\\.nuget\\packages\\": {}
+  },
+  "project": {
+    "version": "1.0.0",
+    "restore": {
+      "projectUniqueName": "C:\\Users\\Administrator\\Downloads\\Projects\\DotNetArch\\DotNetArch.csproj",
+      "projectName": "DotNetArch",
+      "projectPath": "C:\\Users\\Administrator\\Downloads\\Projects\\DotNetArch\\DotNetArch.csproj",
+      "packagesPath": "C:\\Users\\Administrator\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\Administrator\\Downloads\\Projects\\DotNetArch\\obj\\",
+      "projectStyle": "PackageReference",
+      "configFilePaths": [
+        "C:\\Users\\Administrator\\AppData\\Roaming\\NuGet\\NuGet.Config"
+      ],
+      "originalTargetFrameworks": [
+        "net9.0"
+      ],
+      "sources": {
+        "https://api.nuget.org/v3/index.json": {}
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "projectReferences": {}
+        }
+      },
+      "warningProperties": {
+        "warnAsError": [
+          "NU1605"
+        ]
+      },
+      "restoreAuditProperties": {
+        "enableAudit": "true",
+        "auditLevel": "low",
+        "auditMode": "direct"
+      },
+      "SdkAnalysisLevel": "9.0.100"
+    },
+    "frameworks": {
+      "net9.0": {
+        "targetAlias": "net9.0",
+        "dependencies": {
+          "System.IO.Abstractions": {
+            "target": "Package",
+            "version": "[21.2.1, )"
+          }
+        },
+        "imports": [
+          "net461",
+          "net462",
+          "net47",
+          "net471",
+          "net472",
+          "net48",
+          "net481"
+        ],
+        "assetTargetFallback": true,
+        "warn": true,
+        "frameworkReferences": {
+          "Microsoft.NETCore.App": {
+            "privateAssets": "all"
+          }
+        },
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.101/PortableRuntimeIdentifierGraph.json"
+      }
+    }
+  }
+}

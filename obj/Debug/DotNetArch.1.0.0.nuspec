@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
+  <metadata>
+    <id>DotNetArch</id>
+    <version>1.0.0</version>
+    <authors>Moein Rezaee</authors>
+    <description>A library to execute .NET commands via console input.</description>
+    <repository type="git" />
+    <dependencies>
+      <group targetFramework="net9.0">
+        <dependency id="System.IO.Abstractions" version="21.2.1" exclude="Build,Analyzers" />
+      </group>
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="C:\Users\Administrator\Desktop\DotNetArch\bin\Debug\net9.0\DotNetArch.runtimeconfig.json" target="lib\net9.0\DotNetArch.runtimeconfig.json" />
+    <file src="C:\Users\Administrator\Desktop\DotNetArch\bin\Debug\net9.0\DotNetArch.dll" target="lib\net9.0\DotNetArch.dll" />
+  </files>
+</package>
