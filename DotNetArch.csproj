@@ -9,18 +9,17 @@
     <Description>A CLI tool for creating Clean Architecture solutions.</Description>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageId>DotNetArch</PackageId>
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
     <PackageTags>dotnet;cli;clean-architecture;scaffold;dotnetarch</PackageTags> 
     <RepositoryUrl>https://github.com/moein-rezaee/DotNetArch.git</RepositoryUrl> 
-    <iconUrl>assets/icon.png</iconUrl>
+    <PackageIcon>assets/icon.png</PackageIcon>
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="assets/icon.png">
-      <Pack>true</Pack>
-      <PackagePath>assets/icon.png</PackagePath>
-    </None>
+    <None Include="assets/icon.png" Pack="true" PackagePath="assets/" />
   </ItemGroup>
+
+
 
 </Project>
 
