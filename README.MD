@@ -1,7 +1,5 @@
 <img src="assets/icon.png" width="128" height="128" style="vertical-align: middle;"/>
 
-<br />
-
 # **DotNetArch: Simplify Clean Architecture Setup**  
 
 #### **Introduction**  
