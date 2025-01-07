@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyDescriptionAttribute("A library to execute .NET commands via console input.")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+dc72d6c9eeaedbe756a05e542e5ba302031cafe4")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+63b0b8041611a4753cfca2a168ad04a04e35ac2f")]
 [assembly: System.Reflection.AssemblyProductAttribute("DotNetArch")]
 [assembly: System.Reflection.AssemblyTitleAttribute("DotNetArch")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\Administrator\\Downloads\\Projects\\DotNetArch\\DotNetArch.csproj": {}
+    "/Users/moeinrezaee/Projects/DotNetArch/DotNetArch.csproj": {}
   },
   "projects": {
-    "C:\\Users\\Administrator\\Downloads\\Projects\\DotNetArch\\DotNetArch.csproj": {
+    "/Users/moeinrezaee/Projects/DotNetArch/DotNetArch.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Administrator\\Downloads\\Projects\\DotNetArch\\DotNetArch.csproj",
+        "projectUniqueName": "/Users/moeinrezaee/Projects/DotNetArch/DotNetArch.csproj",
         "projectName": "DotNetArch",
-        "projectPath": "C:\\Users\\Administrator\\Downloads\\Projects\\DotNetArch\\DotNetArch.csproj",
-        "packagesPath": "C:\\Users\\Administrator\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Administrator\\Downloads\\Projects\\DotNetArch\\obj\\",
+        "projectPath": "/Users/moeinrezaee/Projects/DotNetArch/DotNetArch.csproj",
+        "packagesPath": "/Users/moeinrezaee/.nuget/packages/",
+        "outputPath": "/Users/moeinrezaee/Projects/DotNetArch/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\Administrator\\AppData\\Roaming\\NuGet\\NuGet.Config"
+          "/Users/moeinrezaee/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net9.0"
@@ -65,7 +65,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.101/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.101/PortableRuntimeIdentifierGraph.json"
         }
       }
     }
