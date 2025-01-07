@@ -1,4 +1,6 @@
-## <img src="assets/icon.png" width="68" height="68" style="vertical-align: middle;"/> **DotNetArch: Simplify Clean Architecture Setup**  
+<img src="assets/icon.png" width="256" height="256" style="display: block; margin: 0 auto;"/>
+
+# **DotNetArch: Simplify Clean Architecture Setup**  
 
 #### **Introduction**  
 
@@ -136,7 +138,7 @@ We welcome contributions to DotNetArch! Here’s how you can contribute:
 If you have any questions, suggestions, or issues, feel free to reach out:  
 
 - **GitHub Issues**: [Report Here](https://github.com/moein-rezaee/DotNetArch/issues)  
-- **Email**: me.rezaei1996@example.com  
+- **Email**: me.rezaei1996@gmail.com  
 - **LinkedIn**: [Moein Rezaee](https://linkedin.com/in/moein-rezaee-26331a125)  
 
 ---
