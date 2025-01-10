@@ -24,6 +24,17 @@ class Program
             return;
         }
 
+
+
+        Console.WriteLine("Do you want to install MediatR in the solution? (yes/no)");
+        string installMediatR = Console.ReadLine()?.Trim().ToLower();
+
+
+
+        Console.WriteLine("Do you want to install FluentValidation in the solution? (yes/no)");
+        string installFluentValidation = Console.ReadLine()?.Trim().ToLower();
+
+
         // Create the solution folder
         if (!Directory.Exists(solutionName))
         {
@@ -33,12 +44,28 @@ class Program
         // Change working directory to the solution folder
         Directory.SetCurrentDirectory(solutionName);
 
+
+
         // Run `dotnet new` commands
         RunCommand($"dotnet new sln -n {solutionName}");
         RunCommand($"dotnet new classlib -n {solutionName}.Core");
         RunCommand($"dotnet new classlib -n {solutionName}.Application");
         RunCommand($"dotnet new classlib -n {solutionName}.Infrastructure");
         RunCommand($"dotnet new webapi -n {solutionName}.API");
+
+        if (installMediatR == "yes")
+        {
+            RunCommand($"dotnet add {solutionName}.Application/{solutionName}.Application.csproj package MediatR");
+            RunCommand($"dotnet add {solutionName}.API/{solutionName}.API.csproj package MediatR.Extensions.Microsoft.DependencyInjection");
+        }
+
+         if (installFluentValidation == "yes")
+        {
+            RunCommand($"dotnet add {solutionName}.Application/{solutionName}.Application.csproj package FluentValidation");
+            RunCommand($"dotnet add {solutionName}.API/{solutionName}.API.csproj package FluentValidation.AspNetCore");
+        }
+
+
 
         // Remove default classes
         DeleteDefaultClass($"{solutionName}.Core");
