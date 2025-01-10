@@ -39,6 +39,7 @@ class Program
         RunCommand($"dotnet new classlib -n {solutionName}.Application");
         RunCommand($"dotnet new classlib -n {solutionName}.Infrastructure");
         RunCommand($"dotnet new webapi -n {solutionName}.API");
+        
 
         // Remove default classes
         DeleteDefaultClass($"{solutionName}.Core");
