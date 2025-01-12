@@ -1,19 +1,25 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <PackageId>DotNetArch</PackageId>
-    <Version>1.0.0</Version>
-    <Authors>Moein Rezaee</Authors>
-    <Description>A library to execute .NET commands via console input.</Description>
-    <TargetFramework>net9.0</TargetFramework>
     <OutputType>Exe</OutputType>
+    <PackAsTool>true</PackAsTool> <!-- Convert To Global Tool -->
+    <ToolCommandName>dotnet-arch</ToolCommandName> <!-- For Execute CLI -->
+    <TargetFramework>net9.0</TargetFramework>
+    <Authors>Moein Rezaee</Authors>
+    <Description>A CLI tool for creating Clean Architecture solutions.</Description>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
+    <PackageId>DotNetArch</PackageId>
+    <Version>1.0.1</Version>
+    <PackageTags>dotnet;cli;clean-architecture;scaffold;dotnetarch</PackageTags> 
+    <RepositoryUrl>https://github.com/moein-rezaee/DotNetArch.git</RepositoryUrl> 
+    <PackageIcon>assets/icon.png</PackageIcon>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.IO.Abstractions" Version="21.2.1" />
+    <None Include="assets/icon.png" Pack="true" PackagePath="assets/" />
   </ItemGroup>
 
+
+
 </Project>
+
