@@ -1,8 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
-class Program
+using YamlDotNet.Serialization;
+using YamlDotNet.Serialization.NamingConventions;
+
+partial class Program
 {
     static void Main(string[] args)
     {
@@ -15,6 +19,31 @@ class Program
         Console.WriteLine("🔹 Ready to start coding your dream project!");
         Console.WriteLine("==========================================\n");
 
+        if (args.Length == 0)
+        {
+            CreateSolution();
+            return;
+        }
+
+        var command = args[0].ToLower();
+        Console.WriteLine($"Command: {command}");
+        switch (command)
+        {
+
+            case "add-packages":
+                InstallPackages(args[1]);
+                break;
+
+            default:
+                Console.WriteLine($"Unknown command: {command}");
+                break;
+        }
+
+
+    }
+
+    static void CreateSolution()
+    {
         Console.Write("Enter the name of your solution: ");
         var solutionName = Console.ReadLine();
 
@@ -24,16 +53,12 @@ class Program
             return;
         }
 
-
-
-        Console.WriteLine("Do you want to install MediatR in the solution? (yes/no)");
-        string installMediatR = Console.ReadLine()?.Trim().ToLower();
-
-
-
-        Console.WriteLine("Do you want to install FluentValidation in the solution? (yes/no)");
-        string installFluentValidation = Console.ReadLine()?.Trim().ToLower();
-
+        // foreach (var package in packages)
+        // {
+        //     Console.WriteLine($"{package.Key}: (yes/no)");
+        //     var input = Console.ReadLine()?.Trim().ToLower();
+        //     packages[package.Key].IsAdd = input;
+        // }
 
         // Create the solution folder
         if (!Directory.Exists(solutionName))
@@ -53,18 +78,18 @@ class Program
         RunCommand($"dotnet new classlib -n {solutionName}.Infrastructure");
         RunCommand($"dotnet new webapi -n {solutionName}.API");
 
-        if (installMediatR == "yes")
-        {
-            RunCommand($"dotnet add {solutionName}.Application/{solutionName}.Application.csproj package MediatR");
-            RunCommand($"dotnet add {solutionName}.API/{solutionName}.API.csproj package MediatR.Extensions.Microsoft.DependencyInjection");
-        }
 
-         if (installFluentValidation == "yes")
-        {
-            RunCommand($"dotnet add {solutionName}.Application/{solutionName}.Application.csproj package FluentValidation");
-            RunCommand($"dotnet add {solutionName}.API/{solutionName}.API.csproj package FluentValidation.AspNetCore");
-        }
+        // if (installMediatR == "yes")
+        // {
+        //     RunCommand($"dotnet add {solutionName}.Application/{solutionName}.Application.csproj package MediatR");
+        //     RunCommand($"dotnet add {solutionName}.API/{solutionName}.API.csproj package MediatR.Extensions.Microsoft.DependencyInjection");
+        // }
 
+        // if (installFluentValidation == "yes")
+        // {
+        //     RunCommand($"dotnet add {solutionName}.Application/{solutionName}.Application.csproj package FluentValidation");
+        //     RunCommand($"dotnet add {solutionName}.API/{solutionName}.API.csproj package FluentValidation.AspNetCore");
+        // }
 
 
         // Remove default classes
@@ -84,6 +109,30 @@ class Program
         RunCommand($"dotnet add {solutionName}.API/{solutionName}.API.csproj reference {solutionName}.Application/{solutionName}.Application.csproj");
         RunCommand($"dotnet add {solutionName}.API/{solutionName}.API.csproj reference {solutionName}.Infrastructure/{solutionName}.Infrastructure.csproj");
 
+
+        string projectPath = $""; // مسیر پروژه ایجاد شده
+        string packagesYamlName = "packages.yml";
+        string yamlFilePath = Path.Combine(projectPath, packagesYamlName);
+
+        // محتوای فایل YAML
+        string yamlContent = @"
+# لیست پکیج‌ها برای نصب
+packages:
+  - name: ""Swashbuckle.AspNetCore""
+    version: ""6.6.0""
+    layer: ""API""
+    install_commands: 
+        - ""dotnet add {solutionName}.{layer}/{solutionName}.{layer}.csproj package {name} --version {version}""
+    enabled: true 
+".Replace("{solutionName}", solutionName);
+
+        // ایجاد فایل YAML
+        File.WriteAllText(yamlFilePath, yamlContent);
+
+        Console.WriteLine($"File 'packages.yml' created at: {yamlFilePath}");
+
+
+
         Console.WriteLine("\n✅ Solution created successfully!");
         Console.WriteLine("==========================================");
         Console.WriteLine($"🌟 Navigate to the '{solutionName}' directory to explore your project.");
@@ -91,6 +140,63 @@ class Program
         Console.WriteLine($"🎉 Start coding your Clean Architecture project now!");
         Console.WriteLine("==========================================");
     }
+
+    static void InstallPackages(string projectName)
+    {
+        string yamlFilePath = Path.Combine(Directory.GetCurrentDirectory(), $"{projectName}/packages.yml");
+
+        if (!File.Exists(yamlFilePath))
+        {
+            Console.WriteLine("YAML file not found. Please ensure 'packages.yml' exists in the solution directory.");
+            return;
+        }
+
+        var yamlContent = File.ReadAllText(yamlFilePath);
+        var packages = ParseYaml(yamlContent);
+
+        foreach (var package in packages)
+        {
+            if (package.Enabled)
+            {
+                foreach (var command in package.InstallCommands)
+                {
+                    RunCommand(command);
+                }
+                Console.WriteLine($"Installed package '{package.Name}' in layer '{package.Layer}'.");
+            }
+        }
+    }
+
+    static List<Package> ParseYaml(string yamlFilePath = "packages.yml")
+    {
+
+        if (!File.Exists(yamlFilePath))
+        {
+            Console.WriteLine($"File '{yamlFilePath}' not found.");
+            return default;
+        }
+
+        // خواندن فایل YAML
+        string yamlContent = File.ReadAllText(yamlFilePath);
+
+        // پارس فایل YAML
+        var deserializer = new DeserializerBuilder()
+            .WithNamingConvention(CamelCaseNamingConvention.Instance) // پشتیبانی از سبک نام‌گذاری camelCase
+            .Build();
+
+        var config = deserializer.Deserialize<List<Package>>(yamlContent);
+        return config;
+    }
+
+    class Package
+    {
+        public string Name { get; set; }
+        public string? Version { get; set; } = "";
+        public string Layer { get; set; }
+        public List<string> InstallCommands { get; set; }
+        public bool Enabled { get; set; }
+    }
+
     static void RunCommand(string command)
     {
         string shell, shellArgs;
