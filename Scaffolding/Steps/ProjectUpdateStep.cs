@@ -22,8 +22,10 @@ public class ProjectUpdateStep : IScaffoldStep
         var text = File.ReadAllText(appProj);
 
         // remove legacy MediatR.Extensions reference
-        text = Regex.Replace(text,
-            "\\s*<PackageReference Include=\\"MediatR.Extensions.Microsoft.DependencyInjection\\"[^\\n]*\\n", "");
+        text = Regex.Replace(
+            text,
+            @"\s*<PackageReference Include=""MediatR.Extensions.Microsoft.DependencyInjection""[^\n]*\n",
+            string.Empty);
 
         var hasMediatR = text.Contains("Include=\"MediatR\"");
         var hasFluent = text.Contains("Include=\"FluentValidation\"");
@@ -46,13 +48,18 @@ public class ProjectUpdateStep : IScaffoldStep
         var infraProj = Path.Combine(basePath, $"{solution}.Infrastructure", $"{solution}.Infrastructure.csproj");
         if (!File.Exists(infraProj)) return;
         var text = File.ReadAllText(infraProj);
+
         if (text.Contains("Microsoft.EntityFrameworkCore"))
-            text = Regex.Replace(text,
-                "<PackageReference Include=\"Microsoft.EntityFrameworkCore\" Version=\"[^\"]+\" />",
-                "<PackageReference Include=\"Microsoft.EntityFrameworkCore\" Version=\"8.0.0\" />");
+            text = Regex.Replace(
+                text,
+                @"<PackageReference Include=""Microsoft.EntityFrameworkCore"" Version=""[^""]+"" />",
+                @"<PackageReference Include=""Microsoft.EntityFrameworkCore"" Version=""8.0.0"" />");
         else
         {
-            var insert = "  <ItemGroup>\n    <PackageReference Include=\"Microsoft.EntityFrameworkCore\" Version=\"8.0.0\" />\n  </ItemGroup>\n";
+            var insert =
+                "  <ItemGroup>\n" +
+                "    <PackageReference Include=\"Microsoft.EntityFrameworkCore\" Version=\"8.0.0\" />\n" +
+                "  </ItemGroup>\n";
             text = text.Replace("</Project>", insert + "</Project>");
         }
 
@@ -71,25 +78,33 @@ public class ProjectUpdateStep : IScaffoldStep
 
         if (text.Contains("MediatR.Extensions.Microsoft.DependencyInjection"))
         {
-            text = Regex.Replace(text,
-                "<PackageReference Include=\"MediatR.Extensions.Microsoft.DependencyInjection\" Version=\"[^\"]+\" />",
-                "<PackageReference Include=\"MediatR.Extensions.Microsoft.DependencyInjection\" Version=\"12.1.1\" />");
+            text = Regex.Replace(
+                text,
+                @"<PackageReference Include=""MediatR.Extensions.Microsoft.DependencyInjection"" Version=""[^""]+"" />",
+                @"<PackageReference Include=""MediatR.Extensions.Microsoft.DependencyInjection"" Version=""12.1.1"" />");
         }
         if (text.Contains("FluentValidation.DependencyInjectionExtensions"))
         {
-            text = Regex.Replace(text,
-                "<PackageReference Include=\"FluentValidation.DependencyInjectionExtensions\" Version=\"[^\"]+\" />",
-                "<PackageReference Include=\"FluentValidation.DependencyInjectionExtensions\" Version=\"11.9.0\" />");
+            text = Regex.Replace(
+                text,
+                @"<PackageReference Include=""FluentValidation.DependencyInjectionExtensions"" Version=""[^""]+"" />",
+                @"<PackageReference Include=""FluentValidation.DependencyInjectionExtensions"" Version=""11.9.0"" />");
         }
         if (text.Contains("Microsoft.EntityFrameworkCore.Sql"))
         {
-            text = Regex.Replace(text,
-                "<PackageReference Include=\"Microsoft.EntityFrameworkCore.(Sqlite|SqlServer)\" Version=\"[^\"]+\" />",
+            text = Regex.Replace(
+                text,
+                @"<PackageReference Include=""Microsoft.EntityFrameworkCore.(Sqlite|SqlServer)"" Version=""[^""]+"" />",
                 providerPackage);
         }
         if (!text.Contains("MediatR.Extensions.Microsoft.DependencyInjection"))
         {
-            var insert = "  <ItemGroup>\n    <PackageReference Include=\"MediatR.Extensions.Microsoft.DependencyInjection\" Version=\"12.1.1\" />\n    <PackageReference Include=\"FluentValidation.DependencyInjectionExtensions\" Version=\"11.9.0\" />\n    " + providerPackage + "\n  </ItemGroup>\n";
+            var insert =
+                "  <ItemGroup>\n" +
+                "    <PackageReference Include=\"MediatR.Extensions.Microsoft.DependencyInjection\" Version=\"12.1.1\" />\n" +
+                "    <PackageReference Include=\"FluentValidation.DependencyInjectionExtensions\" Version=\"11.9.0\" />\n" +
+                $"    {providerPackage}\n" +
+                "  </ItemGroup>\n";
             text = text.Replace("</Project>", insert + "</Project>");
         }
 
@@ -101,7 +116,8 @@ public class ProjectUpdateStep : IScaffoldStep
         var programFile = Path.Combine(basePath, startupProject, "Program.cs");
         if (!File.Exists(programFile)) return;
         var lines = File.ReadAllLines(programFile).ToList();
-        foreach (var u in new []{
+        foreach (var u in new[]
+        {
             "using MediatR;",
             "using FluentValidation;",
             "using FluentValidation.AspNetCore;",

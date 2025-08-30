@@ -25,17 +25,17 @@ using {{solution}}.Core.Domain.{{entity}};
 namespace {{startupProject}}.{{entity}};
 
 [ApiController]
-[Route("api/[controller]")]
+[Route(""api/[controller]"")]
 public class {{entity}}Controller : ControllerBase
 {
     private readonly IMediator _mediator;
 
     public {{entity}}Controller(IMediator mediator) => _mediator = mediator;
 
-    [HttpGet("{{lower}}/{id}")]
+    [HttpGet(""{{lower}}/{id}"")]
     public async Task<{{entity}}> GetById(int id) => await _mediator.Send(new Get{{entity}}ByIdQuery(id));
 
-    [HttpGet("all")]
+    [HttpGet(""all"")]
     public async Task<List<{{entity}}>> GetAll() => await _mediator.Send(new Get{{entity}}AllQuery());
 
     [HttpGet]
@@ -48,7 +48,7 @@ public class {{entity}}Controller : ControllerBase
     [HttpPut]
     public async Task Update({{entity}} entity) => await _mediator.Send(new Update{{entity}}Command(entity));
 
-    [HttpDelete("{{lower}}/{id}")]
+    [HttpDelete(""{{lower}}/{id}"")]
     public async Task Delete(int id) => await _mediator.Send(new Delete{{entity}}Command(id));
 }
 ";
