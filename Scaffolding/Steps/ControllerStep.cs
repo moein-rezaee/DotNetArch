@@ -14,8 +14,12 @@ public class ControllerStep : IScaffoldStep
 using MediatR;
 using System.Collections.Generic;
 using Microsoft.AspNetCore.Mvc;
-using {{solution}}.Application.{{entity}}.Commands;
-using {{solution}}.Application.{{entity}}.Queries;
+using {{solution}}.Application.{{entity}}.Create;
+using {{solution}}.Application.{{entity}}.Update;
+using {{solution}}.Application.{{entity}}.Delete;
+using {{solution}}.Application.{{entity}}.GetById;
+using {{solution}}.Application.{{entity}}.GetAll;
+using {{solution}}.Application.{{entity}}.GetList;
 using {{solution}}.Core.Common;
 using {{solution}}.Core.Domain.{{entity}};
 
