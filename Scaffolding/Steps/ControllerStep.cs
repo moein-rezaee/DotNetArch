@@ -12,7 +12,7 @@ public class ControllerStep : IScaffoldStep
         Directory.CreateDirectory(apiDir);
         var controllerFile = Path.Combine(apiDir, $"{entity}Controller.cs");
         var content =
-"using MediatR\n" +
+"using MediatR;\n" +
 "using System.Collections.Generic;\n" +
 "using Microsoft.AspNetCore.Mvc;\n" +
 "using {{solution}}.Application.{{entities}}.Commands.Create;\n" +

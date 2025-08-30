@@ -12,12 +12,14 @@ public class ProjectUpdateStep : IScaffoldStep
     private const string FluentValidationVersion = "11.9.0";
     private const string EfCoreVersion = "8.0.0";
     private const string SqlClientVersion = "5.2.1";
+    private const string OpenApiVersion = "9.0.0";
 
     public void Execute(string solution, string entity, string provider, string basePath, string startupProject)
     {
         UpdateApplicationProject(solution, basePath);
         UpdateInfrastructureProject(solution, basePath);
         UpdateApiProject(solution, provider, basePath, startupProject);
+        RemoveTemplateFiles(basePath, startupProject);
         UpdateProgram(solution, provider, basePath, startupProject);
     }
 
@@ -124,6 +126,7 @@ public class ProjectUpdateStep : IScaffoldStep
 
         EnsurePackage(doc, "MediatR", MediatRVersion);
         EnsurePackage(doc, "FluentValidation.DependencyInjectionExtensions", FluentValidationVersion);
+        EnsurePackage(doc, "Microsoft.AspNetCore.OpenApi", OpenApiVersion);
         foreach (var old in doc.Root!.Elements("ItemGroup").Elements("PackageReference")
                      .Where(p => (string?)p.Attribute("Include") == "MediatR.Extensions.Microsoft.DependencyInjection").ToList())
             old.Remove();
@@ -166,6 +169,10 @@ public class ProjectUpdateStep : IScaffoldStep
             var dbLine = provider == "SQLite"
                 ? "builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlite(\"Data Source=app.db\"));"
                 : "builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlServer(\"Server=.;Database=AppDb;Trusted_Connection=True;\"));";
+            if (!lines.Any(l => l.Contains("AddEndpointsApiExplorer")))
+                lines.Insert(insertIndex++, "builder.Services.AddEndpointsApiExplorer();");
+            if (!lines.Any(l => l.Contains("AddSwaggerGen")))
+                lines.Insert(insertIndex++, "builder.Services.AddSwaggerGen();");
             if (!lines.Any(l => l.Contains("AddDbContext<AppDbContext>")))
                 lines.Insert(insertIndex++, dbLine);
             if (!lines.Any(l => l.Contains("RegisterServicesFromAssemblies")))
@@ -175,6 +182,25 @@ public class ProjectUpdateStep : IScaffoldStep
             if (!lines.Any(l => l.Contains("AddScoped<IUnitOfWork, UnitOfWork>()")))
                 lines.Insert(insertIndex, "builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();");
         }
+
+        var buildIdx = lines.FindIndex(l => l.Contains("var app = builder.Build();"));
+        if (buildIdx >= 0 && !lines.Any(l => l.Contains("UseSwaggerUI()")))
+        {
+            var insertIndex = buildIdx + 1;
+            lines.Insert(insertIndex++, "if (app.Environment.IsDevelopment())");
+            lines.Insert(insertIndex++, "{");
+            lines.Insert(insertIndex++, "    app.UseSwagger();");
+            lines.Insert(insertIndex++, "    app.UseSwaggerUI();");
+            lines.Insert(insertIndex++, "}");
+        }
         File.WriteAllLines(programFile, lines);
+    }
+
+    static void RemoveTemplateFiles(string basePath, string startupProject)
+    {
+        var weather = Path.Combine(basePath, startupProject, "WeatherForecast.cs");
+        if (File.Exists(weather)) File.Delete(weather);
+        var controller = Path.Combine(basePath, startupProject, "Controllers", "WeatherForecastController.cs");
+        if (File.Exists(controller)) File.Delete(controller);
     }
 }
