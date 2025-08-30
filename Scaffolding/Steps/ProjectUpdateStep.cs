@@ -163,14 +163,14 @@ public class ProjectUpdateStep : IScaffoldStep
         {
             "using System;",
             "using MediatR;",
-            "using FluentValidation;",
-            "using Microsoft.EntityFrameworkCore;",
-            $"using {solution}.Infrastructure.Persistence;"
+            "using FluentValidation;"
         };
 
         if (!string.IsNullOrWhiteSpace(entity))
         {
             var plural = Naming.Pluralize(entity);
+            usingLines.Add("using Microsoft.EntityFrameworkCore;");
+            usingLines.Add($"using {solution}.Infrastructure.Persistence;");
             usingLines.Add($"using {solution}.Core.Interfaces;");
             usingLines.Add($"using {solution}.Infrastructure;");
             usingLines.Add($"using {solution}.Core.Domain.{plural};");
@@ -195,7 +195,7 @@ public class ProjectUpdateStep : IScaffoldStep
                 lines.Insert(insertIndex++, "builder.Services.AddSwaggerGen();");
             if (!lines.Any(l => l.Contains("AddControllers")))
                 lines.Insert(insertIndex++, "builder.Services.AddControllers();");
-            if (!lines.Any(l => l.Contains("AddDbContext<AppDbContext>")))
+            if (!string.IsNullOrWhiteSpace(entity) && !lines.Any(l => l.Contains("AddDbContext<AppDbContext>")))
                 lines.Insert(insertIndex++, dbLine);
             if (!lines.Any(l => l.Contains("RegisterServicesFromAssemblies")))
                 lines.Insert(insertIndex++, "builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(AppDomain.CurrentDomain.GetAssemblies()));");
