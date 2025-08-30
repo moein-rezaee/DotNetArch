@@ -21,11 +21,11 @@ public class ProjectUpdateStep : IScaffoldStep
         if (!File.Exists(appProj)) return;
         var text = File.ReadAllText(appProj);
 
-        // remove legacy MediatR.Extensions reference
+        // remove any MediatR.Extensions references from application project
         text = Regex.Replace(
             text,
-            @"\s*<PackageReference Include=""MediatR.Extensions.Microsoft.DependencyInjection""[^\n]*\n",
-            string.Empty);
+            @"\r?\n\s*<PackageReference Include=""MediatR.Extensions.Microsoft.DependencyInjection""[^>]*>\r?\n?",
+            "\n");
 
         var hasMediatR = text.Contains("Include=\"MediatR\"");
         var hasFluent = text.Contains("Include=\"FluentValidation\"");
