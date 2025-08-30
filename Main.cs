@@ -2,9 +2,29 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
+
 class Program
 {
     static void Main(string[] args)
+    {
+        if (args.Length >= 3 && args[0].ToLower() == "new" && args[1].ToLower() == "crud")
+        {
+            var solution = args[2];
+            var entity = args.Length >= 4 ? args[3] : null;
+            if (string.IsNullOrWhiteSpace(solution) || string.IsNullOrWhiteSpace(entity))
+            {
+                Console.WriteLine("Usage: dotnet-arch new crud <SolutionName> <EntityName>");
+                return;
+            }
+
+            CrudScaffolder.Generate(solution, entity);
+            return;
+        }
+
+        GenerateSolution();
+    }
+
+    static void GenerateSolution()
     {
         Console.WriteLine("==========================================");
         Console.WriteLine("🚀 Welcome to ScaffoldCleanArch Tool! 🚀");
@@ -24,34 +44,28 @@ class Program
             return;
         }
 
-        // Create the solution folder
         if (!Directory.Exists(solutionName))
         {
             Directory.CreateDirectory(solutionName);
         }
 
-        // Change working directory to the solution folder
         Directory.SetCurrentDirectory(solutionName);
 
-        // Run `dotnet new` commands
         RunCommand($"dotnet new sln -n {solutionName}");
         RunCommand($"dotnet new classlib -n {solutionName}.Core");
         RunCommand($"dotnet new classlib -n {solutionName}.Application");
         RunCommand($"dotnet new classlib -n {solutionName}.Infrastructure");
         RunCommand($"dotnet new webapi -n {solutionName}.API");
 
-        // Remove default classes
         DeleteDefaultClass($"{solutionName}.Core");
         DeleteDefaultClass($"{solutionName}.Application");
         DeleteDefaultClass($"{solutionName}.Infrastructure");
 
-        // Add projects to the solution
         RunCommand($"dotnet sln add {solutionName}.Core/{solutionName}.Core.csproj");
         RunCommand($"dotnet sln add {solutionName}.Application/{solutionName}.Application.csproj");
         RunCommand($"dotnet sln add {solutionName}.Infrastructure/{solutionName}.Infrastructure.csproj");
         RunCommand($"dotnet sln add {solutionName}.API/{solutionName}.API.csproj");
 
-        // Add references between projects
         RunCommand($"dotnet add {solutionName}.Application/{solutionName}.Application.csproj reference {solutionName}.Core/{solutionName}.Core.csproj");
         RunCommand($"dotnet add {solutionName}.Infrastructure/{solutionName}.Infrastructure.csproj reference {solutionName}.Application/{solutionName}.Application.csproj");
         RunCommand($"dotnet add {solutionName}.API/{solutionName}.API.csproj reference {solutionName}.Application/{solutionName}.Application.csproj");

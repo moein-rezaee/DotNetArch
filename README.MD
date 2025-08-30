@@ -49,18 +49,28 @@ Once installed, you can use the tool to create a solution structure:
 
 ```bash
 dotnet arch
-```  
+```
 
-This command generates the following layers:  
+This command generates the following layers:
 
-- **Core**  
-- **Application**  
-- **Infrastructure**  
-- **API**  
+- **Core**
+- **Application**
+- **Infrastructure**
+- **API**
+
+#### Generate CRUD for an Entity
+
+After creating a solution you can scaffold a full CRUD vertical slice for an entity:
+
+```bash
+dotnet-arch new crud <SolutionName> <EntityName>
+```
+
+The tool creates domain models, repositories, unit of work, MediatR command/query handlers, validators, and API controllers. You can choose SQL Server or SQLite and generated code supports pagination via `PagedResult<T>`. Running the command again updates existing files instead of duplicating them.
 
 ---
 
-#### **How to Clone and Run the Project**  
+#### **How to Clone and Run the Project**
 
 **Step 1: Clone the Repository**  
 
@@ -115,12 +125,16 @@ We welcome contributions to DotNetArch! Here’s how you can contribute:
 
 ---
 
-#### **Features**  
+#### **Features**
 
-- **Automated Project Setup**: Generate Clean Architecture solutions with a single command.  
-- **Cross-Platform**: Fully functional on Windows, macOS, and Linux.  
-- **Domain-Driven Design Support**: Includes pre-configured layers for DDD.  
-- **Ease of Use**: Intuitive and straightforward CLI commands.  
+- **Automated Project Setup**: Generate Clean Architecture solutions with a single command.
+- **Cross-Platform**: Fully functional on Windows, macOS, and Linux.
+- **Domain-Driven Design Support**: Includes pre-configured layers for DDD.
+- **Ease of Use**: Intuitive and straightforward CLI commands.
+- **`new crud` scaffolding**: Generates vertical-slice CQRS CRUD with MediatR, FluentValidation, EF Core repositories, and paginated results.
+- **Database Provider Selection**: Choose between SQL Server and SQLite during scaffolding.
+- **Idempotent Generation**: Re-running commands updates existing files without creating duplicates.
+- **Repository & Unit of Work patterns**: Each entity gets its own repository and UoW registration for clean data access.
 
 ---
 
