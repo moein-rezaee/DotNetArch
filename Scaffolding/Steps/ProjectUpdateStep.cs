@@ -164,7 +164,8 @@ public class ProjectUpdateStep : IScaffoldStep
             "using System;",
             "using MediatR;",
             "using FluentValidation;",
-            $"using {solution}.Application;"
+            $"using {solution}.Application;",
+            "using Microsoft.Extensions.DependencyInjection;"
         };
 
         if (!string.IsNullOrWhiteSpace(entity))
@@ -222,8 +223,26 @@ public class ProjectUpdateStep : IScaffoldStep
             lines.Insert(insertIndex++, "}");
         }
         var runIdx = lines.FindIndex(l => l.Contains("app.Run();"));
-        if (runIdx >= 0 && !lines.Any(l => l.Contains("app.MapControllers()")))
-            lines.Insert(runIdx, "app.MapControllers();");
+        if (runIdx >= 0)
+        {
+            if (!lines.Any(l => l.Contains("app.MapControllers()")))
+                lines.Insert(runIdx++, "app.MapControllers();");
+            if (!string.IsNullOrWhiteSpace(entity) && !lines.Any(l => l.Contains("Database.EnsureCreated")))
+            {
+                var ensureLines = new List<string>
+                {
+                    "using (var scope = app.Services.CreateScope())",
+                    "{",
+                    "    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();",
+                    "    db.Database.EnsureCreated();",
+                    "}"
+                };
+                foreach (var el in ensureLines)
+                {
+                    lines.Insert(runIdx++, el);
+                }
+            }
+        }
         File.WriteAllLines(programFile, lines);
     }
 
