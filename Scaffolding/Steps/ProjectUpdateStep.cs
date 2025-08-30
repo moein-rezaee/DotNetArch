@@ -8,7 +8,7 @@ namespace DotNetArch.Scaffolding.Steps;
 
 public class ProjectUpdateStep : IScaffoldStep
 {
-    private const string MediatRVersion = "12.2.0";
+    private const string MediatRVersion = "12.1.1";
     private const string FluentValidationVersion = "11.9.0";
     private const string EfCoreVersion = "8.0.0";
     private const string SqlClientVersion = "5.1.2";

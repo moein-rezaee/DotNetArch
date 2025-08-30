@@ -1,4 +1,5 @@
 using System.IO;
+using DotNetArch.Scaffolding;
 
 namespace DotNetArch.Scaffolding.Steps;
 
@@ -6,6 +7,7 @@ public class RepositoryStep : IScaffoldStep
 {
     public void Execute(string solution, string entity, string provider, string basePath, string startupProject)
     {
+        var plural = Naming.Pluralize(entity);
         var commonDir = Path.Combine(basePath, $"{solution}.Core", "Common");
         Directory.CreateDirectory(commonDir);
         var pagedResultFile = Path.Combine(commonDir, "PagedResult.cs");
@@ -17,7 +19,7 @@ public class RepositoryStep : IScaffoldStep
             File.WriteAllText(pagedResultFile, pagedContent.Replace("{{solution}}", solution));
         }
 
-        var coreDir = Path.Combine(basePath, $"{solution}.Core", "Domain", entity);
+        var coreDir = Path.Combine(basePath, $"{solution}.Core", "Domain", plural);
         Directory.CreateDirectory(coreDir);
         var ifaceFile = Path.Combine(coreDir, $"I{entity}Repository.cs");
         var ifaceContent =
@@ -25,7 +27,7 @@ public class RepositoryStep : IScaffoldStep
 using System.Collections.Generic;
 using {{solution}}.Core.Common;
 
-namespace {{solution}}.Core.Domain.{{entity}};
+namespace {{solution}}.Core.Domain.{{entities}};
 
 public interface I{{entity}}Repository
 {
@@ -37,9 +39,12 @@ public interface I{{entity}}Repository
     Task DeleteAsync({{entity}} entity);
 }
 ";
-        File.WriteAllText(ifaceFile, ifaceContent.Replace("{{solution}}", solution).Replace("{{entity}}", entity));
+        File.WriteAllText(ifaceFile, ifaceContent
+            .Replace("{{solution}}", solution)
+            .Replace("{{entity}}", entity)
+            .Replace("{{entities}}", plural));
 
-        var infraDir = Path.Combine(basePath, $"{solution}.Infrastructure", entity);
+        var infraDir = Path.Combine(basePath, $"{solution}.Infrastructure", plural);
         Directory.CreateDirectory(infraDir);
         var repoFile = Path.Combine(infraDir, $"{entity}Repository.cs");
         var repoContent =
@@ -48,10 +53,10 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using {{solution}}.Core.Common;
-using {{solution}}.Core.Domain.{{entity}};
+using {{solution}}.Core.Domain.{{entities}};
 using {{solution}}.Infrastructure.Persistence;
 
-namespace {{solution}}.Infrastructure.{{entity}};
+namespace {{solution}}.Infrastructure.{{entities}};
 
 public class {{entity}}Repository : I{{entity}}Repository
 {
@@ -86,6 +91,9 @@ public class {{entity}}Repository : I{{entity}}Repository
     }
 }
 ";
-        File.WriteAllText(repoFile, repoContent.Replace("{{solution}}", solution).Replace("{{entity}}", entity));
+        File.WriteAllText(repoFile, repoContent
+            .Replace("{{solution}}", solution)
+            .Replace("{{entity}}", entity)
+            .Replace("{{entities}}", plural));
     }
 }

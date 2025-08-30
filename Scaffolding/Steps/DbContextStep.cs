@@ -1,5 +1,6 @@
 using System.IO;
 using System.Linq;
+using DotNetArch.Scaffolding;
 
 namespace DotNetArch.Scaffolding.Steps;
 
@@ -7,13 +8,14 @@ public class DbContextStep : IScaffoldStep
 {
     public void Execute(string solution, string entity, string provider, string basePath, string startupProject)
     {
+        var plural = Naming.Pluralize(entity);
         var dir = Path.Combine(basePath, $"{solution}.Infrastructure", "Persistence");
         Directory.CreateDirectory(dir);
         var file = Path.Combine(dir, "AppDbContext.cs");
         if (!File.Exists(file))
         {
             var content = @"using Microsoft.EntityFrameworkCore;
-using {{solution}}.Core.Domain.{{entity}};
+using {{solution}}.Core.Domain.{{entities}};
 
 namespace {{solution}}.Infrastructure.Persistence;
 
@@ -21,19 +23,22 @@ public class AppDbContext : DbContext
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
-    public DbSet<{{entity}}> {{entity}}s { get; set; }
+    public DbSet<{{entity}}> {{entities}} { get; set; }
 }
 ";
-            File.WriteAllText(file, content.Replace("{{solution}}", solution).Replace("{{entity}}", entity));
+            File.WriteAllText(file, content
+                .Replace("{{solution}}", solution)
+                .Replace("{{entity}}", entity)
+                .Replace("{{entities}}", plural));
         }
         else
         {
             var lines = File.ReadAllLines(file).ToList();
-            var usingLine = $"using {solution}.Core.Domain.{entity};";
+            var usingLine = $"using {solution}.Core.Domain.{plural};";
             if (!lines.Contains(usingLine))
                 lines.Insert(0, usingLine);
 
-            var propLine = $"    public DbSet<{entity}> {entity}s {{ get; set; }}";
+            var propLine = $"    public DbSet<{entity}> {plural} {{ get; set; }}";
             if (!lines.Any(l => l.Contains($"DbSet<{entity}>") ))
             {
                 var insertIndex = lines.Count - 2;
@@ -43,3 +48,4 @@ public class AppDbContext : DbContext
         }
     }
 }
+
