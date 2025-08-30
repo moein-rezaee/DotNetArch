@@ -151,6 +151,7 @@ We welcome contributions to DotNetArch! Here’s how you can contribute:
 - **Database Provider Selection**: Choose between SQL Server and SQLite during scaffolding.
 - **Idempotent Generation**: Re-running commands updates existing files without creating duplicates.
 - **Repository & Unit of Work patterns**: Each entity gets its own repository and UoW registration for clean data access.
+- **Automatic package & service registration**: Required NuGet packages are added to project files and services like `DbContext`, `IMediator`, `IUnitOfWork`, and validators are registered in `Program.cs`.
 
 ---
 

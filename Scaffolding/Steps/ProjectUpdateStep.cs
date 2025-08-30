@@ -9,6 +9,7 @@ public class ProjectUpdateStep : IScaffoldStep
     public void Execute(string solution, string entity, string provider, string basePath)
     {
         UpdateApplicationProject(solution, basePath);
+        UpdateInfrastructureProject(solution, basePath);
         UpdateApiProject(solution, provider, basePath);
         UpdateProgram(solution, provider, basePath);
     }
@@ -27,6 +28,21 @@ public class ProjectUpdateStep : IScaffoldStep
 """;
         text = text.Replace("</Project>", insert + "</Project>");
         File.WriteAllText(appProj, text);
+    }
+
+    static void UpdateInfrastructureProject(string solution, string basePath)
+    {
+        var infraProj = Path.Combine(basePath, $"{solution}.Infrastructure", $"{solution}.Infrastructure.csproj");
+        if (!File.Exists(infraProj)) return;
+        var text = File.ReadAllText(infraProj);
+        if (text.Contains("Microsoft.EntityFrameworkCore")) return;
+        var insert = $$"""
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="7.0.0" />
+  </ItemGroup>
+""";
+        text = text.Replace("</Project>", insert + "</Project>");
+        File.WriteAllText(infraProj, text);
     }
 
     static void UpdateApiProject(string solution, string provider, string basePath)
@@ -54,18 +70,33 @@ public class ProjectUpdateStep : IScaffoldStep
         var programFile = Path.Combine(basePath, $"{solution}.API", "Program.cs");
         if (!File.Exists(programFile)) return;
         var lines = File.ReadAllLines(programFile).ToList();
-        foreach (var u in new []{"using MediatR;", "using FluentValidation;", "using FluentValidation.AspNetCore;", "using Microsoft.EntityFrameworkCore;", $"using {solution}.Infrastructure.Persistence;"})
+        foreach (var u in new []{
+            "using MediatR;",
+            "using FluentValidation;",
+            "using FluentValidation.AspNetCore;",
+            "using Microsoft.EntityFrameworkCore;",
+            $"using {solution}.Infrastructure.Persistence;",
+            $"using {solution}.Core.Interfaces;",
+            $"using {solution}.Infrastructure;"
+        })
         {
             if (!lines.Contains(u)) lines.Insert(0, u);
         }
         var idx = lines.FindIndex(l => l.Contains("var builder"));
         if (idx >= 0)
         {
-            lines.Insert(idx + 1, provider == "SQLite" ?
-                "builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlite(\"Data Source=app.db\"));" :
-                "builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlServer(\"Server=.;Database=AppDb;Trusted_Connection=True;\"));");
-            lines.Insert(idx + 2, "builder.Services.AddMediatR(typeof(Program));");
-            lines.Insert(idx + 3, "builder.Services.AddValidatorsFromAssemblyContaining<Program>();");
+            var insertIndex = idx + 1;
+            var dbLine = provider == "SQLite"
+                ? "builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlite(\"Data Source=app.db\"));"
+                : "builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlServer(\"Server=.;Database=AppDb;Trusted_Connection=True;\"));";
+            if (!lines.Any(l => l.Contains("AddDbContext<AppDbContext>")))
+                lines.Insert(insertIndex++, dbLine);
+            if (!lines.Any(l => l.Contains("AddMediatR")))
+                lines.Insert(insertIndex++, "builder.Services.AddMediatR(typeof(Program));");
+            if (!lines.Any(l => l.Contains("AddValidatorsFromAssemblyContaining<Program>")))
+                lines.Insert(insertIndex++, "builder.Services.AddValidatorsFromAssemblyContaining<Program>();");
+            if (!lines.Any(l => l.Contains("AddScoped<IUnitOfWork, UnitOfWork>()")))
+                lines.Insert(insertIndex, "builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();");
         }
         File.WriteAllLines(programFile, lines);
     }
