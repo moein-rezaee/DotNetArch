@@ -157,8 +157,10 @@ public class ProjectUpdateStep : IScaffoldStep
         lines.RemoveAll(l => l.Contains("FluentValidation.AspNetCore"));
         lines.RemoveAll(l => l.Contains("AddFluentValidationAutoValidation"));
         lines.RemoveAll(l => l.Contains("AddFluentValidationClientsideAdapters"));
+        // clean up malformed namespace lines (e.g., double dots)
+        lines.RemoveAll(l => l.Contains(".."));
         var plural = Naming.Pluralize(entity);
-        foreach (var u in new[]
+        var usingLines = new[]
         {
             "using System;",
             "using MediatR;",
@@ -169,9 +171,11 @@ public class ProjectUpdateStep : IScaffoldStep
             $"using {solution}.Infrastructure;",
             $"using {solution}.Core.Domain.{plural};",
             $"using {solution}.Infrastructure.{plural};"
-        })
+        };
+        foreach (var u in usingLines)
         {
-            if (!lines.Contains(u)) lines.Insert(0, u);
+            if (!lines.Any(l => l.Trim() == u))
+                lines.Insert(0, u);
         }
         var idx = lines.FindIndex(l => l.Contains("var builder"));
         if (idx >= 0)
