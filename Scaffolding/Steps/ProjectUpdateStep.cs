@@ -36,7 +36,13 @@ public class ProjectUpdateStep : IScaffoldStep
         }
         else
         {
-            refs[0].SetAttributeValue("Version", version);
+            var first = refs[0];
+            var attr = first.Attribute("Version");
+            var elem = first.Element("Version");
+            if (attr != null) attr.Value = version;
+            else if (elem != null) elem.Value = version;
+            else first.Add(new XAttribute("Version", version));
+
             foreach (var extra in refs.Skip(1).ToList()) extra.Remove();
         }
     }
