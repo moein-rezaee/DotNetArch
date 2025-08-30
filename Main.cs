@@ -2,6 +2,8 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
+using DotNetArch.Scaffolding;
+using DotNetArch.Scaffolding.Steps;
 
 class Program
 {
@@ -132,7 +134,9 @@ class Program
         RunCommand($"dotnet add {solutionName}.API/{solutionName}.API.csproj reference {solutionName}.Application/{solutionName}.Application.csproj");
         RunCommand($"dotnet add {solutionName}.API/{solutionName}.API.csproj reference {solutionName}.Infrastructure/{solutionName}.Infrastructure.csproj");
 
-        ConfigManager.Save(solutionDir, new SolutionConfig { SolutionName = solutionName, SolutionPath = solutionDir, StartupProject = startupProject });
+        var provider = DatabaseProviderSelector.Choose();
+        ConfigManager.Save(solutionDir, new SolutionConfig { SolutionName = solutionName, SolutionPath = solutionDir, StartupProject = startupProject, DatabaseProvider = provider });
+        new ProjectUpdateStep().Execute(solutionName, string.Empty, provider, solutionDir, startupProject);
 
         Console.WriteLine("\n✅ Solution created successfully!");
         Console.WriteLine("==========================================");

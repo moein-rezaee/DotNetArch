@@ -175,6 +175,8 @@ public class ProjectUpdateStep : IScaffoldStep
                 lines.Insert(insertIndex++, "builder.Services.AddEndpointsApiExplorer();");
             if (!lines.Any(l => l.Contains("AddSwaggerGen")))
                 lines.Insert(insertIndex++, "builder.Services.AddSwaggerGen();");
+            if (!lines.Any(l => l.Contains("AddControllers")))
+                lines.Insert(insertIndex++, "builder.Services.AddControllers();");
             if (!lines.Any(l => l.Contains("AddDbContext<AppDbContext>")))
                 lines.Insert(insertIndex++, dbLine);
             if (!lines.Any(l => l.Contains("RegisterServicesFromAssemblies")))
@@ -195,6 +197,9 @@ public class ProjectUpdateStep : IScaffoldStep
             lines.Insert(insertIndex++, "    app.UseSwaggerUI();");
             lines.Insert(insertIndex++, "}");
         }
+        var runIdx = lines.FindIndex(l => l.Contains("app.Run();"));
+        if (runIdx >= 0 && !lines.Any(l => l.Contains("app.MapControllers()")))
+            lines.Insert(runIdx, "app.MapControllers();");
         File.WriteAllLines(programFile, lines);
     }
 
