@@ -82,7 +82,7 @@ Application/<Entity>/
     └── GetList/
 ```
 
-Every operation folder under Commands or Queries contains the request, its handler, and a corresponding validator. You can choose SQL Server or SQLite and generated code supports pagination via `PagedResult<T>`. Running the command again updates existing files instead of duplicating them.
+Every operation folder under Commands or Queries contains the request, its handler, and a corresponding validator. The first time you scaffold an entity you choose either SQL Server or SQLite and the choice is saved to `dotnet-arch.yml` so later `new crud` runs reuse the same provider. Generated code supports pagination via `PagedResult<T>` and re-running the command updates existing files instead of duplicating them.
 
 ---
 
@@ -148,7 +148,7 @@ We welcome contributions to DotNetArch! Here’s how you can contribute:
 - **Domain-Driven Design Support**: Includes pre-configured layers for DDD.
 - **Ease of Use**: Intuitive and straightforward CLI commands.
 - **`new crud` scaffolding**: Generates vertical-slice CQRS CRUD with MediatR, FluentValidation, EF Core repositories, and paginated results.
-- **Database Provider Selection**: Choose between SQL Server and SQLite during scaffolding.
+- **Database Provider Selection**: Choose between SQL Server and SQLite during initial scaffolding; the selected provider is stored so future runs don't prompt again.
 - **Idempotent Generation**: Re-running commands updates existing files without creating duplicates.
 - **Repository & Unit of Work patterns**: Each entity gets its own repository and UoW registration for clean data access.
 - **Automatic package & service registration**: Required NuGet packages are added to project files and services like `DbContext`, `IMediator`, `IUnitOfWork`, and validators are registered in `Program.cs`.

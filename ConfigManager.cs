@@ -24,6 +24,8 @@ public static class ConfigManager
                 config.SolutionPath = value;
             else if (key.Equals("startup", StringComparison.OrdinalIgnoreCase))
                 config.StartupProject = value;
+            else if (key.Equals("database", StringComparison.OrdinalIgnoreCase))
+                config.DatabaseProvider = value;
         }
         if (string.IsNullOrWhiteSpace(config.SolutionPath))
             config.SolutionPath = basePath;
@@ -36,6 +38,8 @@ public static class ConfigManager
     {
         var path = Path.Combine(basePath, FileName);
         var content = $"solution: {config.SolutionName}\npath: {config.SolutionPath}\nstartup: {config.StartupProject}\n";
+        if (!string.IsNullOrWhiteSpace(config.DatabaseProvider))
+            content += $"database: {config.DatabaseProvider}\n";
         File.WriteAllText(path, content);
     }
 }

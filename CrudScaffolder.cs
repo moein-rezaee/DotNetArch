@@ -4,15 +4,21 @@ using DotNetArch.Scaffolding.Steps;
 
 static class CrudScaffolder
 {
-    public static void Generate(string solutionName, string entityName, string basePath, string startupProject)
+    public static void Generate(SolutionConfig config, string entityName)
     {
-        if (string.IsNullOrWhiteSpace(solutionName) || string.IsNullOrWhiteSpace(entityName))
+        if (string.IsNullOrWhiteSpace(config.SolutionName) || string.IsNullOrWhiteSpace(entityName))
         {
             Console.WriteLine("Solution and entity names are required.");
             return;
         }
 
-        var provider = DatabaseProviderSelector.Choose();
+        var provider = config.DatabaseProvider;
+        if (string.IsNullOrWhiteSpace(provider))
+        {
+            provider = DatabaseProviderSelector.Choose();
+            config.DatabaseProvider = provider;
+            ConfigManager.Save(config.SolutionPath, config);
+        }
         var steps = new IScaffoldStep[]
         {
             new ProjectUpdateStep(),
@@ -25,7 +31,7 @@ static class CrudScaffolder
         };
 
         foreach (var step in steps)
-            step.Execute(solutionName, entityName, provider, basePath, startupProject);
+            step.Execute(config.SolutionName, entityName, provider, config.SolutionPath, config.StartupProject);
 
         Console.WriteLine($"CRUD for {entityName} generated using {provider} provider.");
     }

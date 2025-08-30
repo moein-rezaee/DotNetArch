@@ -34,7 +34,7 @@ class Program
                 return;
             }
 
-            CrudScaffolder.Generate(config.SolutionName, entity, config.SolutionPath, config.StartupProject);
+            CrudScaffolder.Generate(config, entity);
             return;
         }
 
