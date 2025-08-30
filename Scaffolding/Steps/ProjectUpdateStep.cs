@@ -13,6 +13,7 @@ public class ProjectUpdateStep : IScaffoldStep
     private const string EfCoreVersion = "8.0.0";
     private const string SqlClientVersion = "5.2.1";
     private const string OpenApiVersion = "9.0.0";
+    private const string SwaggerVersion = "6.5.0";
 
     public void Execute(string solution, string entity, string provider, string basePath, string startupProject)
     {
@@ -127,6 +128,7 @@ public class ProjectUpdateStep : IScaffoldStep
         EnsurePackage(doc, "MediatR", MediatRVersion);
         EnsurePackage(doc, "FluentValidation.DependencyInjectionExtensions", FluentValidationVersion);
         EnsurePackage(doc, "Microsoft.AspNetCore.OpenApi", OpenApiVersion);
+        EnsurePackage(doc, "Swashbuckle.AspNetCore", SwaggerVersion);
         foreach (var old in doc.Root!.Elements("ItemGroup").Elements("PackageReference")
                      .Where(p => (string?)p.Attribute("Include") == "MediatR.Extensions.Microsoft.DependencyInjection").ToList())
             old.Remove();
@@ -202,5 +204,19 @@ public class ProjectUpdateStep : IScaffoldStep
         if (File.Exists(weather)) File.Delete(weather);
         var controller = Path.Combine(basePath, startupProject, "Controllers", "WeatherForecastController.cs");
         if (File.Exists(controller)) File.Delete(controller);
+
+        var program = Path.Combine(basePath, startupProject, "Program.cs");
+        if (File.Exists(program))
+        {
+            var lines = File.ReadAllLines(program).ToList();
+            var start = lines.FindIndex(l => l.Contains("var summaries"));
+            if (start >= 0)
+            {
+                var end = lines.FindIndex(start, l => l.Contains("GetWeatherForecast"));
+                if (end >= start)
+                    lines.RemoveRange(start, end - start + 1);
+            }
+            File.WriteAllLines(program, lines);
+        }
     }
 }

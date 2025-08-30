@@ -154,7 +154,7 @@ We welcome contributions to DotNetArch! Here’s how you can contribute:
 - **Automatic package & service registration**: Required NuGet packages are added to project files and services like `DbContext`, `IMediator`, `IUnitOfWork`, and validators are registered in `Program.cs`.
 - **Configurable startup project**: `dotnet-arch.yml` tracks which project is the startup target so controllers are added to the correct application entry point.
 - **Custom output path**: Both `new solution` and `new crud` accept an `--output` option so code can be generated in test directories or alternative locations.
-- **Development Swagger setup**: API projects automatically reference `Microsoft.AspNetCore.OpenApi`, register Swagger services, and enable Swagger UI in development while removing default template files.
+- **Development Swagger setup**: API projects automatically reference `Microsoft.AspNetCore.OpenApi` and `Swashbuckle.AspNetCore`, register Swagger services, and enable Swagger UI in development while removing default template files and sample endpoints.
 
 ---
 
