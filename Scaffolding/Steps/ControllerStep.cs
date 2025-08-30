@@ -4,9 +4,9 @@ namespace DotNetArch.Scaffolding.Steps;
 
 public class ControllerStep : IScaffoldStep
 {
-    public void Execute(string solution, string entity, string provider)
+    public void Execute(string solution, string entity, string provider, string basePath)
     {
-        var apiDir = Path.Combine($"{solution}.API", entity);
+        var apiDir = Path.Combine(basePath, $"{solution}.API", entity);
         Directory.CreateDirectory(apiDir);
         var controllerFile = Path.Combine(apiDir, $"{entity}Controller.cs");
         var lower = entity.ToLowerInvariant();

@@ -7,24 +7,33 @@ class Program
 {
     static void Main(string[] args)
     {
-        if (args.Length >= 3 && args[0].ToLower() == "new" && args[1].ToLower() == "crud")
+        if (args.Length >= 4 && args[0].ToLower() == "new" && args[1].ToLower() == "crud")
         {
             var solution = args[2];
-            var entity = args.Length >= 4 ? args[3] : null;
+            var entity = args[3];
+            var basePath = args.Length >= 5 ? args[4] : Directory.GetCurrentDirectory();
             if (string.IsNullOrWhiteSpace(solution) || string.IsNullOrWhiteSpace(entity))
             {
-                Console.WriteLine("Usage: dotnet-arch new crud <SolutionName> <EntityName>");
+                Console.WriteLine("Usage: dotnet-arch new crud <SolutionName> <EntityName> [OutputPath]");
                 return;
             }
 
-            CrudScaffolder.Generate(solution, entity);
+            CrudScaffolder.Generate(solution, entity, basePath);
             return;
         }
 
-        GenerateSolution();
+        if (args.Length >= 3 && args[0].ToLower() == "new" && args[1].ToLower() == "solution")
+        {
+            var solutionName = args[2];
+            var outputPath = args.Length >= 4 ? args[3] : Directory.GetCurrentDirectory();
+            GenerateSolution(solutionName, outputPath);
+            return;
+        }
+
+        GenerateSolutionInteractive();
     }
 
-    static void GenerateSolution()
+    static void GenerateSolutionInteractive()
     {
         Console.WriteLine("==========================================");
         Console.WriteLine("🚀 Welcome to ScaffoldCleanArch Tool! 🚀");
@@ -44,12 +53,21 @@ class Program
             return;
         }
 
-        if (!Directory.Exists(solutionName))
-        {
-            Directory.CreateDirectory(solutionName);
-        }
+        Console.Write("Enter output path (leave empty for current): ");
+        var outputPath = Console.ReadLine();
+        if (string.IsNullOrWhiteSpace(outputPath))
+            outputPath = Directory.GetCurrentDirectory();
 
-        Directory.SetCurrentDirectory(solutionName);
+        GenerateSolution(solutionName, outputPath);
+    }
+
+    static void GenerateSolution(string solutionName, string outputPath)
+    {
+        var solutionDir = Path.Combine(outputPath, solutionName);
+        if (!Directory.Exists(solutionDir))
+            Directory.CreateDirectory(solutionDir);
+
+        Directory.SetCurrentDirectory(solutionDir);
 
         RunCommand($"dotnet new sln -n {solutionName}");
         RunCommand($"dotnet new classlib -n {solutionName}.Core");

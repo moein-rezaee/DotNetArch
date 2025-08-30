@@ -45,11 +45,13 @@ dotnet tool update --global DotNetArch
 ```  
 
 **Step 3: Generate a Clean Architecture Solution**  
-Once installed, you can use the tool to create a solution structure:  
+Once installed, you can use the tool to create a solution structure:
 
 ```bash
-dotnet arch
+dotnet-arch new solution <SolutionName> [OutputPath]
 ```
+
+`OutputPath` is optional and lets you specify where the solution is created (useful for tests). If omitted, the current directory is used.
 
 This command generates the following layers:
 
@@ -63,10 +65,10 @@ This command generates the following layers:
 After creating a solution you can scaffold a full CRUD vertical slice for an entity:
 
 ```bash
-dotnet-arch new crud <SolutionName> <EntityName>
+dotnet-arch new crud <SolutionName> <EntityName> [OutputPath]
 ```
 
-The tool creates domain models, repositories, unit of work, MediatR command/query handlers, validators, and API controllers. You can choose SQL Server or SQLite and generated code supports pagination via `PagedResult<T>`. Running the command again updates existing files instead of duplicating them.
+`OutputPath` lets you direct where the slice is generated. The tool creates domain models, repositories, unit of work, MediatR command/query handlers, validators, and API controllers. You can choose SQL Server or SQLite and generated code supports pagination via `PagedResult<T>`. Running the command again updates existing files instead of duplicating them.
 
 ---
 

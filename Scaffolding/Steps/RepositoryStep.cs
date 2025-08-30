@@ -4,9 +4,9 @@ namespace DotNetArch.Scaffolding.Steps;
 
 public class RepositoryStep : IScaffoldStep
 {
-    public void Execute(string solution, string entity, string provider)
+    public void Execute(string solution, string entity, string provider, string basePath)
     {
-        var commonDir = Path.Combine($"{solution}.Core", "Common");
+        var commonDir = Path.Combine(basePath, $"{solution}.Core", "Common");
         Directory.CreateDirectory(commonDir);
         var pagedResultFile = Path.Combine(commonDir, "PagedResult.cs");
         if (!File.Exists(pagedResultFile))
@@ -21,7 +21,7 @@ public record PagedResult<T>(List<T> Items, int TotalCount, int Page, int PageSi
             File.WriteAllText(pagedResultFile, pagedContent);
         }
 
-        var coreDir = Path.Combine($"{solution}.Core", "Domain", entity);
+        var coreDir = Path.Combine(basePath, $"{solution}.Core", "Domain", entity);
         Directory.CreateDirectory(coreDir);
         var ifaceFile = Path.Combine(coreDir, $"I{entity}Repository.cs");
         var ifaceContent = $$"""
@@ -43,7 +43,7 @@ public interface I{{entity}}Repository
 """;
         File.WriteAllText(ifaceFile, ifaceContent);
 
-        var infraDir = Path.Combine($"{solution}.Infrastructure", entity);
+        var infraDir = Path.Combine(basePath, $"{solution}.Infrastructure", entity);
         Directory.CreateDirectory(infraDir);
         var repoFile = Path.Combine(infraDir, $"{entity}Repository.cs");
         var repoContent = $$"""

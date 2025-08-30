@@ -5,9 +5,9 @@ namespace DotNetArch.Scaffolding.Steps;
 
 public class DbContextStep : IScaffoldStep
 {
-    public void Execute(string solution, string entity, string provider)
+    public void Execute(string solution, string entity, string provider, string basePath)
     {
-        var dir = Path.Combine($"{solution}.Infrastructure", "Persistence");
+        var dir = Path.Combine(basePath, $"{solution}.Infrastructure", "Persistence");
         Directory.CreateDirectory(dir);
         var file = Path.Combine(dir, "AppDbContext.cs");
         if (!File.Exists(file))

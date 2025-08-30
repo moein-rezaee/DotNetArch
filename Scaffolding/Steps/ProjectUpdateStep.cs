@@ -6,16 +6,16 @@ namespace DotNetArch.Scaffolding.Steps;
 
 public class ProjectUpdateStep : IScaffoldStep
 {
-    public void Execute(string solution, string entity, string provider)
+    public void Execute(string solution, string entity, string provider, string basePath)
     {
-        UpdateApplicationProject(solution);
-        UpdateApiProject(solution, provider);
-        UpdateProgram(solution, provider);
+        UpdateApplicationProject(solution, basePath);
+        UpdateApiProject(solution, provider, basePath);
+        UpdateProgram(solution, provider, basePath);
     }
 
-    static void UpdateApplicationProject(string solution)
+    static void UpdateApplicationProject(string solution, string basePath)
     {
-        var appProj = Path.Combine($"{solution}.Application", $"{solution}.Application.csproj");
+        var appProj = Path.Combine(basePath, $"{solution}.Application", $"{solution}.Application.csproj");
         if (!File.Exists(appProj)) return;
         var text = File.ReadAllText(appProj);
         if (text.Contains("MediatR")) return;
@@ -29,9 +29,9 @@ public class ProjectUpdateStep : IScaffoldStep
         File.WriteAllText(appProj, text);
     }
 
-    static void UpdateApiProject(string solution, string provider)
+    static void UpdateApiProject(string solution, string provider, string basePath)
     {
-        var apiProj = Path.Combine($"{solution}.API", $"{solution}.API.csproj");
+        var apiProj = Path.Combine(basePath, $"{solution}.API", $"{solution}.API.csproj");
         if (!File.Exists(apiProj)) return;
         var text = File.ReadAllText(apiProj);
         if (text.Contains("MediatR.Extensions")) return;
@@ -49,9 +49,9 @@ public class ProjectUpdateStep : IScaffoldStep
         File.WriteAllText(apiProj, text);
     }
 
-    static void UpdateProgram(string solution, string provider)
+    static void UpdateProgram(string solution, string provider, string basePath)
     {
-        var programFile = Path.Combine($"{solution}.API", "Program.cs");
+        var programFile = Path.Combine(basePath, $"{solution}.API", "Program.cs");
         if (!File.Exists(programFile)) return;
         var lines = File.ReadAllLines(programFile).ToList();
         foreach (var u in new []{"using MediatR;", "using FluentValidation;", "using FluentValidation.AspNetCore;", "using Microsoft.EntityFrameworkCore;", $"using {solution}.Infrastructure.Persistence;"})

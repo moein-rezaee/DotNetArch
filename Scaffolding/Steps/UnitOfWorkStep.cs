@@ -5,9 +5,9 @@ namespace DotNetArch.Scaffolding.Steps;
 
 public class UnitOfWorkStep : IScaffoldStep
 {
-    public void Execute(string solution, string entity, string provider)
+    public void Execute(string solution, string entity, string provider, string basePath)
     {
-        var coreDir = Path.Combine($"{solution}.Core", "Interfaces");
+        var coreDir = Path.Combine(basePath, $"{solution}.Core", "Interfaces");
         Directory.CreateDirectory(coreDir);
         var uowInterfaceFile = Path.Combine(coreDir, "IUnitOfWork.cs");
         if (!File.Exists(uowInterfaceFile))
@@ -42,7 +42,7 @@ public interface IUnitOfWork : IDisposable
             File.WriteAllLines(uowInterfaceFile, lines);
         }
 
-        var infraDir = Path.Combine($"{solution}.Infrastructure");
+        var infraDir = Path.Combine(basePath, $"{solution}.Infrastructure");
         Directory.CreateDirectory(infraDir);
         var uowFile = Path.Combine(infraDir, "UnitOfWork.cs");
         var lower = char.ToLowerInvariant(entity[0]) + entity.Substring(1);
