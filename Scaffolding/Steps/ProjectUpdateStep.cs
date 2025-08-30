@@ -221,6 +221,13 @@ public class ProjectUpdateStep : IScaffoldStep
                 if (end >= start)
                     lines.RemoveRange(start, end - start + 1);
             }
+            var recordIndex = lines.FindIndex(l => l.Contains("record WeatherForecast"));
+            if (recordIndex >= 0)
+            {
+                var closeIndex = lines.FindIndex(recordIndex, l => l.Trim() == "}");
+                if (closeIndex >= recordIndex)
+                    lines.RemoveRange(recordIndex, closeIndex - recordIndex + 1);
+            }
             File.WriteAllLines(program, lines);
         }
     }
