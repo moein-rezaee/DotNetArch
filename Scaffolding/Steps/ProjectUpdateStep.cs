@@ -11,7 +11,7 @@ public class ProjectUpdateStep : IScaffoldStep
     private const string MediatRVersion = "12.1.1";
     private const string FluentValidationVersion = "11.9.0";
     private const string EfCoreVersion = "8.0.0";
-    private const string SqlClientVersion = "5.1.2";
+    private const string SqlClientVersion = "5.2.1";
 
     public void Execute(string solution, string entity, string provider, string basePath, string startupProject)
     {
@@ -43,6 +43,26 @@ public class ProjectUpdateStep : IScaffoldStep
             else if (elem != null) elem.Value = version;
             else first.Add(new XAttribute("Version", version));
 
+            foreach (var extra in refs.Skip(1).ToList()) extra.Remove();
+        }
+    }
+
+    static void EnsureProjectReference(XDocument doc, string include)
+    {
+        var refs = doc.Root!.Elements("ItemGroup").Elements("ProjectReference")
+            .Where(p => (string?)p.Attribute("Include") == include).ToList();
+        if (refs.Count == 0)
+        {
+            var group = doc.Root.Elements("ItemGroup").FirstOrDefault();
+            if (group == null)
+            {
+                group = new XElement("ItemGroup");
+                doc.Root.Add(group);
+            }
+            group.Add(new XElement("ProjectReference", new XAttribute("Include", include)));
+        }
+        else
+        {
             foreach (var extra in refs.Skip(1).ToList()) extra.Remove();
         }
     }
@@ -112,6 +132,10 @@ public class ProjectUpdateStep : IScaffoldStep
         if (provider != "SQLite")
             EnsurePackage(doc, "Microsoft.Data.SqlClient", SqlClientVersion);
 
+        var rel = ".." + Path.DirectorySeparatorChar;
+        EnsureProjectReference(doc, $"{rel}{solution}.Application{Path.DirectorySeparatorChar}{solution}.Application.csproj");
+        EnsureProjectReference(doc, $"{rel}{solution}.Infrastructure{Path.DirectorySeparatorChar}{solution}.Infrastructure.csproj");
+
         doc.Save(apiProj);
     }
 
@@ -122,6 +146,7 @@ public class ProjectUpdateStep : IScaffoldStep
         var lines = File.ReadAllLines(programFile).ToList();
         foreach (var u in new[]
         {
+            "using System;",
             "using MediatR;",
             "using FluentValidation;",
             "using FluentValidation.AspNetCore;",
@@ -142,8 +167,8 @@ public class ProjectUpdateStep : IScaffoldStep
                 : "builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlServer(\"Server=.;Database=AppDb;Trusted_Connection=True;\"));";
             if (!lines.Any(l => l.Contains("AddDbContext<AppDbContext>")))
                 lines.Insert(insertIndex++, dbLine);
-            if (!lines.Any(l => l.Contains("AddMediatR")))
-                lines.Insert(insertIndex++, "builder.Services.AddMediatR(typeof(Program));");
+            if (!lines.Any(l => l.Contains("RegisterServicesFromAssemblies")))
+                lines.Insert(insertIndex++, "builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(AppDomain.CurrentDomain.GetAssemblies()));");
             if (!lines.Any(l => l.Contains("AddValidatorsFromAssemblyContaining<Program>")))
                 lines.Insert(insertIndex++, "builder.Services.AddValidatorsFromAssemblyContaining<Program>();");
             if (!lines.Any(l => l.Contains("AddScoped<IUnitOfWork, UnitOfWork>()")))
