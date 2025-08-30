@@ -152,6 +152,11 @@ public class ProjectUpdateStep : IScaffoldStep
         var programFile = Path.Combine(basePath, startupProject, "Program.cs");
         if (!File.Exists(programFile)) return;
         var lines = File.ReadAllLines(programFile).ToList();
+
+        // remove leftover FluentValidation.AspNetCore references from template
+        lines.RemoveAll(l => l.Contains("FluentValidation.AspNetCore"));
+        lines.RemoveAll(l => l.Contains("AddFluentValidationAutoValidation"));
+        lines.RemoveAll(l => l.Contains("AddFluentValidationClientsideAdapters"));
         var plural = Naming.Pluralize(entity);
         foreach (var u in new[]
         {
