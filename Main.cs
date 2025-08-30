@@ -7,18 +7,34 @@ class Program
 {
     static void Main(string[] args)
     {
-        if (args.Length >= 4 && args[0].ToLower() == "new" && args[1].ToLower() == "crud")
+        if (args.Length >= 2 && args[0].ToLower() == "new" && args[1].ToLower() == "crud")
         {
-            var solution = args[2];
-            var entity = args[3];
-            var basePath = args.Length >= 5 ? args[4] : Directory.GetCurrentDirectory();
-            if (string.IsNullOrWhiteSpace(solution) || string.IsNullOrWhiteSpace(entity))
+            string? entity = null;
+            string? outputPath = null;
+
+            for (int i = 2; i < args.Length; i++)
             {
-                Console.WriteLine("Usage: dotnet-arch new crud <SolutionName> <EntityName> [OutputPath]");
+                if (args[i].StartsWith("--entity="))
+                    entity = args[i].Substring("--entity=".Length);
+                else if (args[i].StartsWith("--output="))
+                    outputPath = args[i].Substring("--output=".Length);
+            }
+
+            if (string.IsNullOrWhiteSpace(entity))
+            {
+                Console.WriteLine("Usage: dotnet-arch new crud --entity=EntityName [--output=Path]");
                 return;
             }
 
-            CrudScaffolder.Generate(solution, entity, basePath);
+            var basePath = string.IsNullOrWhiteSpace(outputPath) ? Directory.GetCurrentDirectory() : outputPath;
+            var config = ConfigManager.Load(basePath);
+            if (config == null)
+            {
+                Console.WriteLine("Solution configuration not found. Run 'new solution' first.");
+                return;
+            }
+
+            CrudScaffolder.Generate(config.SolutionName, entity, config.SolutionPath);
             return;
         }
 
@@ -88,6 +104,8 @@ class Program
         RunCommand($"dotnet add {solutionName}.Infrastructure/{solutionName}.Infrastructure.csproj reference {solutionName}.Application/{solutionName}.Application.csproj");
         RunCommand($"dotnet add {solutionName}.API/{solutionName}.API.csproj reference {solutionName}.Application/{solutionName}.Application.csproj");
         RunCommand($"dotnet add {solutionName}.API/{solutionName}.API.csproj reference {solutionName}.Infrastructure/{solutionName}.Infrastructure.csproj");
+
+        ConfigManager.Save(solutionDir, new SolutionConfig { SolutionName = solutionName, SolutionPath = solutionDir });
 
         Console.WriteLine("\n✅ Solution created successfully!");
         Console.WriteLine("==========================================");
