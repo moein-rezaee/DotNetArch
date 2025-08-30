@@ -8,6 +8,10 @@ namespace DotNetArch.Scaffolding.Steps;
 
 public class ProjectUpdateStep : IScaffoldStep
 {
+    private const string MediatRVersion = "12.2.0";
+    private const string FluentValidationVersion = "11.9.0";
+    private const string EfCoreVersion = "8.0.0";
+
     public void Execute(string solution, string entity, string provider, string basePath, string startupProject)
     {
         UpdateApplicationProject(solution, basePath);
@@ -44,12 +48,19 @@ public class ProjectUpdateStep : IScaffoldStep
         var doc = XDocument.Load(appProj);
         var packages = doc.Root!.Elements("ItemGroup").Elements("PackageReference");
 
-        // remove MediatR.Extensions package completely
-        foreach (var pr in packages.Where(p => (string?)p.Attribute("Include") == "MediatR.Extensions.Microsoft.DependencyInjection").ToList())
+        // remove DI-specific packages that shouldn't live in the Application project
+        foreach (var pr in packages.Where(p =>
+            {
+                var include = (string?)p.Attribute("Include");
+                return include == "MediatR.Extensions.Microsoft.DependencyInjection" ||
+                       include == "FluentValidation.DependencyInjectionExtensions";
+            }).ToList())
+        {
             pr.Remove();
+        }
 
-        EnsurePackage(doc, "MediatR", "12.2.0");
-        EnsurePackage(doc, "FluentValidation", "11.9.0");
+        EnsurePackage(doc, "MediatR", MediatRVersion);
+        EnsurePackage(doc, "FluentValidation", FluentValidationVersion);
 
         doc.Save(appProj);
     }
@@ -64,12 +75,12 @@ public class ProjectUpdateStep : IScaffoldStep
             text = Regex.Replace(
                 text,
                 @"<PackageReference Include=""Microsoft.EntityFrameworkCore"" Version=""[^""]+"" />",
-                @"<PackageReference Include=""Microsoft.EntityFrameworkCore"" Version=""8.0.0"" />");
+                $"<PackageReference Include=\"Microsoft.EntityFrameworkCore\" Version=\"{EfCoreVersion}\" />");
         else
         {
             var insert =
                 "  <ItemGroup>\n" +
-                "    <PackageReference Include=\"Microsoft.EntityFrameworkCore\" Version=\"8.0.0\" />\n" +
+                $"    <PackageReference Include=\\"Microsoft.EntityFrameworkCore\\" Version=\\"{EfCoreVersion}\\" />\\n" +
                 "  </ItemGroup>\n";
             text = text.Replace("</Project>", insert + "</Project>");
         }
@@ -84,13 +95,13 @@ public class ProjectUpdateStep : IScaffoldStep
 
         var doc = XDocument.Load(apiProj);
 
-        EnsurePackage(doc, "MediatR", "12.2.0");
-        EnsurePackage(doc, "MediatR.Extensions.Microsoft.DependencyInjection", "12.2.0");
-        EnsurePackage(doc, "FluentValidation.DependencyInjectionExtensions", "11.9.0");
+        EnsurePackage(doc, "MediatR", MediatRVersion);
+        EnsurePackage(doc, "MediatR.Extensions.Microsoft.DependencyInjection", MediatRVersion);
+        EnsurePackage(doc, "FluentValidation.DependencyInjectionExtensions", FluentValidationVersion);
         var providerPackage = provider == "SQLite"
             ? "Microsoft.EntityFrameworkCore.Sqlite"
             : "Microsoft.EntityFrameworkCore.SqlServer";
-        EnsurePackage(doc, providerPackage, "8.0.0");
+        EnsurePackage(doc, providerPackage, EfCoreVersion);
 
         doc.Save(apiProj);
     }
