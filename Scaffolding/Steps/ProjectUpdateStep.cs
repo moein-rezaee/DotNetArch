@@ -80,7 +80,7 @@ public class ProjectUpdateStep : IScaffoldStep
         {
             var insert =
                 "  <ItemGroup>\n" +
-                $"    <PackageReference Include=\\"Microsoft.EntityFrameworkCore\\" Version=\\"{EfCoreVersion}\\" />\\n" +
+                $"    <PackageReference Include=\"Microsoft.EntityFrameworkCore\" Version=\"{EfCoreVersion}\" />\n" +
                 "  </ItemGroup>\n";
             text = text.Replace("</Project>", insert + "</Project>");
         }
@@ -130,7 +130,7 @@ public class ProjectUpdateStep : IScaffoldStep
             var insertIndex = idx + 1;
             var dbLine = provider == "SQLite"
                 ? "builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlite(\"Data Source=app.db\"));"
-                : "builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlServer(\"Server=.;Database=AppDb;Trusted_Connection=True;\"));"
+                : "builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlServer(\"Server=.;Database=AppDb;Trusted_Connection=True;\"));";
             if (!lines.Any(l => l.Contains("AddDbContext<AppDbContext>")))
                 lines.Insert(insertIndex++, dbLine);
             if (!lines.Any(l => l.Contains("AddMediatR")))
