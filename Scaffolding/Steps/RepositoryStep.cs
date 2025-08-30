@@ -31,7 +31,7 @@ namespace {{solution}}.Core.Domain.{{entities}};
 
 public interface I{{entity}}Repository
 {
-    Task<{{entity}}> GetByIdAsync(int id);
+    Task<{{entity}}?> GetByIdAsync(int id);
     Task<List<{{entity}}>> GetAllAsync();
     Task<PagedResult<{{entity}}>> ListAsync(int page = 1, int pageSize = 10);
     Task AddAsync({{entity}} entity);
@@ -72,7 +72,7 @@ public class {{entity}}Repository : I{{entity}}Repository
         await Task.CompletedTask;
     }
 
-    public async Task<{{entity}}> GetByIdAsync(int id) => await _context.Set<{{entity}}>().FindAsync(id);
+public async Task<{{entity}}?> GetByIdAsync(int id) => await _context.Set<{{entity}}>().FindAsync(id);
 
     public async Task<List<{{entity}}>> GetAllAsync() => await _context.Set<{{entity}}>().ToListAsync();
 

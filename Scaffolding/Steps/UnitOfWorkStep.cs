@@ -63,7 +63,7 @@ namespace {{solution}}.Infrastructure;
 public class UnitOfWork : IUnitOfWork
 {
     private readonly AppDbContext _context;
-    private I{{entity}}Repository _{{lower}}Repository;
+    private I{{entity}}Repository? _{{lower}}Repository;
 
     public UnitOfWork(AppDbContext context) => _context = context;
 
@@ -88,7 +88,7 @@ public class UnitOfWork : IUnitOfWork
             if (!lines.Contains(usingRepo)) lines.Insert(0, usingRepo);
             if (!lines.Contains(usingDomain)) lines.Insert(0, usingDomain);
 
-            var fieldLine = $"    private I{entity}Repository _{lower}Repository;";
+            var fieldLine = $"    private I{entity}Repository? _{lower}Repository;";
             if (!lines.Any(l => l.Contains(fieldLine)))
             {
                 var contextIndex = lines.FindIndex(l => l.Contains("AppDbContext _context"));

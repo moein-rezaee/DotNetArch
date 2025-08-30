@@ -123,8 +123,10 @@ public class ProjectUpdateStep : IScaffoldStep
         var doc = XDocument.Load(apiProj);
 
         EnsurePackage(doc, "MediatR", MediatRVersion);
-        EnsurePackage(doc, "MediatR.Extensions.Microsoft.DependencyInjection", MediatRVersion);
         EnsurePackage(doc, "FluentValidation.DependencyInjectionExtensions", FluentValidationVersion);
+        foreach (var old in doc.Root!.Elements("ItemGroup").Elements("PackageReference")
+                     .Where(p => (string?)p.Attribute("Include") == "MediatR.Extensions.Microsoft.DependencyInjection").ToList())
+            old.Remove();
         var providerPackage = provider == "SQLite"
             ? "Microsoft.EntityFrameworkCore.Sqlite"
             : "Microsoft.EntityFrameworkCore.SqlServer";
@@ -149,7 +151,6 @@ public class ProjectUpdateStep : IScaffoldStep
             "using System;",
             "using MediatR;",
             "using FluentValidation;",
-            "using FluentValidation.AspNetCore;",
             "using Microsoft.EntityFrameworkCore;",
             $"using {solution}.Infrastructure.Persistence;",
             $"using {solution}.Core.Interfaces;",

@@ -166,7 +166,7 @@ using {{solution}}.Core.Domain.{{entities}};
 
 namespace {{solution}}.Application.{{entities}}.Queries.GetById;
 
-public record Get{{entity}}ByIdQuery(int Id) : IRequest<{{entity}}>;
+public record Get{{entity}}ByIdQuery(int Id) : IRequest<{{entity}}?>;
 "));
         File.WriteAllText(Path.Combine(getByIdDir, $"Get{entity}ByIdHandler.cs"), Fill(@"
 using MediatR;
@@ -177,11 +177,11 @@ using {{solution}}.Core.Interfaces;
 
 namespace {{solution}}.Application.{{entities}}.Queries.GetById;
 
-public class Get{{entity}}ByIdHandler : IRequestHandler<Get{{entity}}ByIdQuery, {{entity}}>
+public class Get{{entity}}ByIdHandler : IRequestHandler<Get{{entity}}ByIdQuery, {{entity}}?>
 {
     private readonly IUnitOfWork _uow;
     public Get{{entity}}ByIdHandler(IUnitOfWork uow) => _uow = uow;
-    public async Task<{{entity}}> Handle(Get{{entity}}ByIdQuery request, CancellationToken ct)
+    public async Task<{{entity}}?> Handle(Get{{entity}}ByIdQuery request, CancellationToken ct)
         => await _uow.{{entity}}Repository.GetByIdAsync(request.Id);
 }
 "));
