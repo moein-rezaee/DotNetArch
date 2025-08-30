@@ -9,17 +9,23 @@ public class ApplicationStep : IScaffoldStep
         var appBase = Path.Combine(basePath, $"{solution}.Application", entity);
         Directory.CreateDirectory(appBase);
 
-        // Create
-        var createDir = Path.Combine(appBase, "Create");
+        var commandsDir = Path.Combine(appBase, "Commands");
+        var queriesDir = Path.Combine(appBase, "Queries");
+        Directory.CreateDirectory(commandsDir);
+        Directory.CreateDirectory(queriesDir);
+
+        // Command folders
+        var createDir = Path.Combine(commandsDir, "Create");
         Directory.CreateDirectory(createDir);
         File.WriteAllText(Path.Combine(createDir, $"Create{entity}Command.cs"), $$"""
 using MediatR;
 using {{solution}}.Core.Domain.{{entity}};
 
-namespace {{solution}}.Application.{{entity}}.Create;
+namespace {{solution}}.Application.{{entity}}.Commands.Create;
 
 public record Create{{entity}}Command({{entity}} Entity) : IRequest<{{entity}}>;
-""");
+"""
+        );
         File.WriteAllText(Path.Combine(createDir, $"Create{entity}Handler.cs"), $$"""
 using MediatR;
 using System.Threading;
@@ -27,7 +33,7 @@ using System.Threading.Tasks;
 using {{solution}}.Core.Domain.{{entity}};
 using {{solution}}.Core.Interfaces;
 
-namespace {{solution}}.Application.{{entity}}.Create;
+namespace {{solution}}.Application.{{entity}}.Commands.Create;
 
 public class Create{{entity}}Handler : IRequestHandler<Create{{entity}}Command, {{entity}}>
 {
@@ -40,11 +46,12 @@ public class Create{{entity}}Handler : IRequestHandler<Create{{entity}}Command, 
         return request.Entity;
     }
 }
-""");
+"""
+        );
         File.WriteAllText(Path.Combine(createDir, $"Create{entity}Validator.cs"), $$"""
 using FluentValidation;
 
-namespace {{solution}}.Application.{{entity}}.Create;
+namespace {{solution}}.Application.{{entity}}.Commands.Create;
 
 public class Create{{entity}}Validator : AbstractValidator<Create{{entity}}Command>
 {
@@ -53,19 +60,20 @@ public class Create{{entity}}Validator : AbstractValidator<Create{{entity}}Comma
         RuleFor(x => x.Entity.Id).GreaterThanOrEqualTo(0);
     }
 }
-""");
+"""
+        );
 
-        // Update
-        var updateDir = Path.Combine(appBase, "Update");
+        var updateDir = Path.Combine(commandsDir, "Update");
         Directory.CreateDirectory(updateDir);
         File.WriteAllText(Path.Combine(updateDir, $"Update{entity}Command.cs"), $$"""
 using MediatR;
 using {{solution}}.Core.Domain.{{entity}};
 
-namespace {{solution}}.Application.{{entity}}.Update;
+namespace {{solution}}.Application.{{entity}}.Commands.Update;
 
 public record Update{{entity}}Command({{entity}} Entity) : IRequest;
-""");
+"""
+        );
         File.WriteAllText(Path.Combine(updateDir, $"Update{entity}Handler.cs"), $$"""
 using MediatR;
 using System.Threading;
@@ -73,7 +81,7 @@ using System.Threading.Tasks;
 using {{solution}}.Core.Domain.{{entity}};
 using {{solution}}.Core.Interfaces;
 
-namespace {{solution}}.Application.{{entity}}.Update;
+namespace {{solution}}.Application.{{entity}}.Commands.Update;
 
 public class Update{{entity}}Handler : IRequestHandler<Update{{entity}}Command>
 {
@@ -85,11 +93,12 @@ public class Update{{entity}}Handler : IRequestHandler<Update{{entity}}Command>
         await _uow.SaveChangesAsync();
     }
 }
-""");
+"""
+        );
         File.WriteAllText(Path.Combine(updateDir, $"Update{entity}Validator.cs"), $$"""
 using FluentValidation;
 
-namespace {{solution}}.Application.{{entity}}.Update;
+namespace {{solution}}.Application.{{entity}}.Commands.Update;
 
 public class Update{{entity}}Validator : AbstractValidator<Update{{entity}}Command>
 {
@@ -98,25 +107,26 @@ public class Update{{entity}}Validator : AbstractValidator<Update{{entity}}Comma
         RuleFor(x => x.Entity.Id).GreaterThan(0);
     }
 }
-""");
+"""
+        );
 
-        // Delete
-        var deleteDir = Path.Combine(appBase, "Delete");
+        var deleteDir = Path.Combine(commandsDir, "Delete");
         Directory.CreateDirectory(deleteDir);
         File.WriteAllText(Path.Combine(deleteDir, $"Delete{entity}Command.cs"), $$"""
 using MediatR;
 
-namespace {{solution}}.Application.{{entity}}.Delete;
+namespace {{solution}}.Application.{{entity}}.Commands.Delete;
 
 public record Delete{{entity}}Command(int Id) : IRequest;
-""");
+"""
+        );
         File.WriteAllText(Path.Combine(deleteDir, $"Delete{entity}Handler.cs"), $$"""
 using MediatR;
 using System.Threading;
 using System.Threading.Tasks;
 using {{solution}}.Core.Interfaces;
 
-namespace {{solution}}.Application.{{entity}}.Delete;
+namespace {{solution}}.Application.{{entity}}.Commands.Delete;
 
 public class Delete{{entity}}Handler : IRequestHandler<Delete{{entity}}Command>
 {
@@ -132,11 +142,12 @@ public class Delete{{entity}}Handler : IRequestHandler<Delete{{entity}}Command>
         }
     }
 }
-""");
+"""
+        );
         File.WriteAllText(Path.Combine(deleteDir, $"Delete{entity}Validator.cs"), $$"""
 using FluentValidation;
 
-namespace {{solution}}.Application.{{entity}}.Delete;
+namespace {{solution}}.Application.{{entity}}.Commands.Delete;
 
 public class Delete{{entity}}Validator : AbstractValidator<Delete{{entity}}Command>
 {
@@ -145,19 +156,21 @@ public class Delete{{entity}}Validator : AbstractValidator<Delete{{entity}}Comma
         RuleFor(x => x.Id).GreaterThan(0);
     }
 }
-""");
+"""
+        );
 
-        // GetById
-        var getByIdDir = Path.Combine(appBase, "GetById");
+        // Query folders
+        var getByIdDir = Path.Combine(queriesDir, "GetById");
         Directory.CreateDirectory(getByIdDir);
         File.WriteAllText(Path.Combine(getByIdDir, $"Get{entity}ByIdQuery.cs"), $$"""
 using MediatR;
 using {{solution}}.Core.Domain.{{entity}};
 
-namespace {{solution}}.Application.{{entity}}.GetById;
+namespace {{solution}}.Application.{{entity}}.Queries.GetById;
 
 public record Get{{entity}}ByIdQuery(int Id) : IRequest<{{entity}}>;
-""");
+"""
+        );
         File.WriteAllText(Path.Combine(getByIdDir, $"Get{entity}ByIdHandler.cs"), $$"""
 using MediatR;
 using System.Threading;
@@ -165,7 +178,7 @@ using System.Threading.Tasks;
 using {{solution}}.Core.Domain.{{entity}};
 using {{solution}}.Core.Interfaces;
 
-namespace {{solution}}.Application.{{entity}}.GetById;
+namespace {{solution}}.Application.{{entity}}.Queries.GetById;
 
 public class Get{{entity}}ByIdHandler : IRequestHandler<Get{{entity}}ByIdQuery, {{entity}}>
 {
@@ -174,11 +187,12 @@ public class Get{{entity}}ByIdHandler : IRequestHandler<Get{{entity}}ByIdQuery, 
     public async Task<{{entity}}> Handle(Get{{entity}}ByIdQuery request, CancellationToken ct)
         => await _uow.{{entity}}Repository.GetByIdAsync(request.Id);
 }
-""");
+"""
+        );
         File.WriteAllText(Path.Combine(getByIdDir, $"Get{entity}ByIdValidator.cs"), $$"""
 using FluentValidation;
 
-namespace {{solution}}.Application.{{entity}}.GetById;
+namespace {{solution}}.Application.{{entity}}.Queries.GetById;
 
 public class Get{{entity}}ByIdValidator : AbstractValidator<Get{{entity}}ByIdQuery>
 {
@@ -187,20 +201,21 @@ public class Get{{entity}}ByIdValidator : AbstractValidator<Get{{entity}}ByIdQue
         RuleFor(x => x.Id).GreaterThan(0);
     }
 }
-""");
+"""
+        );
 
-        // GetAll
-        var getAllDir = Path.Combine(appBase, "GetAll");
+        var getAllDir = Path.Combine(queriesDir, "GetAll");
         Directory.CreateDirectory(getAllDir);
         File.WriteAllText(Path.Combine(getAllDir, $"Get{entity}AllQuery.cs"), $$"""
 using MediatR;
 using System.Collections.Generic;
 using {{solution}}.Core.Domain.{{entity}};
 
-namespace {{solution}}.Application.{{entity}}.GetAll;
+namespace {{solution}}.Application.{{entity}}.Queries.GetAll;
 
 public record Get{{entity}}AllQuery() : IRequest<List<{{entity}}>>;
-""");
+"""
+        );
         File.WriteAllText(Path.Combine(getAllDir, $"Get{entity}AllHandler.cs"), $$"""
 using MediatR;
 using System.Collections.Generic;
@@ -209,7 +224,7 @@ using System.Threading.Tasks;
 using {{solution}}.Core.Domain.{{entity}};
 using {{solution}}.Core.Interfaces;
 
-namespace {{solution}}.Application.{{entity}}.GetAll;
+namespace {{solution}}.Application.{{entity}}.Queries.GetAll;
 
 public class Get{{entity}}AllHandler : IRequestHandler<Get{{entity}}AllQuery, List<{{entity}}>>
 {
@@ -218,20 +233,21 @@ public class Get{{entity}}AllHandler : IRequestHandler<Get{{entity}}AllQuery, Li
     public async Task<List<{{entity}}>> Handle(Get{{entity}}AllQuery request, CancellationToken ct)
         => await _uow.{{entity}}Repository.GetAllAsync();
 }
-""");
+"""
+        );
 
-        // GetList
-        var getListDir = Path.Combine(appBase, "GetList");
+        var getListDir = Path.Combine(queriesDir, "GetList");
         Directory.CreateDirectory(getListDir);
         File.WriteAllText(Path.Combine(getListDir, $"Get{entity}ListQuery.cs"), $$"""
 using MediatR;
 using {{solution}}.Core.Common;
 using {{solution}}.Core.Domain.{{entity}};
 
-namespace {{solution}}.Application.{{entity}}.GetList;
+namespace {{solution}}.Application.{{entity}}.Queries.GetList;
 
 public record Get{{entity}}ListQuery(int Page = 1, int PageSize = 10) : IRequest<PagedResult<{{entity}}>>;
-""");
+"""
+        );
         File.WriteAllText(Path.Combine(getListDir, $"Get{entity}ListHandler.cs"), $$"""
 using MediatR;
 using System.Threading;
@@ -240,7 +256,7 @@ using {{solution}}.Core.Common;
 using {{solution}}.Core.Domain.{{entity}};
 using {{solution}}.Core.Interfaces;
 
-namespace {{solution}}.Application.{{entity}}.GetList;
+namespace {{solution}}.Application.{{entity}}.Queries.GetList;
 
 public class Get{{entity}}ListHandler : IRequestHandler<Get{{entity}}ListQuery, PagedResult<{{entity}}>>
 {
@@ -249,11 +265,12 @@ public class Get{{entity}}ListHandler : IRequestHandler<Get{{entity}}ListQuery, 
     public async Task<PagedResult<{{entity}}>> Handle(Get{{entity}}ListQuery request, CancellationToken ct)
         => await _uow.{{entity}}Repository.ListAsync(request.Page, request.PageSize);
 }
-""");
+"""
+        );
         File.WriteAllText(Path.Combine(getListDir, $"Get{entity}ListValidator.cs"), $$"""
 using FluentValidation;
 
-namespace {{solution}}.Application.{{entity}}.GetList;
+namespace {{solution}}.Application.{{entity}}.Queries.GetList;
 
 public class Get{{entity}}ListValidator : AbstractValidator<Get{{entity}}ListQuery>
 {
@@ -263,6 +280,7 @@ public class Get{{entity}}ListValidator : AbstractValidator<Get{{entity}}ListQue
         RuleFor(x => x.PageSize).GreaterThan(0);
     }
 }
-""");
+"""
+        );
     }
 }

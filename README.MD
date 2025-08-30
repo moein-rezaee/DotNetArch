@@ -68,19 +68,21 @@ After creating a solution you can scaffold a full CRUD vertical slice for an ent
 dotnet-arch new crud --entity=EntityName [--output=Path]
 ```
 
-`--output` points to the solution directory; if omitted, the current directory is used. The command reads `dotnet-arch.yml` to locate the solution name and scaffolds the entity slice. It creates domain models, repositories, unit of work, MediatR handlers, validators, and API controllers. Each entity follows an operation-based vertical slice such as:
+`--output` points to the solution directory; if omitted, the current directory is used. The command reads `dotnet-arch.yml` to locate the solution name and scaffolds the entity slice. It creates domain models, repositories, unit of work, MediatR handlers, validators, and API controllers. Each entity follows a CQRS-aware vertical slice:
 
 ```
 Application/<Entity>/
-├── Create/
-├── Update/
-├── Delete/
-├── GetById/
-├── GetAll/
-└── GetList/
+├── Commands/
+│   ├── Create/
+│   ├── Update/
+│   └── Delete/
+└── Queries/
+    ├── GetById/
+    ├── GetAll/
+    └── GetList/
 ```
 
-Every operation folder contains the command or query, its handler, and a corresponding validator. You can choose SQL Server or SQLite and generated code supports pagination via `PagedResult<T>`. Running the command again updates existing files instead of duplicating them.
+Every operation folder under Commands or Queries contains the request, its handler, and a corresponding validator. You can choose SQL Server or SQLite and generated code supports pagination via `PagedResult<T>`. Running the command again updates existing files instead of duplicating them.
 
 ---
 
