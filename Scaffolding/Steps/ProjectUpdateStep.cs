@@ -83,6 +83,13 @@ public class ProjectUpdateStep : IScaffoldStep
                 @"<PackageReference Include=""MediatR.Extensions.Microsoft.DependencyInjection"" Version=""[^""]+"" />",
                 @"<PackageReference Include=""MediatR.Extensions.Microsoft.DependencyInjection"" Version=""12.1.1"" />");
         }
+        if (text.Contains("MediatR\""))
+        {
+            text = Regex.Replace(
+                text,
+                @"<PackageReference Include=""MediatR"" Version=""[^""]+"" />",
+                @"<PackageReference Include=""MediatR"" Version=""12.1.1"" />");
+        }
         if (text.Contains("FluentValidation.DependencyInjectionExtensions"))
         {
             text = Regex.Replace(
@@ -101,9 +108,18 @@ public class ProjectUpdateStep : IScaffoldStep
         {
             var insert =
                 "  <ItemGroup>\n" +
+                "    <PackageReference Include=\"MediatR\" Version=\"12.1.1\" />\n" +
                 "    <PackageReference Include=\"MediatR.Extensions.Microsoft.DependencyInjection\" Version=\"12.1.1\" />\n" +
                 "    <PackageReference Include=\"FluentValidation.DependencyInjectionExtensions\" Version=\"11.9.0\" />\n" +
                 $"    {providerPackage}\n" +
+                "  </ItemGroup>\n";
+            text = text.Replace("</Project>", insert + "</Project>");
+        }
+        else if (!text.Contains("<PackageReference Include=\"MediatR\""))
+        {
+            var insert =
+                "  <ItemGroup>\n" +
+                "    <PackageReference Include=\"MediatR\" Version=\"12.1.1\" />\n" +
                 "  </ItemGroup>\n";
             text = text.Replace("</Project>", insert + "</Project>");
         }
