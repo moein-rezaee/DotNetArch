@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
+using DotNetArch.Scaffolding;
 
 namespace DotNetArch.Scaffolding.Steps;
 
@@ -21,7 +22,7 @@ public class ProjectUpdateStep : IScaffoldStep
         UpdateInfrastructureProject(solution, basePath);
         UpdateApiProject(solution, provider, basePath, startupProject);
         RemoveTemplateFiles(basePath, startupProject);
-        UpdateProgram(solution, provider, basePath, startupProject);
+        UpdateProgram(solution, provider, entity, basePath, startupProject);
     }
 
     static void EnsurePackage(XDocument doc, string include, string version)
@@ -146,11 +147,12 @@ public class ProjectUpdateStep : IScaffoldStep
         doc.Save(apiProj);
     }
 
-    static void UpdateProgram(string solution, string provider, string basePath, string startupProject)
+    static void UpdateProgram(string solution, string provider, string entity, string basePath, string startupProject)
     {
         var programFile = Path.Combine(basePath, startupProject, "Program.cs");
         if (!File.Exists(programFile)) return;
         var lines = File.ReadAllLines(programFile).ToList();
+        var plural = Naming.Pluralize(entity);
         foreach (var u in new[]
         {
             "using System;",
@@ -159,7 +161,9 @@ public class ProjectUpdateStep : IScaffoldStep
             "using Microsoft.EntityFrameworkCore;",
             $"using {solution}.Infrastructure.Persistence;",
             $"using {solution}.Core.Interfaces;",
-            $"using {solution}.Infrastructure;"
+            $"using {solution}.Infrastructure;",
+            $"using {solution}.Core.Domain.{plural};",
+            $"using {solution}.Infrastructure.{plural};"
         })
         {
             if (!lines.Contains(u)) lines.Insert(0, u);
@@ -183,6 +187,8 @@ public class ProjectUpdateStep : IScaffoldStep
                 lines.Insert(insertIndex++, "builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(AppDomain.CurrentDomain.GetAssemblies()));");
             if (!lines.Any(l => l.Contains("AddValidatorsFromAssemblyContaining<Program>")))
                 lines.Insert(insertIndex++, "builder.Services.AddValidatorsFromAssemblyContaining<Program>();");
+            if (!lines.Any(l => l.Contains($"AddScoped<I{entity}Repository, {entity}Repository>()")))
+                lines.Insert(insertIndex++, $"builder.Services.AddScoped<I{entity}Repository, {entity}Repository>();");
             if (!lines.Any(l => l.Contains("AddScoped<IUnitOfWork, UnitOfWork>()")))
                 lines.Insert(insertIndex, "builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();");
         }
