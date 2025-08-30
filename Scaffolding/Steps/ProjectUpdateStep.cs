@@ -159,19 +159,24 @@ public class ProjectUpdateStep : IScaffoldStep
         lines.RemoveAll(l => l.Contains("AddFluentValidationClientsideAdapters"));
         // clean up malformed namespace lines (e.g., double dots)
         lines.RemoveAll(l => l.Contains(".."));
-        var plural = Naming.Pluralize(entity);
-        var usingLines = new[]
+        var usingLines = new List<string>
         {
             "using System;",
             "using MediatR;",
             "using FluentValidation;",
             "using Microsoft.EntityFrameworkCore;",
-            $"using {solution}.Infrastructure.Persistence;",
-            $"using {solution}.Core.Interfaces;",
-            $"using {solution}.Infrastructure;",
-            $"using {solution}.Core.Domain.{plural};",
-            $"using {solution}.Infrastructure.{plural};"
+            $"using {solution}.Infrastructure.Persistence;"
         };
+
+        if (!string.IsNullOrWhiteSpace(entity))
+        {
+            var plural = Naming.Pluralize(entity);
+            usingLines.Add($"using {solution}.Core.Interfaces;");
+            usingLines.Add($"using {solution}.Infrastructure;");
+            usingLines.Add($"using {solution}.Core.Domain.{plural};");
+            usingLines.Add($"using {solution}.Infrastructure.{plural};");
+        }
+
         foreach (var u in usingLines)
         {
             if (!lines.Any(l => l.Trim() == u))
@@ -196,10 +201,13 @@ public class ProjectUpdateStep : IScaffoldStep
                 lines.Insert(insertIndex++, "builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(AppDomain.CurrentDomain.GetAssemblies()));");
             if (!lines.Any(l => l.Contains("AddValidatorsFromAssemblyContaining<Program>")))
                 lines.Insert(insertIndex++, "builder.Services.AddValidatorsFromAssemblyContaining<Program>();");
-            if (!lines.Any(l => l.Contains($"AddScoped<I{entity}Repository, {entity}Repository>()")))
-                lines.Insert(insertIndex++, $"builder.Services.AddScoped<I{entity}Repository, {entity}Repository>();");
-            if (!lines.Any(l => l.Contains("AddScoped<IUnitOfWork, UnitOfWork>()")))
-                lines.Insert(insertIndex, "builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();");
+            if (!string.IsNullOrWhiteSpace(entity))
+            {
+                if (!lines.Any(l => l.Contains($"AddScoped<I{entity}Repository, {entity}Repository>()")))
+                    lines.Insert(insertIndex++, $"builder.Services.AddScoped<I{entity}Repository, {entity}Repository>();");
+                if (!lines.Any(l => l.Contains("AddScoped<IUnitOfWork, UnitOfWork>()")))
+                    lines.Insert(insertIndex++, "builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();");
+            }
         }
 
         var buildIdx = lines.FindIndex(l => l.Contains("var app = builder.Build();"));
