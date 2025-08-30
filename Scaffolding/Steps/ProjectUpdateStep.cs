@@ -11,6 +11,7 @@ public class ProjectUpdateStep : IScaffoldStep
     private const string MediatRVersion = "12.2.0";
     private const string FluentValidationVersion = "11.9.0";
     private const string EfCoreVersion = "8.0.0";
+    private const string SqlClientVersion = "5.1.2";
 
     public void Execute(string solution, string entity, string provider, string basePath, string startupProject)
     {
@@ -102,6 +103,8 @@ public class ProjectUpdateStep : IScaffoldStep
             ? "Microsoft.EntityFrameworkCore.Sqlite"
             : "Microsoft.EntityFrameworkCore.SqlServer";
         EnsurePackage(doc, providerPackage, EfCoreVersion);
+        if (provider != "SQLite")
+            EnsurePackage(doc, "Microsoft.Data.SqlClient", SqlClientVersion);
 
         doc.Save(apiProj);
     }
