@@ -4,7 +4,7 @@ using DotNetArch.Scaffolding.Steps;
 
 static class CrudScaffolder
 {
-    public static void Generate(string solutionName, string entityName, string basePath)
+    public static void Generate(string solutionName, string entityName, string basePath, string startupProject)
     {
         if (string.IsNullOrWhiteSpace(solutionName) || string.IsNullOrWhiteSpace(entityName))
         {
@@ -25,7 +25,7 @@ static class CrudScaffolder
         };
 
         foreach (var step in steps)
-            step.Execute(solutionName, entityName, provider, basePath);
+            step.Execute(solutionName, entityName, provider, basePath, startupProject);
 
         Console.WriteLine($"CRUD for {entityName} generated using {provider} provider.");
     }

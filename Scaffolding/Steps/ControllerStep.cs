@@ -4,9 +4,9 @@ namespace DotNetArch.Scaffolding.Steps;
 
 public class ControllerStep : IScaffoldStep
 {
-    public void Execute(string solution, string entity, string provider, string basePath)
+    public void Execute(string solution, string entity, string provider, string basePath, string startupProject)
     {
-        var apiDir = Path.Combine(basePath, $"{solution}.API", entity);
+        var apiDir = Path.Combine(basePath, startupProject, entity);
         Directory.CreateDirectory(apiDir);
         var controllerFile = Path.Combine(apiDir, $"{entity}Controller.cs");
         var lower = entity.ToLowerInvariant();
@@ -23,7 +23,7 @@ using {{solution}}.Application.{{entity}}.Queries.GetList;
 using {{solution}}.Core.Common;
 using {{solution}}.Core.Domain.{{entity}};
 
-namespace {{solution}}.API.{{entity}};
+namespace {{startupProject}}.{{entity}};
 
 [ApiController]
 [Route("api/[controller]")]

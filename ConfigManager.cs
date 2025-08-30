@@ -22,16 +22,20 @@ public static class ConfigManager
                 config.SolutionName = value;
             else if (key.Equals("path", StringComparison.OrdinalIgnoreCase))
                 config.SolutionPath = value;
+            else if (key.Equals("startup", StringComparison.OrdinalIgnoreCase))
+                config.StartupProject = value;
         }
         if (string.IsNullOrWhiteSpace(config.SolutionPath))
             config.SolutionPath = basePath;
+        if (string.IsNullOrWhiteSpace(config.StartupProject))
+            config.StartupProject = $"{config.SolutionName}.API";
         return config;
     }
 
     public static void Save(string basePath, SolutionConfig config)
     {
         var path = Path.Combine(basePath, FileName);
-        var content = $"solution: {config.SolutionName}\npath: {config.SolutionPath}\n";
+        var content = $"solution: {config.SolutionName}\npath: {config.SolutionPath}\nstartup: {config.StartupProject}\n";
         File.WriteAllText(path, content);
     }
 }

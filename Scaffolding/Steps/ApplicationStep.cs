@@ -4,7 +4,7 @@ namespace DotNetArch.Scaffolding.Steps;
 
 public class ApplicationStep : IScaffoldStep
 {
-    public void Execute(string solution, string entity, string provider, string basePath)
+    public void Execute(string solution, string entity, string provider, string basePath, string startupProject)
     {
         var appBase = Path.Combine(basePath, $"{solution}.Application", entity);
         Directory.CreateDirectory(appBase);

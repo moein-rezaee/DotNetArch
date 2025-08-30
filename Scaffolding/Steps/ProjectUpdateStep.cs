@@ -6,12 +6,12 @@ namespace DotNetArch.Scaffolding.Steps;
 
 public class ProjectUpdateStep : IScaffoldStep
 {
-    public void Execute(string solution, string entity, string provider, string basePath)
+    public void Execute(string solution, string entity, string provider, string basePath, string startupProject)
     {
         UpdateApplicationProject(solution, basePath);
         UpdateInfrastructureProject(solution, basePath);
-        UpdateApiProject(solution, provider, basePath);
-        UpdateProgram(solution, provider, basePath);
+        UpdateApiProject(solution, provider, basePath, startupProject);
+        UpdateProgram(solution, provider, basePath, startupProject);
     }
 
     static void UpdateApplicationProject(string solution, string basePath)
@@ -45,9 +45,9 @@ public class ProjectUpdateStep : IScaffoldStep
         File.WriteAllText(infraProj, text);
     }
 
-    static void UpdateApiProject(string solution, string provider, string basePath)
+    static void UpdateApiProject(string solution, string provider, string basePath, string startupProject)
     {
-        var apiProj = Path.Combine(basePath, $"{solution}.API", $"{solution}.API.csproj");
+        var apiProj = Path.Combine(basePath, startupProject, $"{startupProject}.csproj");
         if (!File.Exists(apiProj)) return;
         var text = File.ReadAllText(apiProj);
         if (text.Contains("MediatR.Extensions")) return;
@@ -65,9 +65,9 @@ public class ProjectUpdateStep : IScaffoldStep
         File.WriteAllText(apiProj, text);
     }
 
-    static void UpdateProgram(string solution, string provider, string basePath)
+    static void UpdateProgram(string solution, string provider, string basePath, string startupProject)
     {
-        var programFile = Path.Combine(basePath, $"{solution}.API", "Program.cs");
+        var programFile = Path.Combine(basePath, startupProject, "Program.cs");
         if (!File.Exists(programFile)) return;
         var lines = File.ReadAllLines(programFile).ToList();
         foreach (var u in new []{

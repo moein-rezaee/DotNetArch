@@ -4,7 +4,7 @@ namespace DotNetArch.Scaffolding.Steps;
 
 public class RepositoryStep : IScaffoldStep
 {
-    public void Execute(string solution, string entity, string provider, string basePath)
+    public void Execute(string solution, string entity, string provider, string basePath, string startupProject)
     {
         var commonDir = Path.Combine(basePath, $"{solution}.Core", "Common");
         Directory.CreateDirectory(commonDir);

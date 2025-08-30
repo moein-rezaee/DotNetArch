@@ -5,7 +5,7 @@ namespace DotNetArch.Scaffolding.Steps;
 
 public class UnitOfWorkStep : IScaffoldStep
 {
-    public void Execute(string solution, string entity, string provider, string basePath)
+    public void Execute(string solution, string entity, string provider, string basePath, string startupProject)
     {
         var coreDir = Path.Combine(basePath, $"{solution}.Core", "Interfaces");
         Directory.CreateDirectory(coreDir);

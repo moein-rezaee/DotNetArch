@@ -34,15 +34,37 @@ class Program
                 return;
             }
 
-            CrudScaffolder.Generate(config.SolutionName, entity, config.SolutionPath);
+            CrudScaffolder.Generate(config.SolutionName, entity, config.SolutionPath, config.StartupProject);
             return;
         }
 
-        if (args.Length >= 3 && args[0].ToLower() == "new" && args[1].ToLower() == "solution")
+        if (args.Length >= 2 && args[0].ToLower() == "new" && args[1].ToLower() == "solution")
         {
-            var solutionName = args[2];
-            var outputPath = args.Length >= 4 ? args[3] : Directory.GetCurrentDirectory();
-            GenerateSolution(solutionName, outputPath);
+            string? solutionName = null;
+            string? outputPath = null;
+            string? startup = null;
+            for (int i = 2; i < args.Length; i++)
+            {
+                if (!args[i].StartsWith("--"))
+                    solutionName = args[i];
+                else if (args[i].StartsWith("--output="))
+                    outputPath = args[i].Substring("--output=".Length);
+                else if (args[i].StartsWith("--startup="))
+                    startup = args[i].Substring("--startup=".Length);
+            }
+
+            if (string.IsNullOrWhiteSpace(solutionName))
+            {
+                Console.WriteLine("Usage: dotnet-arch new solution <SolutionName> [--output=Path] [--startup=ProjectName]");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(outputPath))
+                outputPath = Directory.GetCurrentDirectory();
+            if (string.IsNullOrWhiteSpace(startup))
+                startup = $"{solutionName}.API";
+
+            GenerateSolution(solutionName, outputPath, startup);
             return;
         }
 
@@ -74,10 +96,15 @@ class Program
         if (string.IsNullOrWhiteSpace(outputPath))
             outputPath = Directory.GetCurrentDirectory();
 
-        GenerateSolution(solutionName, outputPath);
+        Console.Write($"Enter startup project name (default {solutionName}.API): ");
+        var startup = Console.ReadLine();
+        if (string.IsNullOrWhiteSpace(startup))
+            startup = $"{solutionName}.API";
+
+        GenerateSolution(solutionName, outputPath, startup);
     }
 
-    static void GenerateSolution(string solutionName, string outputPath)
+    static void GenerateSolution(string solutionName, string outputPath, string startupProject)
     {
         var solutionDir = Path.Combine(outputPath, solutionName);
         if (!Directory.Exists(solutionDir))
@@ -105,7 +132,7 @@ class Program
         RunCommand($"dotnet add {solutionName}.API/{solutionName}.API.csproj reference {solutionName}.Application/{solutionName}.Application.csproj");
         RunCommand($"dotnet add {solutionName}.API/{solutionName}.API.csproj reference {solutionName}.Infrastructure/{solutionName}.Infrastructure.csproj");
 
-        ConfigManager.Save(solutionDir, new SolutionConfig { SolutionName = solutionName, SolutionPath = solutionDir });
+        ConfigManager.Save(solutionDir, new SolutionConfig { SolutionName = solutionName, SolutionPath = solutionDir, StartupProject = startupProject });
 
         Console.WriteLine("\n✅ Solution created successfully!");
         Console.WriteLine("==========================================");

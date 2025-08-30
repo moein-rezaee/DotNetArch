@@ -48,10 +48,10 @@ dotnet tool update --global DotNetArch
 Once installed, you can use the tool to create a solution structure:
 
 ```bash
-dotnet-arch new solution <SolutionName> [OutputPath]
+dotnet-arch new solution <SolutionName> [--output=Path] [--startup=ProjectName]
 ```
 
-`OutputPath` is optional and lets you specify where the solution is created (useful for tests). If omitted, the current directory is used. After scaffolding, a `dotnet-arch.yml` file is written to the solution root to store the solution name and path for later CRUD generation.
+`--output` is optional and lets you specify where the solution is created (useful for tests). If omitted, the current directory is used. `--startup` lets you choose which project should act as the startup project (default is `<SolutionName>.API`). After scaffolding, a `dotnet-arch.yml` file is written to the solution root to store the solution name, path, and startup project for later CRUD generation.
 
 This command generates the following layers:
 
@@ -152,6 +152,7 @@ We welcome contributions to DotNetArch! Here’s how you can contribute:
 - **Idempotent Generation**: Re-running commands updates existing files without creating duplicates.
 - **Repository & Unit of Work patterns**: Each entity gets its own repository and UoW registration for clean data access.
 - **Automatic package & service registration**: Required NuGet packages are added to project files and services like `DbContext`, `IMediator`, `IUnitOfWork`, and validators are registered in `Program.cs`.
+- **Configurable startup project**: `dotnet-arch.yml` tracks which project is the startup target so controllers are added to the correct application entry point.
 
 ---
 

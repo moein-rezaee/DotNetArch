@@ -4,7 +4,7 @@ namespace DotNetArch.Scaffolding.Steps;
 
 public class EntityStep : IScaffoldStep
 {
-    public void Execute(string solution, string entity, string provider, string basePath)
+    public void Execute(string solution, string entity, string provider, string basePath, string startupProject)
     {
         var dir = Path.Combine(basePath, $"{solution}.Core", "Domain", entity);
         Directory.CreateDirectory(dir);
