@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 
 namespace DotNetArch.Scaffolding.Steps;
 
@@ -15,32 +16,42 @@ public class ProjectUpdateStep : IScaffoldStep
         UpdateProgram(solution, provider, basePath, startupProject);
     }
 
+    static void EnsurePackage(XDocument doc, string include, string version)
+    {
+        var refs = doc.Root!.Elements("ItemGroup").Elements("PackageReference")
+            .Where(p => (string?)p.Attribute("Include") == include).ToList();
+
+        if (refs.Count == 0)
+        {
+            var group = new XElement("ItemGroup",
+                new XElement("PackageReference",
+                    new XAttribute("Include", include),
+                    new XAttribute("Version", version)));
+            doc.Root.Add(group);
+        }
+        else
+        {
+            refs[0].SetAttributeValue("Version", version);
+            foreach (var extra in refs.Skip(1).ToList()) extra.Remove();
+        }
+    }
+
     static void UpdateApplicationProject(string solution, string basePath)
     {
         var appProj = Path.Combine(basePath, $"{solution}.Application", $"{solution}.Application.csproj");
         if (!File.Exists(appProj)) return;
-        var text = File.ReadAllText(appProj);
 
-        // remove any MediatR.Extensions references from application project
-        text = Regex.Replace(
-            text,
-            @"\r?\n\s*<PackageReference Include=""MediatR.Extensions.Microsoft.DependencyInjection""[^>]*>\r?\n?",
-            "\n");
+        var doc = XDocument.Load(appProj);
+        var packages = doc.Root!.Elements("ItemGroup").Elements("PackageReference");
 
-        var hasMediatR = text.Contains("Include=\"MediatR\"");
-        var hasFluent = text.Contains("Include=\"FluentValidation\"");
-        if (!hasMediatR || !hasFluent)
-        {
-            var refs = new List<string>();
-            if (!hasMediatR)
-                refs.Add("<PackageReference Include=\"MediatR\" Version=\"12.1.1\" />");
-            if (!hasFluent)
-                refs.Add("<PackageReference Include=\"FluentValidation\" Version=\"11.9.0\" />");
-            var insert = "  <ItemGroup>\n" + string.Join("\n", refs.Select(r => "    " + r)) + "\n  </ItemGroup>\n";
-            text = text.Replace("</Project>", insert + "</Project>");
-        }
+        // remove MediatR.Extensions package completely
+        foreach (var pr in packages.Where(p => (string?)p.Attribute("Include") == "MediatR.Extensions.Microsoft.DependencyInjection").ToList())
+            pr.Remove();
 
-        File.WriteAllText(appProj, text);
+        EnsurePackage(doc, "MediatR", "12.2.0");
+        EnsurePackage(doc, "FluentValidation", "11.9.0");
+
+        doc.Save(appProj);
     }
 
     static void UpdateInfrastructureProject(string solution, string basePath)
@@ -70,61 +81,18 @@ public class ProjectUpdateStep : IScaffoldStep
     {
         var apiProj = Path.Combine(basePath, startupProject, $"{startupProject}.csproj");
         if (!File.Exists(apiProj)) return;
-        var text = File.ReadAllText(apiProj);
 
+        var doc = XDocument.Load(apiProj);
+
+        EnsurePackage(doc, "MediatR", "12.2.0");
+        EnsurePackage(doc, "MediatR.Extensions.Microsoft.DependencyInjection", "12.2.0");
+        EnsurePackage(doc, "FluentValidation.DependencyInjectionExtensions", "11.9.0");
         var providerPackage = provider == "SQLite"
-            ? "<PackageReference Include=\"Microsoft.EntityFrameworkCore.Sqlite\" Version=\"8.0.0\" />"
-            : "<PackageReference Include=\"Microsoft.EntityFrameworkCore.SqlServer\" Version=\"8.0.0\" />";
+            ? "Microsoft.EntityFrameworkCore.Sqlite"
+            : "Microsoft.EntityFrameworkCore.SqlServer";
+        EnsurePackage(doc, providerPackage, "8.0.0");
 
-        if (text.Contains("MediatR.Extensions.Microsoft.DependencyInjection"))
-        {
-            text = Regex.Replace(
-                text,
-                @"<PackageReference Include=""MediatR.Extensions.Microsoft.DependencyInjection"" Version=""[^""]+"" />",
-                @"<PackageReference Include=""MediatR.Extensions.Microsoft.DependencyInjection"" Version=""12.1.1"" />");
-        }
-        if (text.Contains("MediatR\""))
-        {
-            text = Regex.Replace(
-                text,
-                @"<PackageReference Include=""MediatR"" Version=""[^""]+"" />",
-                @"<PackageReference Include=""MediatR"" Version=""12.1.1"" />");
-        }
-        if (text.Contains("FluentValidation.DependencyInjectionExtensions"))
-        {
-            text = Regex.Replace(
-                text,
-                @"<PackageReference Include=""FluentValidation.DependencyInjectionExtensions"" Version=""[^""]+"" />",
-                @"<PackageReference Include=""FluentValidation.DependencyInjectionExtensions"" Version=""11.9.0"" />");
-        }
-        if (text.Contains("Microsoft.EntityFrameworkCore.Sql"))
-        {
-            text = Regex.Replace(
-                text,
-                @"<PackageReference Include=""Microsoft.EntityFrameworkCore.(Sqlite|SqlServer)"" Version=""[^""]+"" />",
-                providerPackage);
-        }
-        if (!text.Contains("MediatR.Extensions.Microsoft.DependencyInjection"))
-        {
-            var insert =
-                "  <ItemGroup>\n" +
-                "    <PackageReference Include=\"MediatR\" Version=\"12.1.1\" />\n" +
-                "    <PackageReference Include=\"MediatR.Extensions.Microsoft.DependencyInjection\" Version=\"12.1.1\" />\n" +
-                "    <PackageReference Include=\"FluentValidation.DependencyInjectionExtensions\" Version=\"11.9.0\" />\n" +
-                $"    {providerPackage}\n" +
-                "  </ItemGroup>\n";
-            text = text.Replace("</Project>", insert + "</Project>");
-        }
-        else if (!text.Contains("<PackageReference Include=\"MediatR\""))
-        {
-            var insert =
-                "  <ItemGroup>\n" +
-                "    <PackageReference Include=\"MediatR\" Version=\"12.1.1\" />\n" +
-                "  </ItemGroup>\n";
-            text = text.Replace("</Project>", insert + "</Project>");
-        }
-
-        File.WriteAllText(apiProj, text);
+        doc.Save(apiProj);
     }
 
     static void UpdateProgram(string solution, string provider, string basePath, string startupProject)
