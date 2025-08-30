@@ -163,7 +163,8 @@ public class ProjectUpdateStep : IScaffoldStep
         {
             "using System;",
             "using MediatR;",
-            "using FluentValidation;"
+            "using FluentValidation;",
+            $"using {solution}.Application;"
         };
 
         if (!string.IsNullOrWhiteSpace(entity))
@@ -197,10 +198,10 @@ public class ProjectUpdateStep : IScaffoldStep
                 lines.Insert(insertIndex++, "builder.Services.AddControllers();");
             if (!string.IsNullOrWhiteSpace(entity) && !lines.Any(l => l.Contains("AddDbContext<AppDbContext>")))
                 lines.Insert(insertIndex++, dbLine);
-            if (!lines.Any(l => l.Contains("RegisterServicesFromAssemblies")))
-                lines.Insert(insertIndex++, "builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(AppDomain.CurrentDomain.GetAssemblies()));");
-            if (!lines.Any(l => l.Contains("AddValidatorsFromAssemblyContaining<Program>")))
-                lines.Insert(insertIndex++, "builder.Services.AddValidatorsFromAssemblyContaining<Program>();");
+            if (!lines.Any(l => l.Contains("RegisterServicesFromAssemblyContaining<AssemblyMarker>")))
+                lines.Insert(insertIndex++, "builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<AssemblyMarker>());");
+            if (!lines.Any(l => l.Contains("AddValidatorsFromAssemblyContaining<AssemblyMarker>")))
+                lines.Insert(insertIndex++, "builder.Services.AddValidatorsFromAssemblyContaining<AssemblyMarker>();");
             if (!string.IsNullOrWhiteSpace(entity))
             {
                 if (!lines.Any(l => l.Contains($"AddScoped<I{entity}Repository, {entity}Repository>()")))

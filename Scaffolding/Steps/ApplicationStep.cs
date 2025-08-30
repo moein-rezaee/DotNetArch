@@ -8,7 +8,12 @@ public class ApplicationStep : IScaffoldStep
     public void Execute(string solution, string entity, string provider, string basePath, string startupProject)
     {
         var plural = Naming.Pluralize(entity);
-        var appBase = Path.Combine(basePath, $"{solution}.Application", plural);
+        var appRoot = Path.Combine(basePath, $"{solution}.Application");
+        Directory.CreateDirectory(appRoot);
+        var marker = Path.Combine(appRoot, "AssemblyMarker.cs");
+        if (!File.Exists(marker))
+            File.WriteAllText(marker, $"namespace {solution}.Application;\n\npublic class AssemblyMarker {{ }}\n");
+        var appBase = Path.Combine(appRoot, plural);
         Directory.CreateDirectory(appBase);
 
         var commandsDir = Path.Combine(appBase, "Commands");
