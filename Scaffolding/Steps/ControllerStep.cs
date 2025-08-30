@@ -10,8 +10,7 @@ public class ControllerStep : IScaffoldStep
         Directory.CreateDirectory(apiDir);
         var controllerFile = Path.Combine(apiDir, $"{entity}Controller.cs");
         var lower = entity.ToLowerInvariant();
-        var content = $$"""
-using MediatR;
+        var content = @"using MediatR;
 using System.Collections.Generic;
 using Microsoft.AspNetCore.Mvc;
 using {{solution}}.Application.{{entity}}.Commands.Create;
@@ -52,7 +51,12 @@ public class {{entity}}Controller : ControllerBase
     [HttpDelete("{{lower}}/{id}")]
     public async Task Delete(int id) => await _mediator.Send(new Delete{{entity}}Command(id));
 }
-""";
+";
+        content = content
+            .Replace("{{solution}}", solution)
+            .Replace("{{entity}}", entity)
+            .Replace("{{startupProject}}", startupProject)
+            .Replace("{{lower}}", lower);
         File.WriteAllText(controllerFile, content);
     }
 }

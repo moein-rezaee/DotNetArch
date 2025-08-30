@@ -12,8 +12,7 @@ public class DbContextStep : IScaffoldStep
         var file = Path.Combine(dir, "AppDbContext.cs");
         if (!File.Exists(file))
         {
-            var content = $$"""
-using Microsoft.EntityFrameworkCore;
+            var content = @"using Microsoft.EntityFrameworkCore;
 using {{solution}}.Core.Domain.{{entity}};
 
 namespace {{solution}}.Infrastructure.Persistence;
@@ -24,8 +23,8 @@ public class AppDbContext : DbContext
 
     public DbSet<{{entity}}> {{entity}}s { get; set; }
 }
-""";
-            File.WriteAllText(file, content);
+";
+            File.WriteAllText(file, content.Replace("{{solution}}", solution).Replace("{{entity}}", entity));
         }
         else
         {
