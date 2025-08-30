@@ -72,7 +72,7 @@ public class {{entity}}Repository : I{{entity}}Repository
         await Task.CompletedTask;
     }
 
-public async Task<{{entity}}?> GetByIdAsync(int id) => await _context.Set<{{entity}}>().FindAsync(id);
+    public async Task<{{entity}}?> GetByIdAsync(int id) => await _context.Set<{{entity}}>().FindAsync(id);
 
     public async Task<List<{{entity}}>> GetAllAsync() => await _context.Set<{{entity}}>().ToListAsync();
 
