@@ -119,20 +119,20 @@ public static class {{entity}}Endpoints
                 "        {",
                 $"            var created = await mediator.Send(new Create{entity}Command(entity));",
                 $"            return Results.Created($\"/Api/{entity}/{{created.Id}}\", created);",
-                $"        }).WithTags(\"{entity}\");",
+                $"        }}).WithTags(\"{entity}\");",
                 "",
                 $"        routes.MapPut(\"/Api/{entity}/{{id}}\", async (IMediator mediator, int id, {entity} entity) =>",
                 "        {",
                 $"            entity.Id = id;",
                 $"            await mediator.Send(new Update{entity}Command(entity));",
                 $"            return Results.NoContent();",
-                $"        }).WithTags(\"{entity}\");",
+                $"        }}).WithTags(\"{entity}\");",
                 "",
                 $"        routes.MapDelete(\"/Api/{entity}/{{id}}\", async (IMediator mediator, int id) =>",
                 "        {",
                 $"            await mediator.Send(new Delete{entity}Command(id));",
                 $"            return Results.NoContent();",
-                $"        }).WithTags(\"{entity}\");",
+                $"        }}).WithTags(\"{entity}\");",
             };
             lines.InsertRange(insertIndex, crudLines);
         }
