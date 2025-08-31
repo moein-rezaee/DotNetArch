@@ -13,17 +13,19 @@ public class RepositoryStep : IScaffoldStep
         var pagedResultFile = Path.Combine(commonDir, "PagedResult.cs");
         if (!File.Exists(pagedResultFile))
         {
-            var pagedContent = "using System.Collections.Generic;\n\n" +
-                              "namespace {{solution}}.Core.Common;\n\n" +
-                              "public record PagedResult<T>(List<T> Items, int TotalCount, int Page, int PageSize);\n";
+            var pagedContent = @"using System.Collections.Generic;
+
+namespace {{solution}}.Core.Common;
+
+public record PagedResult<T>(List<T> Items, int TotalCount, int Page, int PageSize);
+";
             File.WriteAllText(pagedResultFile, pagedContent.Replace("{{solution}}", solution));
         }
 
         var coreDir = Path.Combine(basePath, $"{solution}.Core", "Domain", plural);
         Directory.CreateDirectory(coreDir);
         var ifaceFile = Path.Combine(coreDir, $"I{entity}Repository.cs");
-        var ifaceContent =
-@"using System.Threading.Tasks;
+        var ifaceContent = @"using System.Threading.Tasks;
 using System.Collections.Generic;
 using {{solution}}.Core.Common;
 
@@ -47,8 +49,7 @@ public interface I{{entity}}Repository
         var infraDir = Path.Combine(basePath, $"{solution}.Infrastructure", plural);
         Directory.CreateDirectory(infraDir);
         var repoFile = Path.Combine(infraDir, $"{entity}Repository.cs");
-        var repoContent =
-@"using System.Linq;
+        var repoContent = @"using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
