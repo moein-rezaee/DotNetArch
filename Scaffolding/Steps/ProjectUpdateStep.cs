@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -114,10 +115,11 @@ public class ProjectUpdateStep : IScaffoldStep
                 $"<PackageReference Include=\"Microsoft.EntityFrameworkCore\" Version=\"{EfCoreVersion}\" />");
         else
         {
+            var nl = Environment.NewLine;
             var insert =
-                "  <ItemGroup>\n" +
-                $"    <PackageReference Include=\"Microsoft.EntityFrameworkCore\" Version=\"{EfCoreVersion}\" />\n" +
-                "  </ItemGroup>\n";
+                "  <ItemGroup>" + nl +
+                $"    <PackageReference Include=\"Microsoft.EntityFrameworkCore\" Version=\"{EfCoreVersion}\" />" + nl +
+                "  </ItemGroup>" + nl;
             text = text.Replace("</Project>", insert + "</Project>");
         }
 

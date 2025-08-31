@@ -12,7 +12,10 @@ public class ApplicationStep : IScaffoldStep
         Directory.CreateDirectory(appRoot);
         var marker = Path.Combine(appRoot, "AssemblyMarker.cs");
         if (!File.Exists(marker))
-            File.WriteAllText(marker, $"namespace {solution}.Application;\n\npublic class AssemblyMarker {{ }}\n");
+        {
+            var markerContent = $"namespace {solution}.Application;{Environment.NewLine}{Environment.NewLine}public class AssemblyMarker {{ }}{Environment.NewLine}";
+            File.WriteAllText(marker, markerContent);
+        }
         var appBase = Path.Combine(appRoot, plural);
         Directory.CreateDirectory(appBase);
 

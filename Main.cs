@@ -119,7 +119,8 @@ class Program
         Console.WriteLine("🔹 Generates a solution structure with core layers");
         Console.WriteLine("🔹 Adds references between projects automatically");
         Console.WriteLine("🔹 Ready to start coding your dream project!");
-        Console.WriteLine("==========================================\n");
+        Console.WriteLine("==========================================");
+        Console.WriteLine();
 
         Console.Write("Enter the name of your solution: ");
         var solutionName = Console.ReadLine();
@@ -175,7 +176,8 @@ class Program
         ConfigManager.Save(solutionDir, new SolutionConfig { SolutionName = solutionName, SolutionPath = solutionDir, StartupProject = startupProject, DatabaseProvider = provider });
         new ProjectUpdateStep().Execute(solutionName, string.Empty, provider, solutionDir, startupProject);
 
-        Console.WriteLine("\n✅ Solution created successfully!");
+        Console.WriteLine();
+        Console.WriteLine("✅ Solution created successfully!");
         Console.WriteLine("==========================================");
         Console.WriteLine($"🌟 Navigate to the '{solutionName}' directory to explore your project.");
         Console.WriteLine($"💻 Run 'dotnet build' to build the solution.");

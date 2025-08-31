@@ -46,7 +46,17 @@ static class ActionScaffolder
         Directory.CreateDirectory(Path.GetDirectoryName(iface)!);
         if (!File.Exists(iface))
         {
-            var iContent = @"using System.Threading.Tasks;\nusing {{solution}}.Core.Domain.{{entities}};\n\nnamespace {{solution}}.Core.Domain.{{entities}};\n\npublic interface I{{entity}}Repository\n{\n    {{methodSig}}\n}\n";
+            var iContent = """
+using System.Threading.Tasks;
+using {{solution}}.Core.Domain.{{entities}};
+
+namespace {{solution}}.Core.Domain.{{entities}};
+
+public interface I{{entity}}Repository
+{
+    {{methodSig}}
+}
+""";
             var sig = isCommand
                 ? $"Task {Upper(action)}Async({entity} entity);"
                 : $"Task<{entity}?> {Upper(action)}Async(int id);";
@@ -77,9 +87,31 @@ static class ActionScaffolder
             var mReturn = isCommand ? "Task" : $"Task<{entity}?>";
             var param = isCommand ? $"{entity} entity" : "int id";
             var body = isCommand
-                ? "        // TODO: implement action\n        await Task.CompletedTask;"
-                : $"        // TODO: implement action\n        return await _context.Set<{entity}>().FindAsync(id);";
-            var rContent = @"using System.Threading.Tasks;\nusing {{solution}}.Core.Domain.{{entities}};\nusing {{solution}}.Infrastructure.Persistence;\n\nnamespace {{solution}}.Infrastructure.{{entities}};\n\npublic class {{entity}}Repository : I{{entity}}Repository\n{\n    private readonly AppDbContext _context;\n    public {{entity}}Repository(AppDbContext context) => _context = context;\n\n    public async {{mReturn}} {{action}}Async({{param}})\n    {\n{{body}}\n    }\n}\n";
+                ? """
+        // TODO: implement action
+        await Task.CompletedTask;
+"""
+                : $"""
+        // TODO: implement action
+        return await _context.Set<{entity}>().FindAsync(id);
+""";
+            var rContent = """
+using System.Threading.Tasks;
+using {{solution}}.Core.Domain.{{entities}};
+using {{solution}}.Infrastructure.Persistence;
+
+namespace {{solution}}.Infrastructure.{{entities}};
+
+public class {{entity}}Repository : I{{entity}}Repository
+{
+    private readonly AppDbContext _context;
+    public {{entity}}Repository(AppDbContext context) => _context = context;
+
+    public async {{mReturn}} {{action}}Async({{param}})
+    {
+{{body}}    }
+}
+""";
             File.WriteAllText(impl, rContent
                 .Replace("{{solution}}", solution)
                 .Replace("{{entity}}", entity)
@@ -131,15 +163,88 @@ static class ActionScaffolder
                                   .Replace("{{action}}", Upper(action));
         if (isCommand)
         {
-            File.WriteAllText(Path.Combine(dir, $"{Upper(action)}{entity}Command.cs"), Fill(@"\nusing MediatR;\nusing {{solution}}.Core.Domain.{{entities}};\n\nnamespace {{solution}}.Application.{{entities}}.Commands.{{action}};\npublic record {{action}}{{entity}}Command({{entity}} Entity) : IRequest;\n"));
-            File.WriteAllText(Path.Combine(dir, $"{Upper(action)}{entity}Handler.cs"), Fill(@"\nusing MediatR;\nusing System.Threading;\nusing System.Threading.Tasks;\nusing {{solution}}.Core.Interfaces;\nusing {{solution}}.Core.Domain.{{entities}};\n\nnamespace {{solution}}.Application.{{entities}}.Commands.{{action}};\npublic class {{action}}{{entity}}Handler : IRequestHandler<{{action}}{{entity}}Command>\n{\n    private readonly IUnitOfWork _uow;\n    public {{action}}{{entity}}Handler(IUnitOfWork uow) => _uow = uow;\n    public async Task Handle({{action}}{{entity}}Command request, CancellationToken ct)\n    {\n        await _uow.{{entity}}Repository.{{action}}Async(request.Entity);\n        await _uow.SaveChangesAsync();\n    }\n}\n"));
-            File.WriteAllText(Path.Combine(dir, $"{Upper(action)}{entity}Validator.cs"), Fill(@"\nusing FluentValidation;\n\nnamespace {{solution}}.Application.{{entities}}.Commands.{{action}};\npublic class {{action}}{{entity}}Validator : AbstractValidator<{{action}}{{entity}}Command>\n{\n    public {{action}}{{entity}}Validator()\n    {\n        RuleFor(x => x.Entity).NotNull();\n    }\n}\n"));
+            File.WriteAllText(Path.Combine(dir, $"{Upper(action)}{entity}Command.cs"), Fill("""
+using MediatR;
+using {{solution}}.Core.Domain.{{entities}};
+
+namespace {{solution}}.Application.{{entities}}.Commands.{{action}};
+
+public record {{action}}{{entity}}Command({{entity}} Entity) : IRequest;
+"""));
+            File.WriteAllText(Path.Combine(dir, $"{Upper(action)}{entity}Handler.cs"), Fill("""
+using MediatR;
+using System.Threading;
+using System.Threading.Tasks;
+using {{solution}}.Core.Interfaces;
+using {{solution}}.Core.Domain.{{entities}};
+
+namespace {{solution}}.Application.{{entities}}.Commands.{{action}};
+
+public class {{action}}{{entity}}Handler : IRequestHandler<{{action}}{{entity}}Command>
+{
+    private readonly IUnitOfWork _uow;
+    public {{action}}{{entity}}Handler(IUnitOfWork uow) => _uow = uow;
+    public async Task Handle({{action}}{{entity}}Command request, CancellationToken ct)
+    {
+        await _uow.{{entity}}Repository.{{action}}Async(request.Entity);
+        await _uow.SaveChangesAsync();
+    }
+}
+"""));
+            File.WriteAllText(Path.Combine(dir, $"{Upper(action)}{entity}Validator.cs"), Fill("""
+using FluentValidation;
+
+namespace {{solution}}.Application.{{entities}}.Commands.{{action}};
+
+public class {{action}}{{entity}}Validator : AbstractValidator<{{action}}{{entity}}Command>
+{
+    public {{action}}{{entity}}Validator()
+    {
+        RuleFor(x => x.Entity).NotNull();
+    }
+}
+"""));
         }
         else
         {
-            File.WriteAllText(Path.Combine(dir, $"{Upper(action)}{entity}Query.cs"), Fill(@"\nusing MediatR;\nusing {{solution}}.Core.Domain.{{entities}};\n\nnamespace {{solution}}.Application.{{entities}}.Queries.{{action}};\npublic record {{action}}{{entity}}Query(int Id) : IRequest<{{entity}}?>;\n"));
-            File.WriteAllText(Path.Combine(dir, $"{Upper(action)}{entity}Handler.cs"), Fill(@"\nusing MediatR;\nusing System.Threading;\nusing System.Threading.Tasks;\nusing {{solution}}.Core.Interfaces;\nusing {{solution}}.Core.Domain.{{entities}};\n\nnamespace {{solution}}.Application.{{entities}}.Queries.{{action}};\npublic class {{action}}{{entity}}Handler : IRequestHandler<{{action}}{{entity}}Query, {{entity}}?>\n{\n    private readonly IUnitOfWork _uow;\n    public {{action}}{{entity}}Handler(IUnitOfWork uow) => _uow = uow;\n    public async Task<{{entity}}?> Handle({{action}}{{entity}}Query request, CancellationToken ct)\n        => await _uow.{{entity}}Repository.{{action}}Async(request.Id);\n}\n"));
-            File.WriteAllText(Path.Combine(dir, $"{Upper(action)}{entity}Validator.cs"), Fill(@"\nusing FluentValidation;\n\nnamespace {{solution}}.Application.{{entities}}.Queries.{{action}};\npublic class {{action}}{{entity}}Validator : AbstractValidator<{{action}}{{entity}}Query>\n{\n    public {{action}}{{entity}}Validator()\n    {\n        RuleFor(x => x.Id).GreaterThan(0);\n    }\n}\n"));
+            File.WriteAllText(Path.Combine(dir, $"{Upper(action)}{entity}Query.cs"), Fill("""
+using MediatR;
+using {{solution}}.Core.Domain.{{entities}};
+
+namespace {{solution}}.Application.{{entities}}.Queries.{{action}};
+
+public record {{action}}{{entity}}Query(int Id) : IRequest<{{entity}}?>;
+"""));
+            File.WriteAllText(Path.Combine(dir, $"{Upper(action)}{entity}Handler.cs"), Fill("""
+using MediatR;
+using System.Threading;
+using System.Threading.Tasks;
+using {{solution}}.Core.Interfaces;
+using {{solution}}.Core.Domain.{{entities}};
+
+namespace {{solution}}.Application.{{entities}}.Queries.{{action}};
+
+public class {{action}}{{entity}}Handler : IRequestHandler<{{action}}{{entity}}Query, {{entity}}?>
+{
+    private readonly IUnitOfWork _uow;
+    public {{action}}{{entity}}Handler(IUnitOfWork uow) => _uow = uow;
+    public async Task<{{entity}}?> Handle({{action}}{{entity}}Query request, CancellationToken ct)
+        => await _uow.{{entity}}Repository.{{action}}Async(request.Id);
+}
+"""));
+            File.WriteAllText(Path.Combine(dir, $"{Upper(action)}{entity}Validator.cs"), Fill("""
+using FluentValidation;
+
+namespace {{solution}}.Application.{{entities}}.Queries.{{action}};
+
+public class {{action}}{{entity}}Validator : AbstractValidator<{{action}}{{entity}}Query>
+{
+    public {{action}}{{entity}}Validator()
+    {
+        RuleFor(x => x.Id).GreaterThan(0);
+    }
+}
+"""));
         }
     }
 

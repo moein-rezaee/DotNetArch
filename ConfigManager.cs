@@ -37,9 +37,13 @@ public static class ConfigManager
     public static void Save(string basePath, SolutionConfig config)
     {
         var path = Path.Combine(basePath, FileName);
-        var content = $"solution: {config.SolutionName}\npath: {config.SolutionPath}\nstartup: {config.StartupProject}\n";
+        var nl = Environment.NewLine;
+        var content =
+            $"solution: {config.SolutionName}{nl}" +
+            $"path: {config.SolutionPath}{nl}" +
+            $"startup: {config.StartupProject}{nl}";
         if (!string.IsNullOrWhiteSpace(config.DatabaseProvider))
-            content += $"database: {config.DatabaseProvider}\n";
+            content += $"database: {config.DatabaseProvider}{nl}";
         File.WriteAllText(path, content);
     }
 }

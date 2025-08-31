@@ -98,7 +98,7 @@ public class {{entity}}Controller : ControllerBase
             };
             foreach (var u in requiredUsings)
                 if (!text.Contains(u))
-                    text = u + "\n" + text;
+                    text = u + Environment.NewLine + text;
             File.WriteAllText(controllerFile, text);
         }
     }
