@@ -167,6 +167,7 @@ public class ProjectUpdateStep : IScaffoldStep
         var usingLines = new List<string>
         {
             "using System;",
+            "using System.IO;",
             "using MediatR;",
             "using FluentValidation;",
             $"using {solution}.Application;",
@@ -193,9 +194,6 @@ public class ProjectUpdateStep : IScaffoldStep
         if (idx >= 0)
         {
             var insertIndex = idx + 1;
-            var dbLine = provider == "SQLite"
-                ? "builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlite(\"Data Source=Infrastructure/Data/app.db\"));"
-                : "builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlServer(\"Server=.;Database=AppDb;Trusted_Connection=True;\"));";
             if (!lines.Any(l => l.Contains("AddEndpointsApiExplorer")))
                 lines.Insert(insertIndex++, "builder.Services.AddEndpointsApiExplorer();");
             if (!lines.Any(l => l.Contains("AddSwaggerGen")))
@@ -203,7 +201,23 @@ public class ProjectUpdateStep : IScaffoldStep
             if (!lines.Any(l => l.Contains("AddControllers")))
                 lines.Insert(insertIndex++, "builder.Services.AddControllers();");
             if (!string.IsNullOrWhiteSpace(entity) && !lines.Any(l => l.Contains("AddDbContext<AppDbContext>")))
-                lines.Insert(insertIndex++, dbLine);
+            {
+                if (provider == "SQLite")
+                {
+                    var sqliteLines = new[]
+                    {
+                        $"var dbPath = Path.Combine(builder.Environment.ContentRootPath, \"..\", \"{solution}.Infrastructure\", \"Data\", \"app.db\");",
+                        "Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);",
+                        "builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlite($\"Data Source={dbPath}\"));"
+                    };
+                    foreach (var l in sqliteLines)
+                        lines.Insert(insertIndex++, l);
+                }
+                else
+                {
+                    lines.Insert(insertIndex++, "builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlServer(\"Server=.;Database=AppDb;Trusted_Connection=True;\"));");
+                }
+            }
             if (!lines.Any(l => l.Contains("RegisterServicesFromAssemblyContaining<AssemblyMarker>")))
                 lines.Insert(insertIndex++, "builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<AssemblyMarker>());");
             if (!lines.Any(l => l.Contains("AddValidatorsFromAssemblyContaining<AssemblyMarker>")))
