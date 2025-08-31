@@ -25,8 +25,20 @@ public record PagedResult<T>(List<T> Items, int TotalCount, int Page, int PageSi
         }
 
         var coreDir = Path.Combine(basePath, $"{solution}.Core", "Features", plural);
-        Directory.CreateDirectory(coreDir);
+        var legacyCoreDir = Path.Combine(basePath, $"{solution}.Core", plural);
         var ifaceFile = Path.Combine(coreDir, $"I{entity}Repository.cs");
+        var legacyIface = Path.Combine(legacyCoreDir, $"I{entity}Repository.cs");
+        if (File.Exists(legacyIface) && !File.Exists(ifaceFile))
+        {
+            Directory.CreateDirectory(coreDir);
+            File.Move(legacyIface, ifaceFile);
+            if (Directory.Exists(legacyCoreDir) && Directory.GetFileSystemEntries(legacyCoreDir).Length == 0)
+                Directory.Delete(legacyCoreDir, true);
+        }
+        else
+        {
+            Directory.CreateDirectory(coreDir);
+        }
         var ifaceTemplate = """
 using System.Threading.Tasks;
 using System.Collections.Generic;
@@ -73,8 +85,20 @@ public interface I{{entity}}Repository
         }
 
         var infraDir = Path.Combine(basePath, $"{solution}.Infrastructure", "Features", plural);
-        Directory.CreateDirectory(infraDir);
+        var legacyInfraDir = Path.Combine(basePath, $"{solution}.Infrastructure", plural);
         var repoFile = Path.Combine(infraDir, $"{entity}Repository.cs");
+        var legacyRepo = Path.Combine(legacyInfraDir, $"{entity}Repository.cs");
+        if (File.Exists(legacyRepo) && !File.Exists(repoFile))
+        {
+            Directory.CreateDirectory(infraDir);
+            File.Move(legacyRepo, repoFile);
+            if (Directory.Exists(legacyInfraDir) && Directory.GetFileSystemEntries(legacyInfraDir).Length == 0)
+                Directory.Delete(legacyInfraDir, true);
+        }
+        else
+        {
+            Directory.CreateDirectory(infraDir);
+        }
         var repoTemplate = """
 using System.Linq;
 using System.Threading.Tasks;
