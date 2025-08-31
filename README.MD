@@ -175,7 +175,7 @@ We welcome contributions to DotNetArch! Here’s how you can contribute:
 - **Custom output path**: Both `new solution` and `new crud` accept an `--output` option so code can be generated in test directories or alternative locations.
 - **Development Swagger setup**: API projects automatically reference `Microsoft.AspNetCore.OpenApi` and `Swashbuckle.AspNetCore`, register Swagger services, and enable Swagger UI in development while removing default template files and sample endpoints.
 - **Feature-based folder structure**: Each layer organizes code under `Features/<Entity>` so all slices stay grouped.
-- **Automatic migrations**: `new crud` and `new action` verify `dotnet-ef` and attempt installation if needed. Migrations and database updates run only when the tool is successfully installed; otherwise the process aborts with OS-specific installation guidance.
+ - **Automatic migrations**: `new crud` and `new action` verify `dotnet-ef` and attempt installation if needed. Migrations and database updates run only when the tool is successfully installed; otherwise the process aborts with OS-specific installation guidance. Generated `Program.cs` calls `Database.Migrate()` on startup to apply any pending migrations so new tables are created automatically.
 
 ---
 

@@ -250,19 +250,19 @@ public class ProjectUpdateStep : IScaffoldStep
         {
             if (!lines.Any(l => l.Contains("app.MapControllers()")))
                 lines.Insert(runIdx++, "app.MapControllers();");
-            if (!string.IsNullOrWhiteSpace(entity) && !lines.Any(l => l.Contains("Database.EnsureCreated")))
+            if (!string.IsNullOrWhiteSpace(entity) && !lines.Any(l => l.Contains("Database.Migrate")))
             {
-                var ensureLines = new List<string>
+                var migrateLines = new List<string>
                 {
                     "using (var scope = app.Services.CreateScope())",
                     "{",
                     "    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();",
-                    "    db.Database.EnsureCreated();",
+                    "    db.Database.Migrate();",
                     "}"
                 };
-                foreach (var el in ensureLines)
+                foreach (var ml in migrateLines)
                 {
-                    lines.Insert(runIdx++, el);
+                    lines.Insert(runIdx++, ml);
                 }
             }
         }
