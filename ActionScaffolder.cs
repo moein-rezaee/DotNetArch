@@ -351,7 +351,7 @@ public class {{action}}{{entity}}Validator : AbstractValidator<{{action}}{{entit
                 "        {",
                 $"            await mediator.Send(new {Upper(action)}{entity}Command(entity));",
                 "            return Results.Ok();",
-                $"        }).WithTags(\"{entity}\");",
+                $"        }}).WithTags(\"{entity}\");",
             };
             lines.InsertRange(insertIndex, method);
         }
