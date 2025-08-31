@@ -84,6 +84,16 @@ Application/<Entity>/
 
 Every operation folder under Commands or Queries contains the request, its handler, and a corresponding validator. The first time you scaffold an entity you choose either SQL Server or SQLite and the choice is saved to `dotnet-arch.yml` so later `new crud` runs reuse the same provider. Generated code supports pagination via `PagedResult<T>` and re-running the command updates existing files instead of duplicating them.
 
+#### Add a Custom Action
+
+Extend an existing slice or create a minimal slice with a single action:
+
+```
+dotnet-arch new action --entity=EntityName --action=download --is-command=true
+```
+
+The tool generates the command/query, handler, validator, repository method, and controller endpoint for the specified action.
+
 ---
 
 #### **How to Clone and Run the Project**
@@ -152,6 +162,7 @@ We welcome contributions to DotNetArch! Here’s how you can contribute:
 - **Idempotent Generation**: Re-running commands updates existing files without creating duplicates.
 - **Repository & Unit of Work patterns**: Each entity gets its own repository and UoW registration for clean data access.
 - **Automatic package & service registration**: Required NuGet packages are added to project files and services like `DbContext`, `IMediator`, `IUnitOfWork`, and validators are registered in `Program.cs`.
+- **`new action` command**: Add custom commands or queries with handlers, validators, repository methods, and controller endpoints.
 - **Correct namespace wiring**: `Program.cs` updates include the necessary `using` directives and service registrations for each entity's repository without malformed entries.
 - **Configurable startup project**: `dotnet-arch.yml` tracks which project is the startup target so controllers are added to the correct application entry point.
 - **Custom output path**: Both `new solution` and `new crud` accept an `--output` option so code can be generated in test directories or alternative locations.

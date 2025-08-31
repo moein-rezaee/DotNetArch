@@ -40,6 +40,43 @@ class Program
             return;
         }
 
+        if (args.Length >= 2 && args[0].ToLower() == "new" && args[1].ToLower() == "action")
+        {
+            string? entity = null;
+            string? action = null;
+            string? outputPath = null;
+            bool isCommand = false;
+
+            for (int i = 2; i < args.Length; i++)
+            {
+                if (args[i].StartsWith("--entity="))
+                    entity = args[i].Substring("--entity=".Length);
+                else if (args[i].StartsWith("--action="))
+                    action = args[i].Substring("--action=".Length);
+                else if (args[i].StartsWith("--is-command="))
+                    bool.TryParse(args[i].Substring("--is-command=".Length), out isCommand);
+                else if (args[i].StartsWith("--output="))
+                    outputPath = args[i].Substring("--output=".Length);
+            }
+
+            if (string.IsNullOrWhiteSpace(entity) || string.IsNullOrWhiteSpace(action))
+            {
+                Console.WriteLine("Usage: dotnet-arch new action --entity=Entity --action=Name [--is-command=true|false] [--output=Path]");
+                return;
+            }
+
+            var basePath = string.IsNullOrWhiteSpace(outputPath) ? Directory.GetCurrentDirectory() : outputPath;
+            var config = ConfigManager.Load(basePath);
+            if (config == null)
+            {
+                Console.WriteLine("Solution configuration not found. Run 'new solution' first.");
+                return;
+            }
+
+            ActionScaffolder.Generate(config, entity, action, isCommand);
+            return;
+        }
+
         if (args.Length >= 2 && args[0].ToLower() == "new" && args[1].ToLower() == "solution")
         {
             string? solutionName = null;

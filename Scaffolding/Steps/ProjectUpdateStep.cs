@@ -18,6 +18,11 @@ public class ProjectUpdateStep : IScaffoldStep
 
     public void Execute(string solution, string entity, string provider, string basePath, string startupProject)
     {
+        if (provider == "SQLite")
+        {
+            var dataDir = Path.Combine(basePath, $"{solution}.Infrastructure", "Data");
+            Directory.CreateDirectory(dataDir);
+        }
         UpdateApplicationProject(solution, basePath);
         UpdateInfrastructureProject(solution, basePath);
         UpdateApiProject(solution, provider, basePath, startupProject);
@@ -189,7 +194,7 @@ public class ProjectUpdateStep : IScaffoldStep
         {
             var insertIndex = idx + 1;
             var dbLine = provider == "SQLite"
-                ? "builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlite(\"Data Source=app.db\"));"
+                ? "builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlite(\"Data Source=Infrastructure/Data/app.db\"));"
                 : "builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlServer(\"Server=.;Database=AppDb;Trusted_Connection=True;\"));";
             if (!lines.Any(l => l.Contains("AddEndpointsApiExplorer")))
                 lines.Insert(insertIndex++, "builder.Services.AddEndpointsApiExplorer();");
