@@ -38,11 +38,18 @@ static class ActionScaffolder
         try
         {
             Directory.SetCurrentDirectory(config.SolutionPath);
-            var infraProj = $"{config.SolutionName}.Infrastructure/{config.SolutionName}.Infrastructure.csproj";
-            var startProj = $"{config.StartupProject}/{config.StartupProject}.csproj";
-            var migName = $"Auto_{entity}_{DateTime.UtcNow:yyyyMMddHHmmss}";
-            Program.RunCommand($"dotnet ef migrations add {migName} --project {infraProj} --startup-project {startProj} --output-dir Migrations", config.SolutionPath);
-            Program.RunCommand($"dotnet ef database update --project {infraProj} --startup-project {startProj}", config.SolutionPath);
+            if (Program.RunCommand("dotnet ef --version", config.SolutionPath, print: false))
+            {
+                var infraProj = $"{config.SolutionName}.Infrastructure/{config.SolutionName}.Infrastructure.csproj";
+                var startProj = $"{config.StartupProject}/{config.StartupProject}.csproj";
+                var migName = $"Auto_{entity}_{DateTime.UtcNow:yyyyMMddHHmmss}";
+                Program.RunCommand($"dotnet ef migrations add {migName} --project {infraProj} --startup-project {startProj} --output-dir Migrations", config.SolutionPath);
+                Program.RunCommand($"dotnet ef database update --project {infraProj} --startup-project {startProj}", config.SolutionPath);
+            }
+            else
+            {
+                Console.WriteLine("⚠️ dotnet-ef not found; skipping migrations. Install with 'dotnet tool install --global dotnet-ef'.");
+            }
         }
         finally
         {

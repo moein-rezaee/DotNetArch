@@ -184,7 +184,7 @@ class Program
         Console.WriteLine($"🎉 Start coding your Clean Architecture project now!");
         Console.WriteLine("==========================================");
     }
-    public static void RunCommand(string command, string? workingDir = null)
+    public static bool RunCommand(string command, string? workingDir = null, bool print = true)
     {
         string shell, shellArgs;
 
@@ -216,14 +216,21 @@ class Program
         process.Start();
         process.WaitForExit();
 
-        if (process.ExitCode != 0)
+        bool success = process.ExitCode == 0;
+
+        if (print)
         {
-            Console.WriteLine($"❌ Error: {process.StandardError.ReadToEnd()}");
+            if (!success)
+            {
+                Console.WriteLine($"❌ Error: {process.StandardError.ReadToEnd()}");
+            }
+            else
+            {
+                Console.WriteLine($"✅ {process.StandardOutput.ReadToEnd()}");
+            }
         }
-        else
-        {
-            Console.WriteLine($"✅ {process.StandardOutput.ReadToEnd()}");
-        }
+
+        return success;
     }
 
     static void DeleteDefaultClass(string projectName)
