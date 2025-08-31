@@ -173,8 +173,8 @@ public class ProjectUpdateStep : IScaffoldStep
         // clean up malformed using lines that accidentally contain double dots
         lines.RemoveAll(l => l.TrimStart().StartsWith("using ") && l.Contains(".."));
         // remove stray self-referencing namespace imports left by templates
-        lines.RemoveAll(l => l.Trim() == $"using {solution};");
-        lines.RemoveAll(l => l.Trim() == $"using {startupProject};");
+        lines.RemoveAll(l => Regex.IsMatch(l.Trim(), $@"^using\s+{Regex.Escape(solution)}\s*;"));
+        lines.RemoveAll(l => Regex.IsMatch(l.Trim(), $@"^using\s+{Regex.Escape(startupProject)}\s*;"));
         var usingLines = new List<string>
         {
             "using System;",
