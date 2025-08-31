@@ -153,6 +153,7 @@ public class ProjectUpdateStep : IScaffoldStep
             EnsurePackage(doc, "Microsoft.Data.SqlClient", SqlClientVersion);
 
         var rel = ".." + Path.DirectorySeparatorChar;
+        EnsureProjectReference(doc, $"{rel}{solution}.Core{Path.DirectorySeparatorChar}{solution}.Core.csproj");
         EnsureProjectReference(doc, $"{rel}{solution}.Application{Path.DirectorySeparatorChar}{solution}.Application.csproj");
         EnsureProjectReference(doc, $"{rel}{solution}.Infrastructure{Path.DirectorySeparatorChar}{solution}.Infrastructure.csproj");
 
