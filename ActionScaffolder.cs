@@ -14,18 +14,21 @@ static class ActionScaffolder
             return;
         }
 
-        if (!Program.EnsureEfTool(config.SolutionPath))
-        {
-            Console.WriteLine("❌ dotnet-ef installation failed; action generation canceled.");
-            return;
-        }
-
         var provider = config.DatabaseProvider;
         if (string.IsNullOrWhiteSpace(provider))
         {
             provider = DatabaseProviderSelector.Choose();
             config.DatabaseProvider = provider;
             ConfigManager.Save(config.SolutionPath, config);
+        }
+
+        if (!provider.Equals("SQLite", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!Program.EnsureEfTool(config.SolutionPath))
+            {
+                Console.WriteLine("❌ dotnet-ef installation failed; action generation canceled.");
+                return;
+            }
         }
         var steps = new IScaffoldStep[]
         {
@@ -41,19 +44,22 @@ static class ActionScaffolder
         AddApplicationFiles(config, entity, action, isCommand);
         AddControllerMethod(config, entity, action, isCommand);
 
-        var prev = Directory.GetCurrentDirectory();
-        try
+        if (!provider.Equals("SQLite", StringComparison.OrdinalIgnoreCase))
         {
-            Directory.SetCurrentDirectory(config.SolutionPath);
-            var infraProj = $"{config.SolutionName}.Infrastructure/{config.SolutionName}.Infrastructure.csproj";
-            var startProj = $"{config.StartupProject}/{config.StartupProject}.csproj";
-            var migName = $"Auto_{entity}_{DateTime.UtcNow:yyyyMMddHHmmss}";
-            Program.RunCommand($"dotnet ef migrations add {migName} --project {infraProj} --startup-project {startProj} --output-dir Migrations", config.SolutionPath);
-            Program.RunCommand($"dotnet ef database update --project {infraProj} --startup-project {startProj}", config.SolutionPath);
-        }
-        finally
-        {
-            Directory.SetCurrentDirectory(prev);
+            var prev = Directory.GetCurrentDirectory();
+            try
+            {
+                Directory.SetCurrentDirectory(config.SolutionPath);
+                var infraProj = $"{config.SolutionName}.Infrastructure/{config.SolutionName}.Infrastructure.csproj";
+                var startProj = $"{config.StartupProject}/{config.StartupProject}.csproj";
+                var migName = $"Auto_{entity}_{DateTime.UtcNow:yyyyMMddHHmmss}";
+                Program.RunCommand($"dotnet ef migrations add {migName} --project {infraProj} --startup-project {startProj} --output-dir Migrations", config.SolutionPath);
+                Program.RunCommand($"dotnet ef database update --project {infraProj} --startup-project {startProj}", config.SolutionPath);
+            }
+            finally
+            {
+                Directory.SetCurrentDirectory(prev);
+            }
         }
 
         Console.WriteLine($"Action {action} for {entity} generated.");

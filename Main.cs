@@ -9,6 +9,8 @@ class Program
 {
     static void Main(string[] args)
     {
+        if (!EnsureDotnetSdk())
+            return;
         if (args.Length >= 2 && args[0].ToLower() == "new" && args[1].ToLower() == "crud")
         {
             string? entity = null;
@@ -216,17 +218,22 @@ class Program
         process.Start();
         process.WaitForExit();
 
+        var stdout = process.StandardOutput.ReadToEnd();
+        var stderr = process.StandardError.ReadToEnd();
         bool success = process.ExitCode == 0;
 
         if (print)
         {
             if (!success)
             {
-                Console.WriteLine($"❌ Error: {process.StandardError.ReadToEnd()}");
+                var msg = string.IsNullOrWhiteSpace(stderr) ? stdout : stderr;
+                Console.WriteLine(string.IsNullOrWhiteSpace(msg)
+                    ? "❌ Command failed"
+                    : $"❌ {msg}");
             }
-            else
+            else if (!string.IsNullOrWhiteSpace(stdout))
             {
-                Console.WriteLine($"✅ {process.StandardOutput.ReadToEnd()}");
+                Console.WriteLine($"✅ {stdout}");
             }
         }
 
@@ -244,6 +251,15 @@ class Program
             return RunCommand("dotnet ef --version", workingDir, print: false);
 
         Console.WriteLine($"❌ Failed to install dotnet-ef. Install manually with: {cmd}");
+        return false;
+    }
+
+    public static bool EnsureDotnetSdk()
+    {
+        if (RunCommand("dotnet --version", print: false))
+            return true;
+
+        Console.WriteLine("❌ .NET SDK not found. Install from https://dotnet.microsoft.com/download");
         return false;
     }
 
