@@ -351,7 +351,7 @@ public class {{action}}{{entity}}Validator : AbstractValidator<{{action}}{{entit
                 "        {",
                 $"            await mediator.Send(new {Upper(action)}{entity}Command(entity));",
                 "            return Results.Ok();",
-                "        });",
+                $"        }).WithTags(\"{entity}\");",
             };
             lines.InsertRange(insertIndex, method);
         }
@@ -360,7 +360,8 @@ public class {{action}}{{entity}}Validator : AbstractValidator<{{action}}{{entit
             var method = new[]
             {
                 $"        routes.MapGet(\"/Api/{entity}/{Upper(action)}/{{id}}\", async (IMediator mediator, int id) =>",
-                $"            await mediator.Send(new {Upper(action)}{entity}Query(id)) is {entity} result ? Results.Ok(result) : Results.NotFound());",
+                $"            await mediator.Send(new {Upper(action)}{entity}Query(id)) is {entity} result ? Results.Ok(result) : Results.NotFound())",
+                $"            .WithTags(\"{entity}\");",
             };
             lines.InsertRange(insertIndex, method);
         }
