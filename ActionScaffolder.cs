@@ -22,13 +22,10 @@ static class ActionScaffolder
             ConfigManager.Save(config.SolutionPath, config);
         }
 
-        if (!provider.Equals("SQLite", StringComparison.OrdinalIgnoreCase))
+        if (!Program.EnsureEfTool(config.SolutionPath))
         {
-            if (!Program.EnsureEfTool(config.SolutionPath))
-            {
-                Console.WriteLine("❌ dotnet-ef installation failed; action generation canceled.");
-                return;
-            }
+            Console.WriteLine("❌ dotnet-ef installation failed; action generation canceled.");
+            return;
         }
         var steps = new IScaffoldStep[]
         {
@@ -44,22 +41,19 @@ static class ActionScaffolder
         AddApplicationFiles(config, entity, action, isCommand);
         AddControllerMethod(config, entity, action, isCommand);
 
-        if (!provider.Equals("SQLite", StringComparison.OrdinalIgnoreCase))
+        var prev = Directory.GetCurrentDirectory();
+        try
         {
-            var prev = Directory.GetCurrentDirectory();
-            try
-            {
-                Directory.SetCurrentDirectory(config.SolutionPath);
-                var infraProj = $"{config.SolutionName}.Infrastructure/{config.SolutionName}.Infrastructure.csproj";
-                var startProj = $"{config.StartupProject}/{config.StartupProject}.csproj";
-                var migName = $"Auto_{entity}_{DateTime.UtcNow:yyyyMMddHHmmss}";
-                Program.RunCommand($"dotnet ef migrations add {migName} --project {infraProj} --startup-project {startProj} --output-dir Migrations", config.SolutionPath);
-                Program.RunCommand($"dotnet ef database update --project {infraProj} --startup-project {startProj}", config.SolutionPath);
-            }
-            finally
-            {
-                Directory.SetCurrentDirectory(prev);
-            }
+            Directory.SetCurrentDirectory(config.SolutionPath);
+            var infraProj = $"{config.SolutionName}.Infrastructure/{config.SolutionName}.Infrastructure.csproj";
+            var startProj = $"{config.StartupProject}/{config.StartupProject}.csproj";
+            var migName = $"Auto_{entity}_{DateTime.UtcNow:yyyyMMddHHmmss}";
+            Program.RunCommand($"dotnet ef migrations add {migName} --project {infraProj} --startup-project {startProj} --output-dir Migrations", config.SolutionPath);
+            Program.RunCommand($"dotnet ef database update --project {infraProj} --startup-project {startProj}", config.SolutionPath);
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(prev);
         }
 
         if (!config.Entities.TryGetValue(entity, out var state))

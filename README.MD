@@ -68,7 +68,7 @@ After creating a solution you can scaffold a full CRUD vertical slice for an ent
 dotnet-arch new crud --entity=EntityName [--output=Path]
 ```
 
-`--output` points to the solution directory; if omitted, the current directory is used. If required arguments are missing the CLI prompts for them. The command reads `dotnet-arch.yml` to locate the solution name and scaffolds the entity slice. Depending on the selected style it creates either API controllers or minimal FastAPI endpoints along with domain models, repositories, unit of work, MediatR handlers and validators. For SQL Server, the CLI installs `dotnet-ef` if needed and runs migrations; for SQLite, migrations are skipped. Each entity is placed under a `Features/<Entity>` folder in every layer and follows a CQRS-aware vertical slice:
+`--output` points to the solution directory; if omitted, the current directory is used. If required arguments are missing the CLI prompts for them. The command reads `dotnet-arch.yml` to locate the solution name and scaffolds the entity slice. Depending on the selected style it creates either API controllers or minimal FastAPI endpoints along with domain models, repositories, unit of work, MediatR handlers and validators. The CLI installs `dotnet-ef` if needed and runs migrations for the chosen provider so schema changes are applied automatically. Each entity is placed under a `Features/<Entity>` folder in every layer and follows a CQRS-aware vertical slice:
 
 ```
 Application/<Entity>/
