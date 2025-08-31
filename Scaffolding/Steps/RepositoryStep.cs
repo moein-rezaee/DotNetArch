@@ -57,7 +57,8 @@ public interface I{{entity}}Repository
             var text = File.ReadAllText(ifaceFile);
             if (!text.Contains("GetAllAsync"))
             {
-                var insert = $@"    Task<List<{entity}>> GetAllAsync();
+                var insert = $@"    Task<{entity}?> GetByIdAsync(int id);
+    Task<List<{entity}>> GetAllAsync();
     Task<PagedResult<{entity}>> ListAsync(int page = 1, int pageSize = 10);
     Task AddAsync({entity} entity);
     Task UpdateAsync({entity} entity);
