@@ -68,7 +68,7 @@ After creating a solution you can scaffold a full CRUD vertical slice for an ent
 dotnet-arch new crud --entity=EntityName [--output=Path]
 ```
 
-`--output` points to the solution directory; if omitted, the current directory is used. The command reads `dotnet-arch.yml` to locate the solution name and scaffolds the entity slice. It creates domain models, repositories, unit of work, MediatR handlers, validators, and API controllers. If the `dotnet-ef` tool is available, EF Core migrations and database updates run automatically; otherwise a warning is shown with platform-specific installation instructions. Each entity is placed under a `Features/<Entity>` folder in every layer and follows a CQRS-aware vertical slice:
+`--output` points to the solution directory; if omitted, the current directory is used. The command reads `dotnet-arch.yml` to locate the solution name and scaffolds the entity slice. It creates domain models, repositories, unit of work, MediatR handlers, validators, and API controllers. The CLI ensures the `dotnet-ef` tool is installed; on failure it aborts and prints platform-specific installation instructions. Each entity is placed under a `Features/<Entity>` folder in every layer and follows a CQRS-aware vertical slice:
 
 ```
 Application/<Entity>/
@@ -175,7 +175,7 @@ We welcome contributions to DotNetArch! Here’s how you can contribute:
 - **Custom output path**: Both `new solution` and `new crud` accept an `--output` option so code can be generated in test directories or alternative locations.
 - **Development Swagger setup**: API projects automatically reference `Microsoft.AspNetCore.OpenApi` and `Swashbuckle.AspNetCore`, register Swagger services, and enable Swagger UI in development while removing default template files and sample endpoints.
 - **Feature-based folder structure**: Each layer organizes code under `Features/<Entity>` so all slices stay grouped.
-- **Automatic migrations**: `new crud` and `new action` trigger EF Core migrations and database updates right after scaffolding when the `dotnet-ef` tool is available; if not, a warning includes OS-specific installation commands.
+- **Automatic migrations**: `new crud` and `new action` verify `dotnet-ef` and attempt installation if needed. Migrations and database updates run only when the tool is successfully installed; otherwise the process aborts with OS-specific installation guidance.
 
 ---
 

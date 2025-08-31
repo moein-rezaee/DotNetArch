@@ -233,6 +233,20 @@ class Program
         return success;
     }
 
+    public static bool EnsureEfTool(string? workingDir = null)
+    {
+        if (RunCommand("dotnet ef --version", workingDir, print: false))
+            return true;
+
+        Console.WriteLine("ℹ️ dotnet-ef not found. Attempting installation...");
+        var cmd = GetEfToolInstallMessage();
+        if (RunCommand(cmd, workingDir))
+            return RunCommand("dotnet ef --version", workingDir, print: false);
+
+        Console.WriteLine($"❌ Failed to install dotnet-ef. Install manually with: {cmd}");
+        return false;
+    }
+
     public static string GetEfToolInstallMessage()
     {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
