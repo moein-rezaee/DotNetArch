@@ -30,7 +30,7 @@ using {{solution}}.Core.Features.{{entities}};
 namespace {{startupProject}}.Features.{{entities}};
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("Api/[controller]")]
 public class {{entity}}Controller : ControllerBase
 {
     private readonly IMediator _mediator;
@@ -40,10 +40,10 @@ public class {{entity}}Controller : ControllerBase
     [HttpGet("{id}")]
     public async Task<{{entity}}?> GetById(int id) => await _mediator.Send(new Get{{entity}}ByIdQuery(id));
 
-    [HttpGet("all")]
+    [HttpGet("All")]
     public async Task<List<{{entity}}>> GetAll() => await _mediator.Send(new Get{{entity}}AllQuery());
 
-    [HttpGet]
+    [HttpGet("List")]
     public async Task<PagedResult<{{entity}}>> GetList([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         => await _mediator.Send(new Get{{entity}}ListQuery(page, pageSize));
 
@@ -88,8 +88,8 @@ public class {{entity}}Controller : ControllerBase
             var methods = new Dictionary<string,string>
             {
                 {"GetById", "    [HttpGet(\"{id}\")]\n    public async Task<"+entity+"?> GetById(int id) => await _mediator.Send(new Get"+entity+"ByIdQuery(id));\n"},
-                {"GetAll", "    [HttpGet(\"all\")]\n    public async Task<List<"+entity+">> GetAll() => await _mediator.Send(new Get"+entity+"AllQuery());\n"},
-                {"GetList", "    [HttpGet]\n    public async Task<PagedResult<"+entity+">> GetList([FromQuery] int page = 1, [FromQuery] int pageSize = 10)\n        => await _mediator.Send(new Get"+entity+"ListQuery(page, pageSize));\n"},
+                {"GetAll", "    [HttpGet(\"All\")]\n    public async Task<List<"+entity+">> GetAll() => await _mediator.Send(new Get"+entity+"AllQuery());\n"},
+                {"GetList", "    [HttpGet(\"List\")]\n    public async Task<PagedResult<"+entity+">> GetList([FromQuery] int page = 1, [FromQuery] int pageSize = 10)\n        => await _mediator.Send(new Get"+entity+"ListQuery(page, pageSize));\n"},
                 {"Create", "    [HttpPost]\n    public async Task<"+entity+"> Create([FromBody] "+entity+" entity) =>\n        await _mediator.Send(new Create"+entity+"Command(entity));\n"},
                 {"Update", "    [HttpPut(\"{id}\")]\n    public async Task Update(int id, [FromBody] "+entity+" entity)\n    {\n        entity.Id = id;\n        await _mediator.Send(new Update"+entity+"Command(entity));\n    }\n"},
                 {"Delete", "    [HttpDelete(\"{id}\")]\n    public async Task Delete(int id) => await _mediator.Send(new Delete"+entity+"Command(id));\n"}

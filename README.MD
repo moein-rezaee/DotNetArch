@@ -84,6 +84,8 @@ Application/<Entity>/
 
 Every operation folder under Commands or Queries contains the request, its handler, and a corresponding validator. The first time you scaffold an entity you choose either SQL Server or SQLite and the choice is saved to `dotnet-arch.yml` so later `new crud` runs reuse the same provider. Generated code supports pagination via `PagedResult<T>` and re-running the command updates existing files instead of duplicating them.
 
+All controller routes and endpoint paths are emitted in **PascalCase** (for example, `/Api/Product/All`).
+
 #### Add a Custom Action
 
 Extend an existing slice or create a minimal slice with a single action:

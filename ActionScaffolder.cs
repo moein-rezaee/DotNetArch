@@ -305,7 +305,7 @@ public class {{action}}{{entity}}Validator : AbstractValidator<{{action}}{{entit
         var method = isCommand
             ? new[]
             {
-                $"    [HttpPost(\"{action.ToLower()}\")]",
+                $"    [HttpPost(\"{Upper(action)}\")]",
                 $"    public async Task<IActionResult> {Upper(action)}([FromBody] {entity} entity)",
                 "    {",
                 $"        await _mediator.Send(new {Upper(action)}{entity}Command(entity));",
@@ -315,7 +315,7 @@ public class {{action}}{{entity}}Validator : AbstractValidator<{{action}}{{entit
             }
             : new[]
             {
-                $"    [HttpGet(\"{action.ToLower()}/{{id}}\")]",
+                $"    [HttpGet(\"{Upper(action)}/{{id}}\")]",
                 $"    public async Task<{entity}?> {Upper(action)}(int id)",
                 "        => await _mediator.Send(new " + Upper(action) + entity + "Query(id));",
                 ""
@@ -332,7 +332,7 @@ public class {{action}}{{entity}}Validator : AbstractValidator<{{action}}{{entit
                 $"namespace {config.StartupProject}.Features.{plural};",
                 "",
                 "[ApiController]",
-                "[Route(\"api/[controller]\")]",
+                "[Route(\"Api/[controller]\")]",
                 $"public class {entity}Controller : ControllerBase",
                 "{",
                 "    private readonly IMediator _mediator;",
