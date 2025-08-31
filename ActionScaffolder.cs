@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Collections.Generic;
 using DotNetArch.Scaffolding;
 using DotNetArch.Scaffolding.Steps;
 
@@ -42,7 +43,10 @@ static class ActionScaffolder
 
         AddRepositoryMethod(config, entity, action, isCommand);
         AddApplicationFiles(config, entity, action, isCommand);
-        AddControllerMethod(config, entity, action, isCommand);
+        if (config.ApiStyle.Equals("fast", StringComparison.OrdinalIgnoreCase))
+            AddMinimalApiMethod(config, entity, action, isCommand);
+        else
+            AddControllerMethod(config, entity, action, isCommand);
 
         if (!provider.Equals("Mongo", StringComparison.OrdinalIgnoreCase))
         {
@@ -361,6 +365,66 @@ public class {{action}}{{entity}}Validator : AbstractValidator<{{action}}{{entit
             lines.InsertRange(end, method);
             File.WriteAllLines(file, lines);
         }
+    }
+
+    static void AddMinimalApiMethod(SolutionConfig config, string entity, string action, bool isCommand)
+    {
+        var solution = config.SolutionName;
+        var startup = config.StartupProject;
+        var plural = Naming.Pluralize(entity);
+        var apiDir = Path.Combine(config.SolutionPath, startup, "Features", plural);
+        Directory.CreateDirectory(apiDir);
+        var file = Path.Combine(apiDir, $"{entity}Endpoints.cs");
+        var lines = File.Exists(file)
+            ? File.ReadAllLines(file).ToList()
+            : new List<string>
+            {
+                "using MediatR;",
+                "using Microsoft.AspNetCore.Builder;",
+                "using Microsoft.AspNetCore.Http;",
+                $"using {solution}.Core.Features.{plural};",
+                "",
+                $"namespace {startup}.Features.{plural};",
+                "",
+                $"public static class {entity}Endpoints",
+                "{",
+                $"    public static void Map{entity}Endpoints(this IEndpointRouteBuilder routes)",
+                "    {",
+                "    }",
+                "}",
+            };
+
+        var usingLine = $"using {solution}.Application.Features.{plural}.{(isCommand ? "Commands" : "Queries")}.{Upper(action)};";
+        var lastUsing = lines.FindLastIndex(l => l.StartsWith("using "));
+        if (!lines.Any(l => l.Trim() == usingLine))
+            lines.Insert(lastUsing + 1, usingLine);
+
+        var methodLines = isCommand
+            ? new[]
+            {
+                $"        routes.MapPost(\"/Api/{entity}/{Upper(action)}\", async (IMediator mediator, {entity} entity) =>",
+                "        {",
+                $"            await mediator.Send(new {Upper(action)}{entity}Command(entity));",
+                "            return Results.Ok();",
+                "        });",
+                "",
+            }
+            : new[]
+            {
+                $"        routes.MapGet(\"/Api/{entity}/{Upper(action)}/{{id}}\", async (IMediator mediator, int id) =>",
+                $"            await mediator.Send(new {Upper(action)}{entity}Query(id)) is {entity} result ? Results.Ok(result) : Results.NotFound());",
+                "",
+            };
+
+        var mapIdx = lines.FindLastIndex(l => l.TrimStart().StartsWith("routes.Map"));
+        if (mapIdx == -1)
+        {
+            var headerIdx = lines.FindIndex(l => l.Contains($"Map{entity}Endpoints"));
+            mapIdx = lines.FindIndex(headerIdx, l => l.Trim() == "{");
+        }
+        lines.InsertRange(mapIdx + 1, methodLines);
+
+        File.WriteAllLines(file, lines);
     }
 
     static string Upper(string text) => string.IsNullOrEmpty(text) ? text : char.ToUpper(text[0]) + text.Substring(1);

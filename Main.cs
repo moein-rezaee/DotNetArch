@@ -77,7 +77,7 @@ class Program
             }
 
             if (isCommand == null)
-                isCommand = Ask("Is command? (true/false)", "true").ToLower() != "false";
+                isCommand = Ask("Is command? (y/n)", "y").Trim().ToLower().StartsWith("y");
             if (string.IsNullOrWhiteSpace(outputPath))
                 outputPath = Ask("Output path", Directory.GetCurrentDirectory());
 

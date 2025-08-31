@@ -177,11 +177,8 @@ public class ProjectUpdateStep : IScaffoldStep
         lines.RemoveAll(l => l.TrimStart().StartsWith("using ") && l.Contains(".."));
         // remove stray self-referencing namespace imports left by templates
         lines.RemoveAll(l =>
-        {
-            var collapsed = Regex.Replace(l, @"\s+", "");
-            return collapsed.Equals($"using{solution};", StringComparison.Ordinal) ||
-                   collapsed.Equals($"using{startupProject};", StringComparison.Ordinal);
-        });
+            Regex.IsMatch(l, $@"^\s*(global\s+)?using\s+{Regex.Escape(solution)}\s*;" ) ||
+            Regex.IsMatch(l, $@"^\s*(global\s+)?using\s+{Regex.Escape(startupProject)}\s*;" ));
         var usingLines = new List<string>
         {
             "using System;",
