@@ -98,7 +98,7 @@ When running outside the solution directory, pass `--output` so the tool can loc
 dotnet-arch new action --entity=EntityName --action=getfile --is-command=false --output=../MyApp
 ```
 
-The tool generates the command or query, handler, validator, repository method, and controller endpoint for the specified action.
+The tool generates the command or query, handler, validator, repository method, and controller endpoint for the specified action. If the entity slice is missing, a minimal repository and controller are also created with only this action stub.
 
 ---
 

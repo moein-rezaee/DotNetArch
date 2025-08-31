@@ -25,7 +25,6 @@ static class ActionScaffolder
             new ProjectUpdateStep(),
             new EntityStep(),
             new DbContextStep(),
-            new RepositoryStep(),
             new UnitOfWorkStep()
         };
         foreach (var step in steps)
@@ -42,8 +41,22 @@ static class ActionScaffolder
     {
         var solution = config.SolutionName;
         var plural = Naming.Pluralize(entity);
+
         var iface = Path.Combine(config.SolutionPath, $"{solution}.Core", "Domain", plural, $"I{entity}Repository.cs");
-        if (File.Exists(iface))
+        Directory.CreateDirectory(Path.GetDirectoryName(iface)!);
+        if (!File.Exists(iface))
+        {
+            var iContent = @"using System.Threading.Tasks;\nusing {{solution}}.Core.Domain.{{entities}};\n\nnamespace {{solution}}.Core.Domain.{{entities}};\n\npublic interface I{{entity}}Repository\n{\n    {{methodSig}}\n}\n";
+            var sig = isCommand
+                ? $"Task {Upper(action)}Async({entity} entity);"
+                : $"Task<{entity}?> {Upper(action)}Async(int id);";
+            File.WriteAllText(iface, iContent
+                .Replace("{{solution}}", solution)
+                .Replace("{{entity}}", entity)
+                .Replace("{{entities}}", plural)
+                .Replace("{{methodSig}}", sig));
+        }
+        else
         {
             var lines = File.ReadAllLines(iface).ToList();
             if (!lines.Any(l => l.Contains($"{Upper(action)}Async")))
@@ -56,8 +69,27 @@ static class ActionScaffolder
                 File.WriteAllLines(iface, lines);
             }
         }
+
         var impl = Path.Combine(config.SolutionPath, $"{solution}.Infrastructure", plural, $"{entity}Repository.cs");
-        if (File.Exists(impl))
+        Directory.CreateDirectory(Path.GetDirectoryName(impl)!);
+        if (!File.Exists(impl))
+        {
+            var mReturn = isCommand ? "Task" : $"Task<{entity}?>";
+            var param = isCommand ? $"{entity} entity" : "int id";
+            var body = isCommand
+                ? "        // TODO: implement action\n        await Task.CompletedTask;"
+                : $"        // TODO: implement action\n        return await _context.Set<{entity}>().FindAsync(id);";
+            var rContent = @"using System.Threading.Tasks;\nusing {{solution}}.Core.Domain.{{entities}};\nusing {{solution}}.Infrastructure.Persistence;\n\nnamespace {{solution}}.Infrastructure.{{entities}};\n\npublic class {{entity}}Repository : I{{entity}}Repository\n{\n    private readonly AppDbContext _context;\n    public {{entity}}Repository(AppDbContext context) => _context = context;\n\n    public async {{mReturn}} {{action}}Async({{param}})\n    {\n{{body}}\n    }\n}\n";
+            File.WriteAllText(impl, rContent
+                .Replace("{{solution}}", solution)
+                .Replace("{{entity}}", entity)
+                .Replace("{{entities}}", plural)
+                .Replace("{{action}}", Upper(action))
+                .Replace("{{mReturn}}", mReturn)
+                .Replace("{{param}}", param)
+                .Replace("{{body}}", body));
+        }
+        else
         {
             var lines = File.ReadAllLines(impl).ToList();
             if (!lines.Any(l => l.Contains($"{Upper(action)}Async(")))
@@ -70,7 +102,7 @@ static class ActionScaffolder
                         "    {",
                         "        // TODO: implement action",
                         "        await Task.CompletedTask;",
-                        "    }"
+                        "    }",
                     }
                     : new[]
                     {
@@ -78,7 +110,7 @@ static class ActionScaffolder
                         "    {",
                         "        // TODO: implement action",
                         $"        return await _context.Set<{entity}>().FindAsync(id);",
-                        "    }"
+                        "    }",
                     };
                 lines.InsertRange(idx, method);
                 File.WriteAllLines(impl, lines);
@@ -99,82 +131,15 @@ static class ActionScaffolder
                                   .Replace("{{action}}", Upper(action));
         if (isCommand)
         {
-            File.WriteAllText(Path.Combine(dir, $"{Upper(action)}{entity}Command.cs"), Fill(@"
-using MediatR;
-using {{solution}}.Core.Domain.{{entities}};
-
-namespace {{solution}}.Application.{{entities}}.Commands.{{action}};
-public record {{action}}{{entity}}Command({{entity}} Entity) : IRequest;
-"));
-            File.WriteAllText(Path.Combine(dir, $"{Upper(action)}{entity}Handler.cs"), Fill(@"
-using MediatR;
-using System.Threading;
-using System.Threading.Tasks;
-using {{solution}}.Core.Interfaces;
-using {{solution}}.Core.Domain.{{entities}};
-
-namespace {{solution}}.Application.{{entities}}.Commands.{{action}};
-public class {{action}}{{entity}}Handler : IRequestHandler<{{action}}{{entity}}Command>
-{
-    private readonly IUnitOfWork _uow;
-    public {{action}}{{entity}}Handler(IUnitOfWork uow) => _uow = uow;
-    public async Task Handle({{action}}{{entity}}Command request, CancellationToken ct)
-    {
-        await _uow.{{entity}}Repository.{{action}}Async(request.Entity);
-        await _uow.SaveChangesAsync();
-    }
-}
-"));
-            File.WriteAllText(Path.Combine(dir, $"{Upper(action)}{entity}Validator.cs"), Fill(@"
-using FluentValidation;
-
-namespace {{solution}}.Application.{{entities}}.Commands.{{action}};
-public class {{action}}{{entity}}Validator : AbstractValidator<{{action}}{{entity}}Command>
-{
-    public {{action}}{{entity}}Validator()
-    {
-        RuleFor(x => x.Entity).NotNull();
-    }
-}
-"));
+            File.WriteAllText(Path.Combine(dir, $"{Upper(action)}{entity}Command.cs"), Fill(@"\nusing MediatR;\nusing {{solution}}.Core.Domain.{{entities}};\n\nnamespace {{solution}}.Application.{{entities}}.Commands.{{action}};\npublic record {{action}}{{entity}}Command({{entity}} Entity) : IRequest;\n"));
+            File.WriteAllText(Path.Combine(dir, $"{Upper(action)}{entity}Handler.cs"), Fill(@"\nusing MediatR;\nusing System.Threading;\nusing System.Threading.Tasks;\nusing {{solution}}.Core.Interfaces;\nusing {{solution}}.Core.Domain.{{entities}};\n\nnamespace {{solution}}.Application.{{entities}}.Commands.{{action}};\npublic class {{action}}{{entity}}Handler : IRequestHandler<{{action}}{{entity}}Command>\n{\n    private readonly IUnitOfWork _uow;\n    public {{action}}{{entity}}Handler(IUnitOfWork uow) => _uow = uow;\n    public async Task Handle({{action}}{{entity}}Command request, CancellationToken ct)\n    {\n        await _uow.{{entity}}Repository.{{action}}Async(request.Entity);\n        await _uow.SaveChangesAsync();\n    }\n}\n"));
+            File.WriteAllText(Path.Combine(dir, $"{Upper(action)}{entity}Validator.cs"), Fill(@"\nusing FluentValidation;\n\nnamespace {{solution}}.Application.{{entities}}.Commands.{{action}};\npublic class {{action}}{{entity}}Validator : AbstractValidator<{{action}}{{entity}}Command>\n{\n    public {{action}}{{entity}}Validator()\n    {\n        RuleFor(x => x.Entity).NotNull();\n    }\n}\n"));
         }
         else
         {
-            File.WriteAllText(Path.Combine(dir, $"{Upper(action)}{entity}Query.cs"), Fill(@"
-using MediatR;
-using {{solution}}.Core.Domain.{{entities}};
-
-namespace {{solution}}.Application.{{entities}}.Queries.{{action}};
-public record {{action}}{{entity}}Query(int Id) : IRequest<{{entity}}?>;
-"));
-            File.WriteAllText(Path.Combine(dir, $"{Upper(action)}{entity}Handler.cs"), Fill(@"
-using MediatR;
-using System.Threading;
-using System.Threading.Tasks;
-using {{solution}}.Core.Interfaces;
-using {{solution}}.Core.Domain.{{entities}};
-
-namespace {{solution}}.Application.{{entities}}.Queries.{{action}};
-public class {{action}}{{entity}}Handler : IRequestHandler<{{action}}{{entity}}Query, {{entity}}?>
-{
-    private readonly IUnitOfWork _uow;
-    public {{action}}{{entity}}Handler(IUnitOfWork uow) => _uow = uow;
-    public async Task<{{entity}}?> Handle({{action}}{{entity}}Query request, CancellationToken ct)
-        => await _uow.{{entity}}Repository.{{action}}Async(request.Id);
-}
-"));
-            File.WriteAllText(Path.Combine(dir, $"{Upper(action)}{entity}Validator.cs"), Fill(@"
-using FluentValidation;
-
-namespace {{solution}}.Application.{{entities}}.Queries.{{action}};
-public class {{action}}{{entity}}Validator : AbstractValidator<{{action}}{{entity}}Query>
-{
-    public {{action}}{{entity}}Validator()
-    {
-        RuleFor(x => x.Id).GreaterThan(0);
-    }
-}
-"));
+            File.WriteAllText(Path.Combine(dir, $"{Upper(action)}{entity}Query.cs"), Fill(@"\nusing MediatR;\nusing {{solution}}.Core.Domain.{{entities}};\n\nnamespace {{solution}}.Application.{{entities}}.Queries.{{action}};\npublic record {{action}}{{entity}}Query(int Id) : IRequest<{{entity}}?>;\n"));
+            File.WriteAllText(Path.Combine(dir, $"{Upper(action)}{entity}Handler.cs"), Fill(@"\nusing MediatR;\nusing System.Threading;\nusing System.Threading.Tasks;\nusing {{solution}}.Core.Interfaces;\nusing {{solution}}.Core.Domain.{{entities}};\n\nnamespace {{solution}}.Application.{{entities}}.Queries.{{action}};\npublic class {{action}}{{entity}}Handler : IRequestHandler<{{action}}{{entity}}Query, {{entity}}?>\n{\n    private readonly IUnitOfWork _uow;\n    public {{action}}{{entity}}Handler(IUnitOfWork uow) => _uow = uow;\n    public async Task<{{entity}}?> Handle({{action}}{{entity}}Query request, CancellationToken ct)\n        => await _uow.{{entity}}Repository.{{action}}Async(request.Id);\n}\n"));
+            File.WriteAllText(Path.Combine(dir, $"{Upper(action)}{entity}Validator.cs"), Fill(@"\nusing FluentValidation;\n\nnamespace {{solution}}.Application.{{entities}}.Queries.{{action}};\npublic class {{action}}{{entity}}Validator : AbstractValidator<{{action}}{{entity}}Query>\n{\n    public {{action}}{{entity}}Validator()\n    {\n        RuleFor(x => x.Id).GreaterThan(0);\n    }\n}\n"));
         }
     }
 
@@ -183,13 +148,8 @@ public class {{action}}{{entity}}Validator : AbstractValidator<{{action}}{{entit
         var solution = config.SolutionName;
         var plural = Naming.Pluralize(entity);
         var apiDir = Path.Combine(config.SolutionPath, config.StartupProject, plural);
+        Directory.CreateDirectory(apiDir);
         var file = Path.Combine(apiDir, $"{entity}Controller.cs");
-        if (!File.Exists(file)) return;
-        var lines = File.ReadAllLines(file).ToList();
-        var usingLine = $"using {solution}.Application.{plural}.{(isCommand ? "Commands" : "Queries")}.{Upper(action)};";
-        var lastUsing = lines.FindLastIndex(l => l.StartsWith("using "));
-        if (!lines.Contains(usingLine))
-            lines.Insert(lastUsing + 1, usingLine);
         var method = isCommand
             ? new[]
             {
@@ -208,9 +168,38 @@ public class {{action}}{{entity}}Validator : AbstractValidator<{{action}}{{entit
                 "        => await _mediator.Send(new " + Upper(action) + entity + "Query(id));",
                 ""
             };
-        var end = lines.FindLastIndex(l => l.Trim() == "}");
-        lines.InsertRange(end, method);
-        File.WriteAllLines(file, lines);
+        if (!File.Exists(file))
+        {
+            var content = string.Join(Environment.NewLine, new[]
+            {
+                "using MediatR;",
+                "using Microsoft.AspNetCore.Mvc;",
+                $"using {solution}.Core.Domain.{plural};",
+                $"using {solution}.Application.{plural}.{(isCommand ? "Commands" : "Queries")}.{Upper(action)};",
+                "",
+                $"namespace {config.StartupProject}.{plural};",
+                "",
+                "[ApiController]",
+                "[Route(\"api/[controller]\")]",
+                $"public class {entity}Controller : ControllerBase",
+                "{",
+                "    private readonly IMediator _mediator;",
+                $"    public {entity}Controller(IMediator mediator) => _mediator = mediator;",
+                ""
+            }.Concat(method).Concat(new[]{"}"}));
+            File.WriteAllText(file, content);
+        }
+        else
+        {
+            var lines = File.ReadAllLines(file).ToList();
+            var usingLine = $"using {solution}.Application.{plural}.{(isCommand ? "Commands" : "Queries")}.{Upper(action)};";
+            var lastUsing = lines.FindLastIndex(l => l.StartsWith("using "));
+            if (!lines.Contains(usingLine))
+                lines.Insert(lastUsing + 1, usingLine);
+            var end = lines.FindLastIndex(l => l.Trim() == "}");
+            lines.InsertRange(end, method);
+            File.WriteAllLines(file, lines);
+        }
     }
 
     static string Upper(string text) => string.IsNullOrEmpty(text) ? text : char.ToUpper(text[0]) + text.Substring(1);
