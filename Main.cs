@@ -233,6 +233,14 @@ class Program
         return success;
     }
 
+    public static string GetEfToolInstallMessage()
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            return "dotnet tool install --global dotnet-ef && setx PATH \"%PATH%;%USERPROFILE%\\.dotnet\\tools\"";
+        else
+            return "dotnet tool install --global dotnet-ef && export PATH=\"$PATH:$HOME/.dotnet/tools\"";
+    }
+
     static void DeleteDefaultClass(string projectName)
     {
         var filePath = Path.Combine(projectName, "Class1.cs");

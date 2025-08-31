@@ -48,7 +48,7 @@ static class ActionScaffolder
             }
             else
             {
-                Console.WriteLine("⚠️ dotnet-ef not found; skipping migrations. Install with 'dotnet tool install --global dotnet-ef'.");
+                Console.WriteLine($"⚠️ dotnet-ef not found; skipping migrations. Install with: {Program.GetEfToolInstallMessage()}");
             }
         }
         finally
