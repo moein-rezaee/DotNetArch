@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using DotNetArch.Scaffolding;
 
@@ -75,8 +76,10 @@ public class {{entity}}Controller : ControllerBase
             if (!text.Contains("GetById"))
             {
                 var idx = text.LastIndexOf("}");
-                text = text.Insert(idx, content.Split(new[] {"public class"},2)[1]
-                    .Split(new[] {"{\n"},2)[1]);
+                var snippetStart = content.IndexOf("public class", StringComparison.Ordinal);
+                var snippet = content.Substring(snippetStart);
+                snippet = snippet.Substring(snippet.IndexOf("{", StringComparison.Ordinal) + 1);
+                text = text.Insert(idx, snippet);
             }
             var requiredUsings = new[]
             {
