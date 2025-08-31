@@ -13,6 +13,7 @@ public class ControllerStep : IScaffoldStep
         var controllerFile = Path.Combine(apiDir, $"{entity}Controller.cs");
         var content = @"using MediatR;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using {{solution}}.Application.{{entities}}.Commands.Create;
 using {{solution}}.Application.{{entities}}.Commands.Update;
@@ -26,17 +27,17 @@ using {{solution}}.Core.Domain.{{entities}};
 namespace {{startupProject}}.{{entities}};
 
 [ApiController]
-[Route("api/[controller]")]
+[Route(""api/[controller]"")]
 public class {{entity}}Controller : ControllerBase
 {
     private readonly IMediator _mediator;
 
     public {{entity}}Controller(IMediator mediator) => _mediator = mediator;
 
-    [HttpGet("{id}")]
+    [HttpGet(""{id}"")]
     public async Task<{{entity}}?> GetById(int id) => await _mediator.Send(new Get{{entity}}ByIdQuery(id));
 
-    [HttpGet("all")]
+    [HttpGet(""all"")]
     public async Task<List<{{entity}}>> GetAll() => await _mediator.Send(new Get{{entity}}AllQuery());
 
     [HttpGet]
@@ -44,19 +45,19 @@ public class {{entity}}Controller : ControllerBase
         => await _mediator.Send(new Get{{entity}}ListQuery(page, pageSize));
 
     [HttpPost]
-    public async Task<{{entity}}> Create([FromBody] {{entity}} entity) => await _mediator.Send(new Create{{entity}}Command(entity));
+    public async Task<{{entity}}> Create([FromBody] {{entity}} entity) =>
+        await _mediator.Send(new Create{{entity}}Command(entity));
 
-    [HttpPut("{id}")]
+    [HttpPut(""{id}"")]
     public async Task Update(int id, [FromBody] {{entity}} entity)
     {
         entity.Id = id;
         await _mediator.Send(new Update{{entity}}Command(entity));
     }
 
-    [HttpDelete("{id}")]
+    [HttpDelete(""{id}"")]
     public async Task Delete(int id) => await _mediator.Send(new Delete{{entity}}Command(id));
-}
-";
+}";
         content = content
             .Replace("{{solution}}", solution)
             .Replace("{{entity}}", entity)
@@ -65,3 +66,4 @@ public class {{entity}}Controller : ControllerBase
         File.WriteAllText(controllerFile, content);
     }
 }
+
