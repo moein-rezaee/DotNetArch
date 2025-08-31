@@ -162,8 +162,8 @@ public class ProjectUpdateStep : IScaffoldStep
         lines.RemoveAll(l => l.Contains("FluentValidation.AspNetCore"));
         lines.RemoveAll(l => l.Contains("AddFluentValidationAutoValidation"));
         lines.RemoveAll(l => l.Contains("AddFluentValidationClientsideAdapters"));
-        // clean up malformed namespace lines (e.g., double dots)
-        lines.RemoveAll(l => l.Contains(".."));
+        // clean up malformed using lines that accidentally contain double dots
+        lines.RemoveAll(l => l.TrimStart().StartsWith("using ") && l.Contains(".."));
         var usingLines = new List<string>
         {
             "using System;",
