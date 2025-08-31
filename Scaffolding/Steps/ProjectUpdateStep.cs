@@ -17,8 +17,13 @@ public class ProjectUpdateStep : IScaffoldStep
     private const string OpenApiVersion = "9.0.0";
     private const string SwaggerVersion = "6.5.0";
 
-    public void Execute(string solution, string entity, string provider, string basePath, string startupProject)
+    public void Execute(SolutionConfig config, string entity)
     {
+        var solution = config.SolutionName;
+        var provider = config.DatabaseProvider;
+        var basePath = config.SolutionPath;
+        var startupProject = config.StartupProject;
+        var apiStyle = config.ApiStyle;
         var infraPath = Path.Combine(basePath, $"{solution}.Infrastructure");
         if (provider == "SQLite")
         {
@@ -30,7 +35,7 @@ public class ProjectUpdateStep : IScaffoldStep
         UpdateInfrastructureProject(solution, basePath);
         UpdateApiProject(solution, provider, basePath, startupProject);
         RemoveTemplateFiles(basePath, startupProject);
-        UpdateProgram(solution, provider, entity, basePath, startupProject);
+        UpdateProgram(solution, provider, entity, basePath, startupProject, apiStyle);
     }
 
     static void EnsurePackage(XDocument doc, string include, string version)
@@ -156,7 +161,7 @@ public class ProjectUpdateStep : IScaffoldStep
         doc.Save(apiProj);
     }
 
-    static void UpdateProgram(string solution, string provider, string entity, string basePath, string startupProject)
+    static void UpdateProgram(string solution, string provider, string entity, string basePath, string startupProject, string apiStyle)
     {
         var programFile = Path.Combine(basePath, startupProject, "Program.cs");
         if (!File.Exists(programFile)) return;
@@ -187,6 +192,8 @@ public class ProjectUpdateStep : IScaffoldStep
             usingLines.Add($"using {solution}.Infrastructure;");
             usingLines.Add($"using {solution}.Core.Features.{plural};");
             usingLines.Add($"using {solution}.Infrastructure.Features.{plural};");
+            if (apiStyle == "fast")
+                usingLines.Add($"using {startupProject}.Features.{plural};");
         }
 
         foreach (var u in usingLines)
@@ -202,8 +209,15 @@ public class ProjectUpdateStep : IScaffoldStep
                 lines.Insert(insertIndex++, "builder.Services.AddEndpointsApiExplorer();");
             if (!lines.Any(l => l.Contains("AddSwaggerGen")))
                 lines.Insert(insertIndex++, "builder.Services.AddSwaggerGen();");
-            if (!lines.Any(l => l.Contains("AddControllers")))
-                lines.Insert(insertIndex++, "builder.Services.AddControllers();");
+            if (apiStyle == "controller")
+            {
+                if (!lines.Any(l => l.Contains("AddControllers")))
+                    lines.Insert(insertIndex++, "builder.Services.AddControllers();");
+            }
+            else
+            {
+                lines.RemoveAll(l => l.Contains("AddControllers"));
+            }
             if (!string.IsNullOrWhiteSpace(entity) && !lines.Any(l => l.Contains("AddDbContext<AppDbContext>")))
             {
                 if (provider == "SQLite")
@@ -248,8 +262,14 @@ public class ProjectUpdateStep : IScaffoldStep
         var runIdx = lines.FindIndex(l => l.Contains("app.Run();"));
         if (runIdx >= 0)
         {
-            if (!lines.Any(l => l.Contains("app.MapControllers()")))
+            if (apiStyle == "controller" && !lines.Any(l => l.Contains("app.MapControllers()")))
                 lines.Insert(runIdx++, "app.MapControllers();");
+            if (apiStyle == "fast")
+            {
+                lines.RemoveAll(l => l.Contains("app.MapControllers()"));
+                if (!string.IsNullOrWhiteSpace(entity) && !lines.Any(l => l.Contains($"app.Map{entity}Endpoints")))
+                    lines.Insert(runIdx++, $"app.Map{entity}Endpoints();");
+            }
             if (!string.IsNullOrWhiteSpace(entity) && !lines.Any(l => l.Contains("Database.Migrate") || l.Contains("Database.EnsureCreated")))
             {
                 var migrateLines = new List<string>

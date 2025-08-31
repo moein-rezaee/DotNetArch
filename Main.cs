@@ -25,16 +25,21 @@ class Program
             }
 
             if (string.IsNullOrWhiteSpace(entity))
+                entity = Ask("Enter entity name");
+            if (string.IsNullOrWhiteSpace(entity))
             {
-                Console.WriteLine("Usage: dotnet-arch new crud --entity=EntityName [--output=Path]");
+                Error("Entity name is required.");
                 return;
             }
 
-            var basePath = string.IsNullOrWhiteSpace(outputPath) ? Directory.GetCurrentDirectory() : outputPath;
+            if (string.IsNullOrWhiteSpace(outputPath))
+                outputPath = Ask("Output path", Directory.GetCurrentDirectory());
+
+            var basePath = outputPath!;
             var config = ConfigManager.Load(basePath);
             if (config == null)
             {
-                Console.WriteLine("Solution configuration not found. Run 'new solution' first.");
+                Error("Solution configuration not found. Run 'new solution' first.");
                 return;
             }
 
@@ -47,7 +52,7 @@ class Program
             string? entity = null;
             string? action = null;
             string? outputPath = null;
-            bool isCommand = true;
+            bool? isCommand = null;
 
             for (int i = 2; i < args.Length; i++)
             {
@@ -56,26 +61,35 @@ class Program
                 else if (args[i].StartsWith("--action="))
                     action = args[i].Substring("--action=".Length);
                 else if (args[i].StartsWith("--is-command="))
-                    bool.TryParse(args[i].Substring("--is-command=".Length), out isCommand);
+                    isCommand = bool.Parse(args[i].Substring("--is-command=".Length));
                 else if (args[i].StartsWith("--output="))
                     outputPath = args[i].Substring("--output=".Length);
             }
 
+            if (string.IsNullOrWhiteSpace(entity))
+                entity = Ask("Enter entity name");
+            if (string.IsNullOrWhiteSpace(action))
+                action = Ask("Enter action name");
             if (string.IsNullOrWhiteSpace(entity) || string.IsNullOrWhiteSpace(action))
             {
-                Console.WriteLine("Usage: dotnet-arch new action --entity=Entity --action=Name [--is-command=false] [--output=Path]");
+                Error("Entity and action are required.");
                 return;
             }
 
-            var basePath = string.IsNullOrWhiteSpace(outputPath) ? Directory.GetCurrentDirectory() : outputPath;
+            if (isCommand == null)
+                isCommand = Ask("Is command? (true/false)", "true").ToLower() != "false";
+            if (string.IsNullOrWhiteSpace(outputPath))
+                outputPath = Ask("Output path", Directory.GetCurrentDirectory());
+
+            var basePath = outputPath!;
             var config = ConfigManager.Load(basePath);
             if (config == null)
             {
-                Console.WriteLine("Solution configuration not found. Run 'new solution' first.");
+                Error("Solution configuration not found. Run 'new solution' first.");
                 return;
             }
 
-            ActionScaffolder.Generate(config, entity, action, isCommand);
+            ActionScaffolder.Generate(config, entity, action, isCommand.Value);
             return;
         }
 
@@ -84,6 +98,7 @@ class Program
             string? solutionName = null;
             string? outputPath = null;
             string? startup = null;
+            string? style = null;
             for (int i = 2; i < args.Length; i++)
             {
                 if (!args[i].StartsWith("--"))
@@ -92,57 +107,64 @@ class Program
                     outputPath = args[i].Substring("--output=".Length);
                 else if (args[i].StartsWith("--startup="))
                     startup = args[i].Substring("--startup=".Length);
+                else if (args[i].StartsWith("--style="))
+                    style = args[i].Substring("--style=".Length);
             }
 
             if (string.IsNullOrWhiteSpace(solutionName))
+                solutionName = Ask("Enter solution name");
+            if (string.IsNullOrWhiteSpace(solutionName))
             {
-                Console.WriteLine("Usage: dotnet-arch new solution <SolutionName> [--output=Path] [--startup=ProjectName]");
+                Error("Solution name is required.");
                 return;
             }
 
             if (string.IsNullOrWhiteSpace(outputPath))
-                outputPath = Directory.GetCurrentDirectory();
+                outputPath = Ask("Output path", Directory.GetCurrentDirectory());
             if (string.IsNullOrWhiteSpace(startup))
-                startup = $"{solutionName}.API";
+                startup = Ask("Startup project", $"{solutionName}.API");
+            if (string.IsNullOrWhiteSpace(style))
+                style = Ask("API style (controller/fast)", "controller").ToLower();
+            if (string.IsNullOrWhiteSpace(style))
+                style = "controller";
 
-            GenerateSolution(solutionName, outputPath, startup);
+            GenerateSolution(solutionName, outputPath!, startup!, style!);
             return;
         }
 
         GenerateSolutionInteractive();
     }
 
+    static string Ask(string message, string? defaultValue = null)
+    {
+        Console.Write($"{message}{(defaultValue != null ? $" [{defaultValue}]" : "")}: ");
+        var input = Console.ReadLine();
+        return string.IsNullOrWhiteSpace(input) ? (defaultValue ?? string.Empty) : input;
+    }
+
+    static void Info(string msg) => Console.WriteLine($"ℹ️ {msg}");
+    static void Success(string msg) => Console.WriteLine($"✅ {msg}");
+    static void Error(string msg) => Console.WriteLine($"❌ {msg}");
+
     static void GenerateSolutionInteractive()
     {
-        Console.WriteLine("==========================================");
-        Console.WriteLine("🚀 Welcome to ScaffoldCleanArch Tool! 🚀");
-        Console.WriteLine("==========================================");
-        Console.WriteLine("A powerful solution scaffolding tool for Clean Architecture!");
-        Console.WriteLine("🔹 Generates a solution structure with core layers");
-        Console.WriteLine("🔹 Adds references between projects automatically");
-        Console.WriteLine("🔹 Ready to start coding your dream project!");
-        Console.WriteLine("==========================================");
-        Console.WriteLine();
-
-        Console.Write("Enter the name of your solution: ");
-        var solutionName = Console.ReadLine();
-
+        Info("Welcome to ScaffoldCleanArch Tool!");
+        var solutionName = Ask("Enter the name of your solution");
         if (string.IsNullOrWhiteSpace(solutionName))
         {
-            Console.WriteLine("Solution name cannot be empty!");
+            Error("Solution name cannot be empty!");
             return;
         }
 
-        Console.Write("Enter output path (leave empty for current): ");
-        var outputPath = Console.ReadLine();
-        if (string.IsNullOrWhiteSpace(outputPath))
-            outputPath = Directory.GetCurrentDirectory();
+        var outputPath = Ask("Enter output path", Directory.GetCurrentDirectory());
+        var startup = Ask("Startup project", $"{solutionName}.API");
+        var style = Ask("API style (controller/fast)", "controller").ToLower();
+        if (string.IsNullOrWhiteSpace(style)) style = "controller";
 
-        var startup = $"{solutionName}.API";
-        GenerateSolution(solutionName, outputPath, startup);
+        GenerateSolution(solutionName, outputPath, startup, style);
     }
 
-    static void GenerateSolution(string solutionName, string outputPath, string startupProject)
+    static void GenerateSolution(string solutionName, string outputPath, string startupProject, string apiStyle)
     {
         var solutionDir = Path.Combine(outputPath, solutionName);
         if (!Directory.Exists(solutionDir))
@@ -171,16 +193,13 @@ class Program
         RunCommand($"dotnet add {solutionName}.API/{solutionName}.API.csproj reference {solutionName}.Infrastructure/{solutionName}.Infrastructure.csproj");
 
         var provider = DatabaseProviderSelector.Choose();
-        ConfigManager.Save(solutionDir, new SolutionConfig { SolutionName = solutionName, SolutionPath = solutionDir, StartupProject = startupProject, DatabaseProvider = provider });
-        new ProjectUpdateStep().Execute(solutionName, string.Empty, provider, solutionDir, startupProject);
+        var config = new SolutionConfig { SolutionName = solutionName, SolutionPath = solutionDir, StartupProject = startupProject, DatabaseProvider = provider, ApiStyle = apiStyle };
+        ConfigManager.Save(solutionDir, config);
+        new ProjectUpdateStep().Execute(config, string.Empty);
 
         Console.WriteLine();
-        Console.WriteLine("✅ Solution created successfully!");
-        Console.WriteLine("==========================================");
-        Console.WriteLine($"🌟 Navigate to the '{solutionName}' directory to explore your project.");
-        Console.WriteLine($"💻 Run 'dotnet build' to build the solution.");
-        Console.WriteLine($"🎉 Start coding your Clean Architecture project now!");
-        Console.WriteLine("==========================================");
+        Success("Solution created successfully!");
+        Info($"Navigate to the '{solutionName}' directory and run 'dotnet build'.");
     }
     public static bool RunCommand(string command, string? workingDir = null, bool print = true)
     {
@@ -223,13 +242,11 @@ class Program
             if (!success)
             {
                 var msg = string.IsNullOrWhiteSpace(stderr) ? stdout : stderr;
-                Console.WriteLine(string.IsNullOrWhiteSpace(msg)
-                    ? "❌ Command failed"
-                    : $"❌ {msg}");
+                Error(string.IsNullOrWhiteSpace(msg) ? "Command failed" : msg.Trim());
             }
-            else if (!string.IsNullOrWhiteSpace(stdout))
+            else
             {
-                Console.WriteLine($"✅ {stdout}");
+                Success(command);
             }
         }
 

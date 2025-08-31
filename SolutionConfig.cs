@@ -6,6 +6,7 @@ public class SolutionConfig
     public string SolutionPath { get; set; } = "";
     public string StartupProject { get; set; } = "";
     public string DatabaseProvider { get; set; } = "";
+    public string ApiStyle { get; set; } = "controller";
 
     public Dictionary<string, EntityStatus> Entities { get; set; } = new();
 }

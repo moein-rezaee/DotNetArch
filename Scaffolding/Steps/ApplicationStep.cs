@@ -6,8 +6,10 @@ namespace DotNetArch.Scaffolding.Steps;
 
 public class ApplicationStep : IScaffoldStep
 {
-    public void Execute(string solution, string entity, string provider, string basePath, string startupProject)
+    public void Execute(SolutionConfig config, string entity)
     {
+        var solution = config.SolutionName;
+        var basePath = config.SolutionPath;
         var plural = Naming.Pluralize(entity);
         var appRoot = Path.Combine(basePath, $"{solution}.Application");
         Directory.CreateDirectory(appRoot);

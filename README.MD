@@ -48,10 +48,10 @@ dotnet tool update --global DotNetArch
 Once installed, you can use the tool to create a solution structure:
 
 ```bash
-dotnet-arch new solution <SolutionName> [--output=Path] [--startup=ProjectName]
+dotnet-arch new solution <SolutionName> [--output=Path] [--startup=ProjectName] [--style=controller|fast]
 ```
 
-`--output` is optional and lets you specify where the solution is created (useful for tests). If omitted, the current directory is used. `--startup` lets you choose which project should act as the startup project (default is `<SolutionName>.API`). During creation you'll be prompted for a database provider (SQL Server, SQLite, PostgreSQL or MongoDB; hitting enter selects SQLite). After scaffolding, a `dotnet-arch.yml` file is written to the solution root storing the solution name, path, startup project, chosen provider, and the scaffolding state of each entity (CRUD and/or custom actions) so later commands can skip work already done. Swagger and service registrations are configured at this stage so the API runs immediately.
+`--output` is optional and lets you specify where the solution is created (useful for tests). If omitted, the current directory is used. `--startup` lets you choose which project should act as the startup project (default is `<SolutionName>.API`). `--style` selects between classic **Controller** APIs or lightweight **Fast** minimal APIs (default `controller`). Missing parameters are prompted interactively with defaults shown in brackets. During creation you'll be prompted for a database provider (SQL Server or SQLite; hitting enter selects SQLite). After scaffolding, a `dotnet-arch.yml` file records the solution name, path, startup project, API style, chosen provider, and the scaffolding state of each entity so later commands can skip work already done. Swagger and service registrations are configured at this stage so the API runs immediately.
 
 This command generates the following layers:
 
@@ -68,7 +68,7 @@ After creating a solution you can scaffold a full CRUD vertical slice for an ent
 dotnet-arch new crud --entity=EntityName [--output=Path]
 ```
 
-`--output` points to the solution directory; if omitted, the current directory is used. The command reads `dotnet-arch.yml` to locate the solution name and scaffolds the entity slice. It creates domain models, repositories, unit of work, MediatR handlers, validators, and API controllers. For SQL Server, the CLI installs `dotnet-ef` if needed and runs migrations; for SQLite, migrations are skipped. Each entity is placed under a `Features/<Entity>` folder in every layer and follows a CQRS-aware vertical slice:
+`--output` points to the solution directory; if omitted, the current directory is used. If required arguments are missing the CLI prompts for them. The command reads `dotnet-arch.yml` to locate the solution name and scaffolds the entity slice. Depending on the selected style it creates either API controllers or minimal FastAPI endpoints along with domain models, repositories, unit of work, MediatR handlers and validators. For SQL Server, the CLI installs `dotnet-ef` if needed and runs migrations; for SQLite, migrations are skipped. Each entity is placed under a `Features/<Entity>` folder in every layer and follows a CQRS-aware vertical slice:
 
 ```
 Application/<Entity>/

@@ -7,8 +7,11 @@ namespace DotNetArch.Scaffolding.Steps;
 
 public class ControllerStep : IScaffoldStep
 {
-    public void Execute(string solution, string entity, string provider, string basePath, string startupProject)
+    public void Execute(SolutionConfig config, string entity)
     {
+        var solution = config.SolutionName;
+        var basePath = config.SolutionPath;
+        var startupProject = config.StartupProject;
         var plural = Naming.Pluralize(entity);
         var apiDir = Path.Combine(basePath, startupProject, "Features", plural);
         Directory.CreateDirectory(apiDir);

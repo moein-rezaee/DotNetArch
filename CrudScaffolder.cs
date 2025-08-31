@@ -35,6 +35,10 @@ static class CrudScaffolder
                 return;
             }
         }
+        var controllerStep = config.ApiStyle.Equals("fast", StringComparison.OrdinalIgnoreCase)
+            ? (IScaffoldStep)new MinimalApiStep()
+            : new ControllerStep();
+
         var steps = new IScaffoldStep[]
         {
             new ProjectUpdateStep(),
@@ -43,11 +47,11 @@ static class CrudScaffolder
             new RepositoryStep(),
             new UnitOfWorkStep(),
             new ApplicationStep(),
-            new ControllerStep()
+            controllerStep
         };
 
         foreach (var step in steps)
-            step.Execute(config.SolutionName, entityName, provider, config.SolutionPath, config.StartupProject);
+            step.Execute(config, entityName);
 
         if (!provider.Equals("SQLite", StringComparison.OrdinalIgnoreCase))
         {

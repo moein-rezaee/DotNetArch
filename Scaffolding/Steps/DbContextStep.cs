@@ -6,8 +6,10 @@ namespace DotNetArch.Scaffolding.Steps;
 
 public class DbContextStep : IScaffoldStep
 {
-    public void Execute(string solution, string entity, string provider, string basePath, string startupProject)
+    public void Execute(SolutionConfig config, string entity)
     {
+        var solution = config.SolutionName;
+        var basePath = config.SolutionPath;
         var plural = Naming.Pluralize(entity);
         var dir = Path.Combine(basePath, $"{solution}.Infrastructure", "Persistence");
         Directory.CreateDirectory(dir);
