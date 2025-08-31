@@ -26,6 +26,16 @@ public static class ConfigManager
                 config.StartupProject = value;
             else if (key.Equals("database", StringComparison.OrdinalIgnoreCase))
                 config.DatabaseProvider = value;
+            else if (key.StartsWith("entity.", StringComparison.OrdinalIgnoreCase))
+            {
+                var name = key.Substring("entity.".Length);
+                var state = new EntityStatus
+                {
+                    HasCrud = value.Equals("crud", StringComparison.OrdinalIgnoreCase) || value.Equals("both", StringComparison.OrdinalIgnoreCase),
+                    HasAction = value.Equals("action", StringComparison.OrdinalIgnoreCase) || value.Equals("both", StringComparison.OrdinalIgnoreCase)
+                };
+                config.Entities[name] = state;
+            }
         }
         if (string.IsNullOrWhiteSpace(config.SolutionPath))
             config.SolutionPath = basePath;
@@ -44,6 +54,11 @@ public static class ConfigManager
             $"startup: {config.StartupProject}{nl}";
         if (!string.IsNullOrWhiteSpace(config.DatabaseProvider))
             content += $"database: {config.DatabaseProvider}{nl}";
+        foreach (var kv in config.Entities)
+        {
+            var status = kv.Value.HasCrud && kv.Value.HasAction ? "both" : kv.Value.HasCrud ? "crud" : "action";
+            content += $"entity.{kv.Key}: {status}{nl}";
+        }
         File.WriteAllText(path, content);
     }
 }

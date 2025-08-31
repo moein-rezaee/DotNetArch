@@ -62,6 +62,12 @@ static class ActionScaffolder
             }
         }
 
+        if (!config.Entities.TryGetValue(entity, out var state))
+            state = new EntityStatus();
+        state.HasAction = true;
+        config.Entities[entity] = state;
+        ConfigManager.Save(config.SolutionPath, config);
+
         Console.WriteLine($"Action {action} for {entity} generated.");
     }
 
@@ -108,8 +114,21 @@ public interface I{{entity}}Repository
             }
         }
 
-        var impl = Path.Combine(config.SolutionPath, $"{solution}.Infrastructure", plural, $"{entity}Repository.cs");
-        Directory.CreateDirectory(Path.GetDirectoryName(impl)!);
+        var infraDir = Path.Combine(config.SolutionPath, $"{solution}.Infrastructure", "Features", plural);
+        var legacyInfraDir = Path.Combine(config.SolutionPath, $"{solution}.Infrastructure", plural);
+        var impl = Path.Combine(infraDir, $"{entity}Repository.cs");
+        var legacyRepo = Path.Combine(legacyInfraDir, $"{entity}Repository.cs");
+        if (File.Exists(legacyRepo) && !File.Exists(impl))
+        {
+            Directory.CreateDirectory(infraDir);
+            File.Move(legacyRepo, impl);
+            if (Directory.Exists(legacyInfraDir) && Directory.GetFileSystemEntries(legacyInfraDir).Length == 0)
+                Directory.Delete(legacyInfraDir, true);
+        }
+        else
+        {
+            Directory.CreateDirectory(infraDir);
+        }
         if (!File.Exists(impl))
         {
             var mReturn = isCommand ? "Task" : $"Task<{entity}?>";

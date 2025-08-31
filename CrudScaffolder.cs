@@ -13,6 +13,12 @@ static class CrudScaffolder
             return;
         }
 
+        if (config.Entities.TryGetValue(entityName, out var existing) && existing.HasCrud)
+        {
+            Console.WriteLine($"CRUD for {entityName} already exists.");
+            return;
+        }
+
         var provider = config.DatabaseProvider;
         if (string.IsNullOrWhiteSpace(provider))
         {
@@ -60,6 +66,12 @@ static class CrudScaffolder
                 Directory.SetCurrentDirectory(prev);
             }
         }
+
+        if (!config.Entities.TryGetValue(entityName, out var state))
+            state = new EntityStatus();
+        state.HasCrud = true;
+        config.Entities[entityName] = state;
+        ConfigManager.Save(config.SolutionPath, config);
 
         Console.WriteLine($"CRUD for {entityName} generated using {provider} provider.");
     }

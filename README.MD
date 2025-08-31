@@ -51,7 +51,7 @@ Once installed, you can use the tool to create a solution structure:
 dotnet-arch new solution <SolutionName> [--output=Path] [--startup=ProjectName]
 ```
 
-`--output` is optional and lets you specify where the solution is created (useful for tests). If omitted, the current directory is used. `--startup` lets you choose which project should act as the startup project (default is `<SolutionName>.API`). During creation you'll be prompted for a database provider (SQL Server or SQLite). After scaffolding, a `dotnet-arch.yml` file is written to the solution root storing the solution name, path, startup project, and chosen provider for later CRUD generation. Swagger and service registrations are configured at this stage so the API runs immediately.
+`--output` is optional and lets you specify where the solution is created (useful for tests). If omitted, the current directory is used. `--startup` lets you choose which project should act as the startup project (default is `<SolutionName>.API`). During creation you'll be prompted for a database provider (SQL Server or SQLite). After scaffolding, a `dotnet-arch.yml` file is written to the solution root storing the solution name, path, startup project, chosen provider, and the scaffolding state of each entity (CRUD and/or custom actions) so later commands can skip work already done. Swagger and service registrations are configured at this stage so the API runs immediately.
 
 This command generates the following layers:
 
