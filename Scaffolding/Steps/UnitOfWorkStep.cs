@@ -14,7 +14,8 @@ public class UnitOfWorkStep : IScaffoldStep
         var uowInterfaceFile = Path.Combine(coreDir, "IUnitOfWork.cs");
         if (!File.Exists(uowInterfaceFile))
         {
-            var iContent = @"using System;
+            var iContent = """
+using System;
 using System.Threading.Tasks;
 using {{solution}}.Core.Domain.{{entities}};
 
@@ -25,7 +26,7 @@ public interface IUnitOfWork : IDisposable
     I{{entity}}Repository {{entity}}Repository { get; }
     Task<int> SaveChangesAsync();
 }
-";
+""";
             File.WriteAllText(uowInterfaceFile, iContent
                 .Replace("{{solution}}", solution)
                 .Replace("{{entity}}", entity)
@@ -52,7 +53,8 @@ public interface IUnitOfWork : IDisposable
         var lower = char.ToLowerInvariant(entity[0]) + entity.Substring(1);
         if (!File.Exists(uowFile))
         {
-            var uContent = @"using System.Threading.Tasks;
+            var uContent = """
+using System.Threading.Tasks;
 using {{solution}}.Core.Domain.{{entities}};
 using {{solution}}.Core.Interfaces;
 using {{solution}}.Infrastructure.Persistence;
@@ -73,7 +75,7 @@ public class UnitOfWork : IUnitOfWork
 
     public void Dispose() => _context.Dispose();
 }
-";
+""";
             File.WriteAllText(uowFile, uContent
                 .Replace("{{solution}}", solution)
                 .Replace("{{entity}}", entity)

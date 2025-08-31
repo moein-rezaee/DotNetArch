@@ -11,7 +11,8 @@ public class ControllerStep : IScaffoldStep
         var apiDir = Path.Combine(basePath, startupProject, plural);
         Directory.CreateDirectory(apiDir);
         var controllerFile = Path.Combine(apiDir, $"{entity}Controller.cs");
-        var content = @"using MediatR;
+        var content = """
+using MediatR;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
@@ -27,17 +28,17 @@ using {{solution}}.Core.Domain.{{entities}};
 namespace {{startupProject}}.{{entities}};
 
 [ApiController]
-[Route(""api/[controller]"")]
+[Route("api/[controller]")]
 public class {{entity}}Controller : ControllerBase
 {
     private readonly IMediator _mediator;
 
     public {{entity}}Controller(IMediator mediator) => _mediator = mediator;
 
-    [HttpGet(""{id}"")]
+    [HttpGet("{id}")]
     public async Task<{{entity}}?> GetById(int id) => await _mediator.Send(new Get{{entity}}ByIdQuery(id));
 
-    [HttpGet(""all"")]
+    [HttpGet("all")]
     public async Task<List<{{entity}}>> GetAll() => await _mediator.Send(new Get{{entity}}AllQuery());
 
     [HttpGet]
@@ -48,22 +49,55 @@ public class {{entity}}Controller : ControllerBase
     public async Task<{{entity}}> Create([FromBody] {{entity}} entity) =>
         await _mediator.Send(new Create{{entity}}Command(entity));
 
-    [HttpPut(""{id}"")]
+    [HttpPut("{id}")]
     public async Task Update(int id, [FromBody] {{entity}} entity)
     {
         entity.Id = id;
         await _mediator.Send(new Update{{entity}}Command(entity));
     }
 
-    [HttpDelete(""{id}"")]
+    [HttpDelete("{id}")]
     public async Task Delete(int id) => await _mediator.Send(new Delete{{entity}}Command(id));
-}";
+}
+""";
         content = content
             .Replace("{{solution}}", solution)
             .Replace("{{entity}}", entity)
             .Replace("{{entities}}", plural)
             .Replace("{{startupProject}}", startupProject);
-        File.WriteAllText(controllerFile, content);
+        if (!File.Exists(controllerFile))
+        {
+            File.WriteAllText(controllerFile, content);
+        }
+        else
+        {
+            var text = File.ReadAllText(controllerFile);
+            if (!text.Contains("GetById"))
+            {
+                var idx = text.LastIndexOf("}");
+                text = text.Insert(idx, content.Split(new[] {"public class"},2)[1]
+                    .Split(new[] {"{\n"},2)[1]);
+            }
+            var requiredUsings = new[]
+            {
+                "using MediatR;",
+                "using System.Collections.Generic;",
+                "using System.Threading.Tasks;",
+                "using Microsoft.AspNetCore.Mvc;",
+                $"using {solution}.Application.{plural}.Commands.Create;",
+                $"using {solution}.Application.{plural}.Commands.Update;",
+                $"using {solution}.Application.{plural}.Commands.Delete;",
+                $"using {solution}.Application.{plural}.Queries.GetById;",
+                $"using {solution}.Application.{plural}.Queries.GetAll;",
+                $"using {solution}.Application.{plural}.Queries.GetList;",
+                $"using {solution}.Core.Common;",
+                $"using {solution}.Core.Domain.{plural};"
+            };
+            foreach (var u in requiredUsings)
+                if (!text.Contains(u))
+                    text = u + "\n" + text;
+            File.WriteAllText(controllerFile, text);
+        }
     }
 }
 

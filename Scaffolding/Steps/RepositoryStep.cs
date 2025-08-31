@@ -13,19 +13,21 @@ public class RepositoryStep : IScaffoldStep
         var pagedResultFile = Path.Combine(commonDir, "PagedResult.cs");
         if (!File.Exists(pagedResultFile))
         {
-            var pagedContent = @"using System.Collections.Generic;
+            var pagedContent = """
+using System.Collections.Generic;
 
 namespace {{solution}}.Core.Common;
 
 public record PagedResult<T>(List<T> Items, int TotalCount, int Page, int PageSize);
-";
+""";
             File.WriteAllText(pagedResultFile, pagedContent.Replace("{{solution}}", solution));
         }
 
         var coreDir = Path.Combine(basePath, $"{solution}.Core", "Domain", plural);
         Directory.CreateDirectory(coreDir);
         var ifaceFile = Path.Combine(coreDir, $"I{entity}Repository.cs");
-        var ifaceContent = @"using System.Threading.Tasks;
+        var ifaceTemplate = """
+using System.Threading.Tasks;
 using System.Collections.Generic;
 using {{solution}}.Core.Common;
 
@@ -40,16 +42,38 @@ public interface I{{entity}}Repository
     Task UpdateAsync({{entity}} entity);
     Task DeleteAsync({{entity}} entity);
 }
-";
-        File.WriteAllText(ifaceFile, ifaceContent
+""";
+        var ifaceText = ifaceTemplate
             .Replace("{{solution}}", solution)
             .Replace("{{entity}}", entity)
-            .Replace("{{entities}}", plural));
+            .Replace("{{entities}}", plural);
+        if (!File.Exists(ifaceFile))
+        {
+            File.WriteAllText(ifaceFile, ifaceText);
+        }
+        else
+        {
+            var text = File.ReadAllText(ifaceFile);
+            if (!text.Contains("GetAllAsync"))
+            {
+                var insert = "    Task<List<" + entity + ">> GetAllAsync();\n" +
+                             "    Task<PagedResult<" + entity + ">> ListAsync(int page = 1, int pageSize = 10);\n" +
+                             "    Task AddAsync(" + entity + " entity);\n" +
+                             "    Task UpdateAsync(" + entity + " entity);\n" +
+                             "    Task DeleteAsync(" + entity + " entity);\n";
+                var idx = text.LastIndexOf("}");
+                text = text.Insert(idx, insert);
+            }
+            if (!text.Contains("using " + solution + ".Core.Common;"))
+                text = "using " + solution + ".Core.Common;\n" + text;
+            File.WriteAllText(ifaceFile, text);
+        }
 
         var infraDir = Path.Combine(basePath, $"{solution}.Infrastructure", plural);
         Directory.CreateDirectory(infraDir);
         var repoFile = Path.Combine(infraDir, $"{entity}Repository.cs");
-        var repoContent = @"using System.Linq;
+        var repoTemplate = """
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
@@ -91,10 +115,43 @@ public class {{entity}}Repository : I{{entity}}Repository
         return Task.CompletedTask;
     }
 }
-";
-        File.WriteAllText(repoFile, repoContent
+""";
+        var repoText = repoTemplate
             .Replace("{{solution}}", solution)
             .Replace("{{entity}}", entity)
-            .Replace("{{entities}}", plural));
+            .Replace("{{entities}}", plural);
+        if (!File.Exists(repoFile))
+        {
+            File.WriteAllText(repoFile, repoText);
+        }
+        else
+        {
+            var text = File.ReadAllText(repoFile);
+            if (!text.Contains("GetAllAsync"))
+            {
+                var methods = "    public async Task AddAsync(" + entity + " entity) => await _context.Set<" + entity + ">().AddAsync(entity);\n" +
+                              "\n    public async Task DeleteAsync(" + entity + " entity)\n    {\n        _context.Set<" + entity + ">().Remove(entity);\n        await Task.CompletedTask;\n    }\n\n" +
+                              "    public async Task<" + entity + "?> GetByIdAsync(int id) => await _context.Set<" + entity + ">().FindAsync(id);\n\n" +
+                              "    public async Task<List<" + entity + ">> GetAllAsync() => await _context.Set<" + entity + ">().ToListAsync();\n\n" +
+                              "    public async Task<PagedResult<" + entity + ">> ListAsync(int page = 1, int pageSize = 10)\n    {\n        var query = _context.Set<" + entity + ">();\n        var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();\n        var total = await query.CountAsync();\n        return new PagedResult<" + entity + ">(items, total, page, pageSize);\n    }\n\n" +
+                              "    public Task UpdateAsync(" + entity + " entity)\n    {\n        _context.Set<" + entity + ">().Update(entity);\n        return Task.CompletedTask;\n    }\n";
+                var idx = text.LastIndexOf("}");
+                text = text.Insert(idx, methods);
+            }
+            var requiredUsings = new[]
+            {
+                "using System.Linq;",
+                "using System.Threading.Tasks;",
+                "using Microsoft.EntityFrameworkCore;",
+                "using System.Collections.Generic;",
+                "using " + solution + ".Core.Common;",
+                "using " + solution + ".Core.Domain." + plural + ";",
+                "using " + solution + ".Infrastructure.Persistence;"
+            };
+            foreach (var u in requiredUsings)
+                if (!text.Contains(u))
+                    text = u + "\n" + text;
+            File.WriteAllText(repoFile, text);
+        }
     }
 }

@@ -12,13 +12,14 @@ public class EntityStep : IScaffoldStep
         Directory.CreateDirectory(dir);
         var file = Path.Combine(dir, $"{entity}.cs");
         if (File.Exists(file)) return;
-        var content = @"namespace {{solution}}.Core.Domain.{{entities}};
+        var content = """
+namespace {{solution}}.Core.Domain.{{entities}};
 
 public class {{entity}}
 {
     public int Id { get; set; }
 }
-";
+""";
         File.WriteAllText(file, content
             .Replace("{{solution}}", solution)
             .Replace("{{entity}}", entity)
