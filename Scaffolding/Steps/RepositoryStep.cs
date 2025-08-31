@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using DotNetArch.Scaffolding;
 
@@ -56,16 +57,17 @@ public interface I{{entity}}Repository
             var text = File.ReadAllText(ifaceFile);
             if (!text.Contains("GetAllAsync"))
             {
-                var insert = "    Task<List<" + entity + ">> GetAllAsync();\n" +
-                             "    Task<PagedResult<" + entity + ">> ListAsync(int page = 1, int pageSize = 10);\n" +
-                             "    Task AddAsync(" + entity + " entity);\n" +
-                             "    Task UpdateAsync(" + entity + " entity);\n" +
-                             "    Task DeleteAsync(" + entity + " entity);\n";
+                var insert = $@"    Task<List<{entity}>> GetAllAsync();
+    Task<PagedResult<{entity}>> ListAsync(int page = 1, int pageSize = 10);
+    Task AddAsync({entity} entity);
+    Task UpdateAsync({entity} entity);
+    Task DeleteAsync({entity} entity);
+";
                 var idx = text.LastIndexOf("}");
                 text = text.Insert(idx, insert);
             }
             if (!text.Contains("using " + solution + ".Core.Common;"))
-                text = "using " + solution + ".Core.Common;\n" + text;
+                text = "using " + solution + ".Core.Common;" + Environment.NewLine + text;
             File.WriteAllText(ifaceFile, text);
         }
 
@@ -129,12 +131,32 @@ public class {{entity}}Repository : I{{entity}}Repository
             var text = File.ReadAllText(repoFile);
             if (!text.Contains("GetAllAsync"))
             {
-                var methods = "    public async Task AddAsync(" + entity + " entity) => await _context.Set<" + entity + ">().AddAsync(entity);\n" +
-                              "\n    public async Task DeleteAsync(" + entity + " entity)\n    {\n        _context.Set<" + entity + ">().Remove(entity);\n        await Task.CompletedTask;\n    }\n\n" +
-                              "    public async Task<" + entity + "?> GetByIdAsync(int id) => await _context.Set<" + entity + ">().FindAsync(id);\n\n" +
-                              "    public async Task<List<" + entity + ">> GetAllAsync() => await _context.Set<" + entity + ">().ToListAsync();\n\n" +
-                              "    public async Task<PagedResult<" + entity + ">> ListAsync(int page = 1, int pageSize = 10)\n    {\n        var query = _context.Set<" + entity + ">();\n        var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();\n        var total = await query.CountAsync();\n        return new PagedResult<" + entity + ">(items, total, page, pageSize);\n    }\n\n" +
-                              "    public Task UpdateAsync(" + entity + " entity)\n    {\n        _context.Set<" + entity + ">().Update(entity);\n        return Task.CompletedTask;\n    }\n";
+                var methods = $@"    public async Task AddAsync({entity} entity) => await _context.Set<{entity}>().AddAsync(entity);
+
+    public async Task DeleteAsync({entity} entity)
+    {{
+        _context.Set<{entity}>().Remove(entity);
+        await Task.CompletedTask;
+    }}
+
+    public async Task<{entity}?> GetByIdAsync(int id) => await _context.Set<{entity}>().FindAsync(id);
+
+    public async Task<List<{entity}>> GetAllAsync() => await _context.Set<{entity}>().ToListAsync();
+
+    public async Task<PagedResult<{entity}>> ListAsync(int page = 1, int pageSize = 10)
+    {{
+        var query = _context.Set<{entity}>();
+        var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+        var total = await query.CountAsync();
+        return new PagedResult<{entity}>(items, total, page, pageSize);
+    }}
+
+    public Task UpdateAsync({entity} entity)
+    {{
+        _context.Set<{entity}>().Update(entity);
+        return Task.CompletedTask;
+    }}
+";
                 var idx = text.LastIndexOf("}");
                 text = text.Insert(idx, methods);
             }
