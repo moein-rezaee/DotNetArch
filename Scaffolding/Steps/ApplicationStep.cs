@@ -19,6 +19,8 @@ public class ApplicationStep : IScaffoldStep
             var markerContent = $"namespace {solution}.Application;{Environment.NewLine}{Environment.NewLine}public class AssemblyMarker {{ }}{Environment.NewLine}";
             File.WriteAllText(marker, markerContent);
         }
+        if (string.IsNullOrWhiteSpace(entity))
+            return;
         var appBase = Path.Combine(appRoot, "Features", plural);
         Directory.CreateDirectory(appBase);
 

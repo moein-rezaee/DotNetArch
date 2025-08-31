@@ -222,6 +222,7 @@ class Program
         var provider = DatabaseProviderSelector.Choose();
         var config = new SolutionConfig { SolutionName = solutionName, SolutionPath = solutionDir, StartupProject = startupProject, DatabaseProvider = provider, ApiStyle = apiStyle };
         ConfigManager.Save(solutionDir, config);
+        new ApplicationStep().Execute(config, string.Empty);
         new ProjectUpdateStep().Execute(config, string.Empty);
 
         Console.WriteLine();
