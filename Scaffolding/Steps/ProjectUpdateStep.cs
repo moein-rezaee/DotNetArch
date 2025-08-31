@@ -172,6 +172,9 @@ public class ProjectUpdateStep : IScaffoldStep
         lines.RemoveAll(l => l.Contains("AddFluentValidationClientsideAdapters"));
         // clean up malformed using lines that accidentally contain double dots
         lines.RemoveAll(l => l.TrimStart().StartsWith("using ") && l.Contains(".."));
+        // remove stray self-referencing namespace imports left by templates
+        lines.RemoveAll(l => l.Trim() == $"using {solution};");
+        lines.RemoveAll(l => l.Trim() == $"using {startupProject};");
         var usingLines = new List<string>
         {
             "using System;",
