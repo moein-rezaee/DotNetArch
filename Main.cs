@@ -184,7 +184,7 @@ class Program
         Console.WriteLine($"🎉 Start coding your Clean Architecture project now!");
         Console.WriteLine("==========================================");
     }
-    static void RunCommand(string command)
+    public static void RunCommand(string command, string? workingDir = null)
     {
         string shell, shellArgs;
 
@@ -209,6 +209,7 @@ class Program
                 RedirectStandardError = true,
                 UseShellExecute = false,
                 CreateNoWindow = true,
+                WorkingDirectory = workingDir ?? Directory.GetCurrentDirectory()
             }
         };
 

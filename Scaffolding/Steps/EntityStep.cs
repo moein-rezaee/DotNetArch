@@ -8,12 +8,12 @@ public class EntityStep : IScaffoldStep
     public void Execute(string solution, string entity, string provider, string basePath, string startupProject)
     {
         var plural = Naming.Pluralize(entity);
-        var dir = Path.Combine(basePath, $"{solution}.Core", "Domain", plural);
+        var dir = Path.Combine(basePath, $"{solution}.Core", "Features", plural);
         Directory.CreateDirectory(dir);
         var file = Path.Combine(dir, $"{entity}.cs");
         if (File.Exists(file)) return;
         var content = """
-namespace {{solution}}.Core.Domain.{{entities}};
+namespace {{solution}}.Core.Features.{{entities}};
 
 public class {{entity}}
 {

@@ -17,7 +17,7 @@ public class UnitOfWorkStep : IScaffoldStep
             var iContent = """
 using System;
 using System.Threading.Tasks;
-using {{solution}}.Core.Domain.{{entities}};
+using {{solution}}.Core.Features.{{entities}};
 
 namespace {{solution}}.Core.Interfaces;
 
@@ -35,7 +35,7 @@ public interface IUnitOfWork : IDisposable
         else
         {
             var lines = File.ReadAllLines(uowInterfaceFile).ToList();
-            var usingLine = $"using {solution}.Core.Domain.{plural};";
+            var usingLine = $"using {solution}.Core.Features.{plural};";
             if (!lines.Contains(usingLine))
                 lines.Insert(0, usingLine);
             var propLine = $"    I{entity}Repository {entity}Repository {{ get; }}";
@@ -55,10 +55,10 @@ public interface IUnitOfWork : IDisposable
         {
             var uContent = """
 using System.Threading.Tasks;
-using {{solution}}.Core.Domain.{{entities}};
+using {{solution}}.Core.Features.{{entities}};
 using {{solution}}.Core.Interfaces;
 using {{solution}}.Infrastructure.Persistence;
-using {{solution}}.Infrastructure.{{entities}};
+using {{solution}}.Infrastructure.Features.{{entities}};
 
 namespace {{solution}}.Infrastructure;
 
@@ -85,8 +85,8 @@ public class UnitOfWork : IUnitOfWork
         else
         {
             var lines = File.ReadAllLines(uowFile).ToList();
-            var usingDomain = $"using {solution}.Core.Domain.{plural};";
-            var usingRepo = $"using {solution}.Infrastructure.{plural};";
+            var usingDomain = $"using {solution}.Core.Features.{plural};";
+            var usingRepo = $"using {solution}.Infrastructure.Features.{plural};";
             if (!lines.Contains(usingRepo)) lines.Insert(0, usingRepo);
             if (!lines.Contains(usingDomain)) lines.Insert(0, usingDomain);
 

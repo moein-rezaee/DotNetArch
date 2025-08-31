@@ -16,7 +16,7 @@ public class DbContextStep : IScaffoldStep
         {
             var content = """
 using Microsoft.EntityFrameworkCore;
-using {{solution}}.Core.Domain.{{entities}};
+using {{solution}}.Core.Features.{{entities}};
 
 namespace {{solution}}.Infrastructure.Persistence;
 
@@ -35,7 +35,7 @@ public class AppDbContext : DbContext
         else
         {
             var lines = File.ReadAllLines(file).ToList();
-            var usingLine = $"using {solution}.Core.Domain.{plural};";
+            var usingLine = $"using {solution}.Core.Features.{plural};";
             if (!lines.Contains(usingLine))
                 lines.Insert(0, usingLine);
 

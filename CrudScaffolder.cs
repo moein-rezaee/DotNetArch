@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using DotNetArch.Scaffolding;
 using DotNetArch.Scaffolding.Steps;
 
@@ -32,6 +33,21 @@ static class CrudScaffolder
 
         foreach (var step in steps)
             step.Execute(config.SolutionName, entityName, provider, config.SolutionPath, config.StartupProject);
+
+        var prev = Directory.GetCurrentDirectory();
+        try
+        {
+            Directory.SetCurrentDirectory(config.SolutionPath);
+            var infraProj = $"{config.SolutionName}.Infrastructure/{config.SolutionName}.Infrastructure.csproj";
+            var startProj = $"{config.StartupProject}/{config.StartupProject}.csproj";
+            var migName = $"Auto_{entityName}_{DateTime.UtcNow:yyyyMMddHHmmss}";
+            Program.RunCommand($"dotnet ef migrations add {migName} --project {infraProj} --startup-project {startProj} --output-dir Migrations", config.SolutionPath);
+            Program.RunCommand($"dotnet ef database update --project {infraProj} --startup-project {startProj}", config.SolutionPath);
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(prev);
+        }
 
         Console.WriteLine($"CRUD for {entityName} generated using {provider} provider.");
     }

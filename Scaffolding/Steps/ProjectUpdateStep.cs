@@ -19,11 +19,13 @@ public class ProjectUpdateStep : IScaffoldStep
 
     public void Execute(string solution, string entity, string provider, string basePath, string startupProject)
     {
+        var infraPath = Path.Combine(basePath, $"{solution}.Infrastructure");
         if (provider == "SQLite")
         {
-            var dataDir = Path.Combine(basePath, $"{solution}.Infrastructure", "Data");
+            var dataDir = Path.Combine(infraPath, "Data");
             Directory.CreateDirectory(dataDir);
         }
+        Directory.CreateDirectory(Path.Combine(infraPath, "Migrations"));
         UpdateApplicationProject(solution, basePath);
         UpdateInfrastructureProject(solution, basePath);
         UpdateApiProject(solution, provider, basePath, startupProject);
@@ -183,8 +185,8 @@ public class ProjectUpdateStep : IScaffoldStep
             usingLines.Add($"using {solution}.Infrastructure.Persistence;");
             usingLines.Add($"using {solution}.Core.Interfaces;");
             usingLines.Add($"using {solution}.Infrastructure;");
-            usingLines.Add($"using {solution}.Core.Domain.{plural};");
-            usingLines.Add($"using {solution}.Infrastructure.{plural};");
+            usingLines.Add($"using {solution}.Core.Features.{plural};");
+            usingLines.Add($"using {solution}.Infrastructure.Features.{plural};");
         }
 
         foreach (var u in usingLines)

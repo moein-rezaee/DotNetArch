@@ -68,7 +68,7 @@ After creating a solution you can scaffold a full CRUD vertical slice for an ent
 dotnet-arch new crud --entity=EntityName [--output=Path]
 ```
 
-`--output` points to the solution directory; if omitted, the current directory is used. The command reads `dotnet-arch.yml` to locate the solution name and scaffolds the entity slice. It creates domain models, repositories, unit of work, MediatR handlers, validators, and API controllers. Each entity follows a CQRS-aware vertical slice:
+`--output` points to the solution directory; if omitted, the current directory is used. The command reads `dotnet-arch.yml` to locate the solution name and scaffolds the entity slice. It creates domain models, repositories, unit of work, MediatR handlers, validators, and API controllers. After scaffolding, EF Core migrations and database updates run automatically. Each entity is placed under a `Features/<Entity>` folder in every layer and follows a CQRS-aware vertical slice:
 
 ```
 Application/<Entity>/
@@ -98,7 +98,7 @@ When running outside the solution directory, pass `--output` so the tool can loc
 dotnet-arch new action --entity=EntityName --action=getfile --is-command=false --output=../MyApp
 ```
 
-The tool generates the command or query, handler, validator, repository method, and controller endpoint for the specified action. If the entity slice is missing, a minimal repository and controller are also created with only this action stub.
+The tool generates the command or query, handler, validator, repository method, and controller endpoint for the specified action. If the entity slice is missing, a minimal repository and controller are also created with only this action stub. Migrations are applied automatically after scaffolding so the database stays in sync.
 
 ---
 
@@ -174,6 +174,8 @@ We welcome contributions to DotNetArch! Here’s how you can contribute:
 - **Configurable startup project**: `dotnet-arch.yml` tracks which project is the startup target so controllers are added to the correct application entry point.
 - **Custom output path**: Both `new solution` and `new crud` accept an `--output` option so code can be generated in test directories or alternative locations.
 - **Development Swagger setup**: API projects automatically reference `Microsoft.AspNetCore.OpenApi` and `Swashbuckle.AspNetCore`, register Swagger services, and enable Swagger UI in development while removing default template files and sample endpoints.
+- **Feature-based folder structure**: Each layer organizes code under `Features/<Entity>` so all slices stay grouped.
+- **Automatic migrations**: `new crud` and `new action` trigger EF Core migrations and database updates right after scaffolding.
 
 ---
 

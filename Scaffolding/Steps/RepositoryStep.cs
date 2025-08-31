@@ -24,7 +24,7 @@ public record PagedResult<T>(List<T> Items, int TotalCount, int Page, int PageSi
             File.WriteAllText(pagedResultFile, pagedContent.Replace("{{solution}}", solution));
         }
 
-        var coreDir = Path.Combine(basePath, $"{solution}.Core", "Domain", plural);
+        var coreDir = Path.Combine(basePath, $"{solution}.Core", "Features", plural);
         Directory.CreateDirectory(coreDir);
         var ifaceFile = Path.Combine(coreDir, $"I{entity}Repository.cs");
         var ifaceTemplate = """
@@ -32,7 +32,7 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using {{solution}}.Core.Common;
 
-namespace {{solution}}.Core.Domain.{{entities}};
+namespace {{solution}}.Core.Features.{{entities}};
 
 public interface I{{entity}}Repository
 {
@@ -72,7 +72,7 @@ public interface I{{entity}}Repository
             File.WriteAllText(ifaceFile, text);
         }
 
-        var infraDir = Path.Combine(basePath, $"{solution}.Infrastructure", plural);
+        var infraDir = Path.Combine(basePath, $"{solution}.Infrastructure", "Features", plural);
         Directory.CreateDirectory(infraDir);
         var repoFile = Path.Combine(infraDir, $"{entity}Repository.cs");
         var repoTemplate = """
@@ -81,10 +81,10 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using {{solution}}.Core.Common;
-using {{solution}}.Core.Domain.{{entities}};
+using {{solution}}.Core.Features.{{entities}};
 using {{solution}}.Infrastructure.Persistence;
 
-namespace {{solution}}.Infrastructure.{{entities}};
+namespace {{solution}}.Infrastructure.Features.{{entities}};
 
 public class {{entity}}Repository : I{{entity}}Repository
 {
@@ -168,7 +168,7 @@ public class {{entity}}Repository : I{{entity}}Repository
                 "using Microsoft.EntityFrameworkCore;",
                 "using System.Collections.Generic;",
                 "using " + solution + ".Core.Common;",
-                "using " + solution + ".Core.Domain." + plural + ";",
+                "using " + solution + ".Core.Features." + plural + ";",
                 "using " + solution + ".Infrastructure.Persistence;"
             };
             foreach (var u in requiredUsings)

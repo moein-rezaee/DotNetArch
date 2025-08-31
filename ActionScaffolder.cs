@@ -34,6 +34,21 @@ static class ActionScaffolder
         AddApplicationFiles(config, entity, action, isCommand);
         AddControllerMethod(config, entity, action, isCommand);
 
+        var prev = Directory.GetCurrentDirectory();
+        try
+        {
+            Directory.SetCurrentDirectory(config.SolutionPath);
+            var infraProj = $"{config.SolutionName}.Infrastructure/{config.SolutionName}.Infrastructure.csproj";
+            var startProj = $"{config.StartupProject}/{config.StartupProject}.csproj";
+            var migName = $"Auto_{entity}_{DateTime.UtcNow:yyyyMMddHHmmss}";
+            Program.RunCommand($"dotnet ef migrations add {migName} --project {infraProj} --startup-project {startProj} --output-dir Migrations", config.SolutionPath);
+            Program.RunCommand($"dotnet ef database update --project {infraProj} --startup-project {startProj}", config.SolutionPath);
+        }
+        finally
+        {
+            Directory.SetCurrentDirectory(prev);
+        }
+
         Console.WriteLine($"Action {action} for {entity} generated.");
     }
 
@@ -42,15 +57,15 @@ static class ActionScaffolder
         var solution = config.SolutionName;
         var plural = Naming.Pluralize(entity);
 
-        var iface = Path.Combine(config.SolutionPath, $"{solution}.Core", "Domain", plural, $"I{entity}Repository.cs");
+        var iface = Path.Combine(config.SolutionPath, $"{solution}.Core", "Features", plural, $"I{entity}Repository.cs");
         Directory.CreateDirectory(Path.GetDirectoryName(iface)!);
         if (!File.Exists(iface))
         {
             var iContent = """
 using System.Threading.Tasks;
-using {{solution}}.Core.Domain.{{entities}};
+using {{solution}}.Core.Features.{{entities}};
 
-namespace {{solution}}.Core.Domain.{{entities}};
+namespace {{solution}}.Core.Features.{{entities}};
 
 public interface I{{entity}}Repository
 {
@@ -97,10 +112,10 @@ public interface I{{entity}}Repository
 """;
             var rContent = """
 using System.Threading.Tasks;
-using {{solution}}.Core.Domain.{{entities}};
+using {{solution}}.Core.Features.{{entities}};
 using {{solution}}.Infrastructure.Persistence;
 
-namespace {{solution}}.Infrastructure.{{entities}};
+namespace {{solution}}.Infrastructure.Features.{{entities}};
 
 public class {{entity}}Repository : I{{entity}}Repository
 {
@@ -154,7 +169,7 @@ public class {{entity}}Repository : I{{entity}}Repository
     {
         var solution = config.SolutionName;
         var plural = Naming.Pluralize(entity);
-        var appBase = Path.Combine(config.SolutionPath, $"{solution}.Application", plural);
+        var appBase = Path.Combine(config.SolutionPath, $"{solution}.Application", "Features", plural);
         var dir = Path.Combine(appBase, isCommand ? "Commands" : "Queries", Upper(action));
         Directory.CreateDirectory(dir);
         string Fill(string t) => t.Replace("{{solution}}", solution)
@@ -165,9 +180,9 @@ public class {{entity}}Repository : I{{entity}}Repository
         {
             File.WriteAllText(Path.Combine(dir, $"{Upper(action)}{entity}Command.cs"), Fill("""
 using MediatR;
-using {{solution}}.Core.Domain.{{entities}};
+using {{solution}}.Core.Features.{{entities}};
 
-namespace {{solution}}.Application.{{entities}}.Commands.{{action}};
+namespace {{solution}}.Application.Features.{{entities}}.Commands.{{action}};
 
 public record {{action}}{{entity}}Command({{entity}} Entity) : IRequest;
 """));
@@ -176,9 +191,9 @@ using MediatR;
 using System.Threading;
 using System.Threading.Tasks;
 using {{solution}}.Core.Interfaces;
-using {{solution}}.Core.Domain.{{entities}};
+using {{solution}}.Core.Features.{{entities}};
 
-namespace {{solution}}.Application.{{entities}}.Commands.{{action}};
+namespace {{solution}}.Application.Features.{{entities}}.Commands.{{action}};
 
 public class {{action}}{{entity}}Handler : IRequestHandler<{{action}}{{entity}}Command>
 {
@@ -194,7 +209,7 @@ public class {{action}}{{entity}}Handler : IRequestHandler<{{action}}{{entity}}C
             File.WriteAllText(Path.Combine(dir, $"{Upper(action)}{entity}Validator.cs"), Fill("""
 using FluentValidation;
 
-namespace {{solution}}.Application.{{entities}}.Commands.{{action}};
+namespace {{solution}}.Application.Features.{{entities}}.Commands.{{action}};
 
 public class {{action}}{{entity}}Validator : AbstractValidator<{{action}}{{entity}}Command>
 {
@@ -209,9 +224,9 @@ public class {{action}}{{entity}}Validator : AbstractValidator<{{action}}{{entit
         {
             File.WriteAllText(Path.Combine(dir, $"{Upper(action)}{entity}Query.cs"), Fill("""
 using MediatR;
-using {{solution}}.Core.Domain.{{entities}};
+using {{solution}}.Core.Features.{{entities}};
 
-namespace {{solution}}.Application.{{entities}}.Queries.{{action}};
+namespace {{solution}}.Application.Features.{{entities}}.Queries.{{action}};
 
 public record {{action}}{{entity}}Query(int Id) : IRequest<{{entity}}?>;
 """));
@@ -220,9 +235,9 @@ using MediatR;
 using System.Threading;
 using System.Threading.Tasks;
 using {{solution}}.Core.Interfaces;
-using {{solution}}.Core.Domain.{{entities}};
+using {{solution}}.Core.Features.{{entities}};
 
-namespace {{solution}}.Application.{{entities}}.Queries.{{action}};
+namespace {{solution}}.Application.Features.{{entities}}.Queries.{{action}};
 
 public class {{action}}{{entity}}Handler : IRequestHandler<{{action}}{{entity}}Query, {{entity}}?>
 {
@@ -235,7 +250,7 @@ public class {{action}}{{entity}}Handler : IRequestHandler<{{action}}{{entity}}Q
             File.WriteAllText(Path.Combine(dir, $"{Upper(action)}{entity}Validator.cs"), Fill("""
 using FluentValidation;
 
-namespace {{solution}}.Application.{{entities}}.Queries.{{action}};
+namespace {{solution}}.Application.Features.{{entities}}.Queries.{{action}};
 
 public class {{action}}{{entity}}Validator : AbstractValidator<{{action}}{{entity}}Query>
 {
@@ -252,7 +267,7 @@ public class {{action}}{{entity}}Validator : AbstractValidator<{{action}}{{entit
     {
         var solution = config.SolutionName;
         var plural = Naming.Pluralize(entity);
-        var apiDir = Path.Combine(config.SolutionPath, config.StartupProject, plural);
+        var apiDir = Path.Combine(config.SolutionPath, config.StartupProject, "Features", plural);
         Directory.CreateDirectory(apiDir);
         var file = Path.Combine(apiDir, $"{entity}Controller.cs");
         var method = isCommand
@@ -279,10 +294,10 @@ public class {{action}}{{entity}}Validator : AbstractValidator<{{action}}{{entit
             {
                 "using MediatR;",
                 "using Microsoft.AspNetCore.Mvc;",
-                $"using {solution}.Core.Domain.{plural};",
-                $"using {solution}.Application.{plural}.{(isCommand ? "Commands" : "Queries")}.{Upper(action)};",
+                $"using {solution}.Core.Features.{plural};",
+                $"using {solution}.Application.Features.{plural}.{(isCommand ? "Commands" : "Queries")}.{Upper(action)};",
                 "",
-                $"namespace {config.StartupProject}.{plural};",
+                $"namespace {config.StartupProject}.Features.{plural};",
                 "",
                 "[ApiController]",
                 "[Route(\"api/[controller]\")]",
@@ -297,7 +312,7 @@ public class {{action}}{{entity}}Validator : AbstractValidator<{{action}}{{entit
         else
         {
             var lines = File.ReadAllLines(file).ToList();
-            var usingLine = $"using {solution}.Application.{plural}.{(isCommand ? "Commands" : "Queries")}.{Upper(action)};";
+            var usingLine = $"using {solution}.Application.Features.{plural}.{(isCommand ? "Commands" : "Queries")}.{Upper(action)};";
             var lastUsing = lines.FindLastIndex(l => l.StartsWith("using "));
             if (!lines.Contains(usingLine))
                 lines.Insert(lastUsing + 1, usingLine);
