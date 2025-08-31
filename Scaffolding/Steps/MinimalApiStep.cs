@@ -1,0 +1,74 @@
+using System;
+using System.IO;
+using DotNetArch.Scaffolding;
+
+namespace DotNetArch.Scaffolding.Steps;
+
+public class MinimalApiStep : IScaffoldStep
+{
+    public void Execute(SolutionConfig config, string entity)
+    {
+        var solution = config.SolutionName;
+        var basePath = config.SolutionPath;
+        var startupProject = config.StartupProject;
+        var plural = Naming.Pluralize(entity);
+        var apiDir = Path.Combine(basePath, startupProject, "Features", plural);
+        Directory.CreateDirectory(apiDir);
+        var file = Path.Combine(apiDir, $"{entity}Endpoints.cs");
+        if (File.Exists(file)) return;
+        var content = """
+using MediatR;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using {{solution}}.Application.Features.{{entities}}.Commands.Create;
+using {{solution}}.Application.Features.{{entities}}.Commands.Update;
+using {{solution}}.Application.Features.{{entities}}.Commands.Delete;
+using {{solution}}.Application.Features.{{entities}}.Queries.GetById;
+using {{solution}}.Application.Features.{{entities}}.Queries.GetAll;
+using {{solution}}.Application.Features.{{entities}}.Queries.GetList;
+using {{solution}}.Core.Features.{{entities}};
+using {{solution}}.Core.Common;
+
+namespace {{startupProject}}.Features.{{entities}};
+
+public static class {{entity}}Endpoints
+{
+    public static void Map{{entity}}Endpoints(this IEndpointRouteBuilder routes)
+    {
+        routes.MapGet("/Api/{{entity}}/{id}", async (IMediator mediator, int id) =>
+            await mediator.Send(new Get{{entity}}ByIdQuery(id)) is {{entity}} result ? Results.Ok(result) : Results.NotFound());
+
+        routes.MapGet("/Api/{{entity}}/All", async (IMediator mediator) =>
+            Results.Ok(await mediator.Send(new Get{{entity}}AllQuery())));
+
+        routes.MapGet("/Api/{{entity}}/List", async (IMediator mediator, int page, int pageSize) =>
+            Results.Ok(await mediator.Send(new Get{{entity}}ListQuery(page, pageSize))));
+
+        routes.MapPost("/Api/{{entity}}", async (IMediator mediator, {{entity}} entity) =>
+        {
+            var created = await mediator.Send(new Create{{entity}}Command(entity));
+            return Results.Created($"/Api/{{entity}}/{created.Id}", created);
+        });
+
+        routes.MapPut("/Api/{{entity}}/{id}", async (IMediator mediator, int id, {{entity}} entity) =>
+        {
+            entity.Id = id;
+            await mediator.Send(new Update{{entity}}Command(entity));
+            return Results.NoContent();
+        });
+
+        routes.MapDelete("/Api/{{entity}}/{id}", async (IMediator mediator, int id) =>
+        {
+            await mediator.Send(new Delete{{entity}}Command(id));
+            return Results.NoContent();
+        });
+    }
+}
+""";
+        File.WriteAllText(file, content
+            .Replace("{{solution}}", solution)
+            .Replace("{{entity}}", entity)
+            .Replace("{{entities}}", plural)
+            .Replace("{{startupProject}}", startupProject));
+    }
+}
