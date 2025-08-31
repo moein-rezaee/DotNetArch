@@ -77,7 +77,7 @@ class Program
             }
 
             if (isCommand == null)
-                isCommand = Ask("Is command? (true/false)", "true").ToLower() != "false";
+                isCommand = AskYesNo("Is command?", true);
             if (string.IsNullOrWhiteSpace(outputPath))
                 outputPath = Ask("Output path", Directory.GetCurrentDirectory());
 
@@ -140,6 +140,23 @@ class Program
         Console.Write($"{message}{(defaultValue != null ? $" [{defaultValue}]" : "")}: ");
         var input = Console.ReadLine();
         return string.IsNullOrWhiteSpace(input) ? (defaultValue ?? string.Empty) : input;
+    }
+
+    static bool AskYesNo(string message, bool defaultYes)
+    {
+        var def = defaultYes ? "y" : "n";
+        while (true)
+        {
+            Console.Write($"{message} (y/n) [{def}]: ");
+            var input = Console.ReadLine()?.Trim().ToLower();
+            if (string.IsNullOrEmpty(input))
+                return defaultYes;
+            if (input == "y" || input == "yes")
+                return true;
+            if (input == "n" || input == "no")
+                return false;
+            Console.WriteLine("Please enter 'y' or 'n'.");
+        }
     }
 
     static string AskOption(string message, string[] options, int defaultIndex = 0)

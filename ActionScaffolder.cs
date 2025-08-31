@@ -341,8 +341,8 @@ public class {{action}}{{entity}}Validator : AbstractValidator<{{action}}{{entit
             lines.Insert(lastUsing + 1, usingLine);
 
         var classClose = lines.FindLastIndex(l => l.Trim() == "}");
-        var methodClose = lines.FindLastIndex(classClose - 1, l => l.Trim() == "    }");
-        var insertIndex = methodClose;
+        var methodClose = lines.FindLastIndex(classClose - 1, l => l.Trim() == "}");
+        var insertIndex = methodClose < 0 ? classClose : methodClose;
         if (isCommand)
         {
             var method = new[]
