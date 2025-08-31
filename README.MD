@@ -89,13 +89,13 @@ Every operation folder under Commands or Queries contains the request, its handl
 Extend an existing slice or create a minimal slice with a single action:
 
 ```
-dotnet-arch new action --entity=EntityName --action=download
+dotnet-arch new action --entity=EntityName --action=download --output=../MyApp
 ```
 
-By default the action is treated as a command. To scaffold a query instead, append `--is-command=false`:
+When running outside the solution directory, pass `--output` so the tool can locate `dotnet-arch.yml`. By default the action is treated as a command. To scaffold a query instead, append `--is-command=false`:
 
 ```
-dotnet-arch new action --entity=EntityName --action=getfile --is-command=false
+dotnet-arch new action --entity=EntityName --action=getfile --is-command=false --output=../MyApp
 ```
 
 The tool generates the command or query, handler, validator, repository method, and controller endpoint for the specified action.
