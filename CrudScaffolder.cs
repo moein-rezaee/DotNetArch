@@ -59,11 +59,20 @@ static class CrudScaffolder
             try
             {
                 Directory.SetCurrentDirectory(config.SolutionPath);
-                var infraProj = $"{config.SolutionName}.Infrastructure/{config.SolutionName}.Infrastructure.csproj";
-                var startProj = $"{config.StartupProject}/{config.StartupProject}.csproj";
-                var migName = $"Auto_{entityName}_{DateTime.UtcNow:yyyyMMddHHmmss}";
-                Program.RunCommand($"dotnet ef migrations add {migName} --project {infraProj} --startup-project {startProj} --output-dir Migrations", config.SolutionPath);
-                Program.RunCommand($"dotnet ef database update --project {infraProj} --startup-project {startProj}", config.SolutionPath);
+                if (Program.RunCommand("dotnet build", config.SolutionPath))
+                {
+                    var infraProj = $"{config.SolutionName}.Infrastructure/{config.SolutionName}.Infrastructure.csproj";
+                    var startProj = $"{config.StartupProject}/{config.StartupProject}.csproj";
+                    var migName = $"Auto_{entityName}_{DateTime.UtcNow:yyyyMMddHHmmss}";
+                    if (Program.RunCommand($"dotnet ef migrations add {migName} --project {infraProj} --startup-project {startProj} --output-dir Migrations", config.SolutionPath))
+                    {
+                        Program.RunCommand($"dotnet ef database update --project {infraProj} --startup-project {startProj}", config.SolutionPath);
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("❌ Build failed; skipping migrations.");
+                }
             }
             finally
             {
