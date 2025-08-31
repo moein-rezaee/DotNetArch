@@ -124,7 +124,7 @@ class Program
             if (string.IsNullOrWhiteSpace(startup))
                 startup = Ask("Startup project", $"{solutionName}.API");
             if (string.IsNullOrWhiteSpace(style))
-                style = Ask("API style (controller/fast)", "controller").ToLower();
+                style = AskOption("Select API style", new[] { "controller", "fast" }).ToLower();
             if (string.IsNullOrWhiteSpace(style))
                 style = "controller";
 
@@ -142,9 +142,35 @@ class Program
         return string.IsNullOrWhiteSpace(input) ? (defaultValue ?? string.Empty) : input;
     }
 
-    static void Info(string msg) => Console.WriteLine($"ℹ️ {msg}");
-    static void Success(string msg) => Console.WriteLine($"✅ {msg}");
-    static void Error(string msg) => Console.WriteLine($"❌ {msg}");
+    static string AskOption(string message, string[] options, int defaultIndex = 0)
+    {
+        Console.WriteLine(message);
+        for (int i = 0; i < options.Length; i++)
+            Console.WriteLine($"{i + 1} - {options[i]}");
+        Console.Write($"Your choice [{defaultIndex + 1}]: ");
+        var input = Console.ReadLine();
+        return int.TryParse(input, out var idx) && idx >= 1 && idx <= options.Length
+            ? options[idx - 1]
+            : options[defaultIndex];
+    }
+
+    static void Info(string msg)
+    {
+        Console.WriteLine($"ℹ️ {msg}");
+        Console.WriteLine();
+    }
+
+    static void Success(string msg)
+    {
+        Console.WriteLine($"✅ {msg}");
+        Console.WriteLine();
+    }
+
+    static void Error(string msg)
+    {
+        Console.WriteLine($"❌ {msg}");
+        Console.WriteLine();
+    }
 
     static void GenerateSolutionInteractive()
     {
@@ -158,7 +184,7 @@ class Program
 
         var outputPath = Ask("Enter output path", Directory.GetCurrentDirectory());
         var startup = Ask("Startup project", $"{solutionName}.API");
-        var style = Ask("API style (controller/fast)", "controller").ToLower();
+        var style = AskOption("Select API style", new[] { "controller", "fast" }).ToLower();
         if (string.IsNullOrWhiteSpace(style)) style = "controller";
 
         GenerateSolution(solutionName, outputPath, startup, style);

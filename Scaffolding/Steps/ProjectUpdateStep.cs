@@ -144,6 +144,7 @@ public class ProjectUpdateStep : IScaffoldStep
         EnsurePackage(doc, "FluentValidation.DependencyInjectionExtensions", FluentValidationVersion);
         EnsurePackage(doc, "Microsoft.AspNetCore.OpenApi", OpenApiVersion);
         EnsurePackage(doc, "Swashbuckle.AspNetCore", SwaggerVersion);
+        EnsurePackage(doc, "Microsoft.EntityFrameworkCore.Design", EfCoreVersion);
         foreach (var old in doc.Root!.Elements("ItemGroup").Elements("PackageReference")
                      .Where(p => (string?)p.Attribute("Include") == "MediatR.Extensions.Microsoft.DependencyInjection").ToList())
             old.Remove();
