@@ -45,7 +45,7 @@ class Program
             string? entity = null;
             string? action = null;
             string? outputPath = null;
-            bool isCommand = false;
+            bool isCommand = true;
 
             for (int i = 2; i < args.Length; i++)
             {
@@ -61,7 +61,7 @@ class Program
 
             if (string.IsNullOrWhiteSpace(entity) || string.IsNullOrWhiteSpace(action))
             {
-                Console.WriteLine("Usage: dotnet-arch new action --entity=Entity --action=Name [--is-command=true|false] [--output=Path]");
+                Console.WriteLine("Usage: dotnet-arch new action --entity=Entity --action=Name [--is-command=false] [--output=Path]");
                 return;
             }
 
