@@ -65,10 +65,13 @@ public class ProjectUpdateStep : IScaffoldStep
         }
     }
 
+    static string NormalizePath(string path) => path.Replace('\\', '/');
+
     static void EnsureProjectReference(XDocument doc, string include)
     {
+        var normalized = NormalizePath(include);
         var refs = doc.Root!.Elements("ItemGroup").Elements("ProjectReference")
-            .Where(p => (string?)p.Attribute("Include") == include).ToList();
+            .Where(p => NormalizePath((string?)p.Attribute("Include") ?? string.Empty) == normalized).ToList();
         if (refs.Count == 0)
         {
             var group = doc.Root.Elements("ItemGroup").FirstOrDefault();
@@ -77,7 +80,7 @@ public class ProjectUpdateStep : IScaffoldStep
                 group = new XElement("ItemGroup");
                 doc.Root.Add(group);
             }
-            group.Add(new XElement("ProjectReference", new XAttribute("Include", include)));
+            group.Add(new XElement("ProjectReference", new XAttribute("Include", normalized)));
         }
         else
         {
@@ -152,10 +155,10 @@ public class ProjectUpdateStep : IScaffoldStep
         if (provider != "SQLite")
             EnsurePackage(doc, "Microsoft.Data.SqlClient", SqlClientVersion);
 
-        var rel = ".." + Path.DirectorySeparatorChar;
-        EnsureProjectReference(doc, $"{rel}{solution}.Core{Path.DirectorySeparatorChar}{solution}.Core.csproj");
-        EnsureProjectReference(doc, $"{rel}{solution}.Application{Path.DirectorySeparatorChar}{solution}.Application.csproj");
-        EnsureProjectReference(doc, $"{rel}{solution}.Infrastructure{Path.DirectorySeparatorChar}{solution}.Infrastructure.csproj");
+        const string rel = "../";
+        EnsureProjectReference(doc, $"{rel}{solution}.Core/{solution}.Core.csproj");
+        EnsureProjectReference(doc, $"{rel}{solution}.Application/{solution}.Application.csproj");
+        EnsureProjectReference(doc, $"{rel}{solution}.Infrastructure/{solution}.Infrastructure.csproj");
 
         doc.Save(apiProj);
     }
@@ -173,8 +176,12 @@ public class ProjectUpdateStep : IScaffoldStep
         // clean up malformed using lines that accidentally contain double dots
         lines.RemoveAll(l => l.TrimStart().StartsWith("using ") && l.Contains(".."));
         // remove stray self-referencing namespace imports left by templates
-        lines.RemoveAll(l => Regex.IsMatch(l.Trim(), $@"^using\s+{Regex.Escape(solution)}\s*;"));
-        lines.RemoveAll(l => Regex.IsMatch(l.Trim(), $@"^using\s+{Regex.Escape(startupProject)}\s*;"));
+        lines.RemoveAll(l =>
+        {
+            var collapsed = Regex.Replace(l, @"\s+", "");
+            return collapsed.Equals($"using{solution};", StringComparison.Ordinal) ||
+                   collapsed.Equals($"using{startupProject};", StringComparison.Ordinal);
+        });
         var usingLines = new List<string>
         {
             "using System;",

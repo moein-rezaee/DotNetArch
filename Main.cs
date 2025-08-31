@@ -220,7 +220,10 @@ class Program
         RunCommand($"dotnet add {solutionName}.API/{solutionName}.API.csproj reference {solutionName}.Infrastructure/{solutionName}.Infrastructure.csproj");
 
         var provider = DatabaseProviderSelector.Choose();
-        var config = new SolutionConfig { SolutionName = solutionName, SolutionPath = solutionDir, StartupProject = startupProject, DatabaseProvider = provider, ApiStyle = apiStyle };
+        var os = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "windows" :
+                 RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ? "osx" :
+                 RuntimeInformation.IsOSPlatform(OSPlatform.Linux) ? "linux" : "unknown";
+        var config = new SolutionConfig { SolutionName = solutionName, SolutionPath = solutionDir, StartupProject = startupProject, DatabaseProvider = provider, ApiStyle = apiStyle, Os = os };
         ConfigManager.Save(solutionDir, config);
         new ProjectUpdateStep().Execute(config, string.Empty);
 

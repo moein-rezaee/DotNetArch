@@ -28,6 +28,8 @@ public static class ConfigManager
                 config.DatabaseProvider = value;
             else if (key.Equals("style", StringComparison.OrdinalIgnoreCase))
                 config.ApiStyle = value;
+            else if (key.Equals("os", StringComparison.OrdinalIgnoreCase))
+                config.Os = value;
             else if (key.StartsWith("entity.", StringComparison.OrdinalIgnoreCase))
             {
                 var name = key.Substring("entity.".Length);
@@ -55,6 +57,8 @@ public static class ConfigManager
             $"path: {config.SolutionPath}{nl}" +
             $"startup: {config.StartupProject}{nl}" +
             $"style: {config.ApiStyle}{nl}";
+        if (!string.IsNullOrWhiteSpace(config.Os))
+            content += $"os: {config.Os}{nl}";
         if (!string.IsNullOrWhiteSpace(config.DatabaseProvider))
             content += $"database: {config.DatabaseProvider}{nl}";
         foreach (var kv in config.Entities)
