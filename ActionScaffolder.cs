@@ -22,7 +22,7 @@ static class ActionScaffolder
             ConfigManager.Save(config.SolutionPath, config);
         }
 
-        if (!provider.Equals("SQLite", StringComparison.OrdinalIgnoreCase))
+        if (!provider.Equals("Mongo", StringComparison.OrdinalIgnoreCase))
         {
             if (!Program.EnsureEfTool(config.SolutionPath))
             {
@@ -44,7 +44,7 @@ static class ActionScaffolder
         AddApplicationFiles(config, entity, action, isCommand);
         AddControllerMethod(config, entity, action, isCommand);
 
-        if (!provider.Equals("SQLite", StringComparison.OrdinalIgnoreCase))
+        if (!provider.Equals("Mongo", StringComparison.OrdinalIgnoreCase))
         {
             var prev = Directory.GetCurrentDirectory();
             try

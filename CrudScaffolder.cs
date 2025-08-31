@@ -27,7 +27,7 @@ static class CrudScaffolder
             ConfigManager.Save(config.SolutionPath, config);
         }
 
-        if (!provider.Equals("SQLite", StringComparison.OrdinalIgnoreCase))
+        if (!provider.Equals("Mongo", StringComparison.OrdinalIgnoreCase))
         {
             if (!Program.EnsureEfTool(config.SolutionPath))
             {
@@ -53,7 +53,7 @@ static class CrudScaffolder
         foreach (var step in steps)
             step.Execute(config, entityName);
 
-        if (!provider.Equals("SQLite", StringComparison.OrdinalIgnoreCase))
+        if (!provider.Equals("Mongo", StringComparison.OrdinalIgnoreCase))
         {
             var prev = Directory.GetCurrentDirectory();
             try
