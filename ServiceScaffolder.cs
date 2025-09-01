@@ -3,7 +3,6 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using DotNetArch.Scaffolding;
-using Microsoft.Extensions.Configuration;
 
 static class ServiceScaffolder
 {
