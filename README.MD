@@ -68,7 +68,7 @@ After creating a solution you can scaffold a full CRUD vertical slice for an ent
 dotnet-arch new crud --entity=EntityName [--output=Path]
 ```
 
-`--output` points to the solution directory; if omitted, the current directory is used. If required arguments are missing the CLI prompts for them. The command reads `dotnet-arch.yml` to locate the solution name and scaffolds the entity slice. Depending on the selected style it creates either API controllers or minimal FastAPI endpoints along with domain models, repositories, unit of work, MediatR handlers and validators. The CLI installs `dotnet-ef` if needed and runs migrations for relational providers (SQL Server, SQLite, PostgreSQL) so schema changes are applied automatically. Each entity is placed under a `Features/<Entity>` folder in every layer and follows a CQRS-aware vertical slice:
+`--output` points to the solution directory; if omitted, the last path saved by the tool is used (falling back to the current directory). If required arguments are missing the CLI prompts for them. The command reads `dotnet-arch.yml` to locate the solution name and scaffolds the entity slice. Depending on the selected style it creates either API controllers or minimal FastAPI endpoints along with domain models, repositories, unit of work, MediatR handlers and validators. The CLI installs `dotnet-ef` if needed and runs migrations for relational providers (SQL Server, SQLite, PostgreSQL) so schema changes are applied automatically. Each entity is placed under a `Features/<Entity>` folder in every layer and follows a CQRS-aware vertical slice:
 
 ```
 Application/<Entity>/
@@ -94,13 +94,33 @@ Extend an existing slice or create a minimal slice with a single action:
 dotnet-arch new action --entity=EntityName --action=download --output=../MyApp
 ```
 
-When running outside the solution directory, pass `--output` so the tool can locate `dotnet-arch.yml`. By default the action is treated as a command. To scaffold a query instead, append `--is-command=false`:
+When running outside the solution directory the command reuses the last saved solution path. Provide `--output` to override it and point to a different `dotnet-arch.yml`. By default the action is treated as a command. To scaffold a query instead, append `--is-command=false`:
 
 ```
 dotnet-arch new action --entity=EntityName --action=getfile --is-command=false --output=../MyApp
 ```
 
 The tool generates the command or query, handler, validator, repository method, and controller endpoint for the specified action. If the entity slice is missing, a minimal repository and controller are also created with only this action stub. Migrations are applied automatically after scaffolding so the database stays in sync.
+
+#### Run the Startup Project
+
+After scaffolding, launch the API and optionally apply EF Core migrations:
+
+```
+dotnet-arch exec [--output=Path]
+```
+
+When run, the command asks whether to check for model changes. Choosing **y** creates a migration if needed, applies pending migrations, and then runs the configured startup project. The optional `--output` overrides the last solution path stored by the tool.
+
+#### Manage Migrations
+
+Work with EF Core migrations without starting the application:
+
+```bash
+dotnet-arch remove migration [--output=Path]
+```
+
+`remove migration` rolls the database back to the previous state and deletes the most recent migration. The command accepts an optional `--output` to override the stored solution path and automatically supplies `--project`, `--startup-project`, and migration folder arguments to `dotnet ef` so you don't have to.
 
 ---
 
@@ -167,17 +187,20 @@ We welcome contributions to DotNetArch! Here’s how you can contribute:
 - **Ease of Use**: Intuitive and straightforward CLI commands.
 - **`new crud` scaffolding**: Generates vertical-slice CQRS CRUD with MediatR, FluentValidation, EF Core repositories, and paginated results.
 - **Database Provider Selection**: Choose between SQL Server, SQLite, PostgreSQL or MongoDB (default SQLite); the selected provider is stored so future runs don't prompt again.
+  - *Other providers are experimental and require more testing and development before a NuGet release.*
 - **Idempotent Generation**: Re-running commands updates existing files without creating duplicates.
 - **Repository & Unit of Work patterns**: Each entity gets its own repository and UoW registration for clean data access.
 - **Automatic package & service registration**: Required NuGet packages are added to project files and services like `DbContext`, `IMediator`, `IUnitOfWork`, and validators are registered in `Program.cs`.
 - **`new action` command**: Add custom commands or queries with handlers, validators, repository methods, and controller endpoints.
 - **Composable actions and slices**: Actions scaffolded before a full `new crud` run are preserved and the later CRUD generation augments the existing files instead of overwriting them.
+- **`exec` command**: Run the startup project with an optional migration check that can generate and apply pending EF Core migrations.
+- **`remove migration` command**: Roll the database back and delete the most recent EF Core migration.
 - **Correct namespace wiring**: `Program.cs` updates include the necessary `using` directives and service registrations for each entity's repository without malformed entries.
 - **Configurable startup project**: `dotnet-arch.yml` tracks which project is the startup target so controllers are added to the correct application entry point.
-- **Custom output path**: Both `new solution` and `new crud` accept an `--output` option so code can be generated in test directories or alternative locations.
+- **Custom output path**: Commands remember the last solution path but accept an `--output` option so code can be generated in test directories or alternative locations.
 - **Development Swagger setup**: API projects automatically reference `Microsoft.AspNetCore.OpenApi` and `Swashbuckle.AspNetCore`, register Swagger services, and enable Swagger UI in development while removing default template files and sample endpoints.
 - **Feature-based folder structure**: Each layer organizes code under `Features/<Entity>` so all slices stay grouped.
-  - **Automatic migrations**: `new crud` and `new action` verify `dotnet-ef` and attempt installation if needed. For relational providers (SQL Server, SQLite, PostgreSQL) migrations and database updates run automatically; for MongoDB the process skips migrations. Generated `Program.cs` calls `Database.Migrate()` on startup to apply any pending migrations so new tables are created automatically.
+  - **Automatic migrations**: `new crud`, `new action`, and `exec` verify `dotnet-ef` and attempt installation if needed. For relational providers (SQL Server, SQLite, PostgreSQL) migrations and database updates run automatically; for MongoDB the process skips migrations. Generated `Program.cs` calls `Database.Migrate()` on startup to apply any pending migrations so new tables are created automatically.
 
 ---
 

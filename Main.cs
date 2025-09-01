@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using DotNetArch.Scaffolding;
 using DotNetArch.Scaffolding.Steps;
 
@@ -33,7 +35,7 @@ class Program
             }
 
             if (string.IsNullOrWhiteSpace(outputPath))
-                outputPath = Ask("Output path", Directory.GetCurrentDirectory());
+                outputPath = PathState.Load() ?? Directory.GetCurrentDirectory();
 
             var basePath = outputPath!;
             var config = ConfigManager.Load(basePath);
@@ -79,7 +81,7 @@ class Program
             if (isCommand == null)
                 isCommand = AskYesNo("Is command?", true);
             if (string.IsNullOrWhiteSpace(outputPath))
-                outputPath = Ask("Output path", Directory.GetCurrentDirectory());
+                outputPath = PathState.Load() ?? Directory.GetCurrentDirectory();
 
             var basePath = outputPath!;
             var config = ConfigManager.Load(basePath);
@@ -90,6 +92,91 @@ class Program
             }
 
             ActionScaffolder.Generate(config, entity, action, isCommand.Value);
+            return;
+        }
+
+        if (args.Length >= 1 && args[0].ToLower() == "exec")
+        {
+            string? outputPath = null;
+            for (int i = 1; i < args.Length; i++)
+            {
+                if (args[i].StartsWith("--output="))
+                    outputPath = args[i].Substring("--output=".Length);
+            }
+
+            if (string.IsNullOrWhiteSpace(outputPath))
+                outputPath = PathState.Load() ?? Directory.GetCurrentDirectory();
+
+            var basePath = outputPath!;
+            var config = ConfigManager.Load(basePath);
+            if (config == null)
+            {
+                Error("Solution configuration not found. Run 'new solution' first.");
+                return;
+            }
+
+            var checkMigrations = AskYesNo(
+                "Check for entity changes and apply migrations before running?",
+                false);
+            if (checkMigrations)
+                UpdateMigrations(config, basePath);
+
+            var runProj = $"{config.StartupProject}/{config.StartupProject}.csproj";
+            RunProject(runProj, basePath);
+            return;
+        }
+
+        if (args.Length >= 2 && args[0].ToLower() == "remove" && args[1].ToLower() == "migration")
+        {
+            string? outputPath = null;
+            for (int i = 2; i < args.Length; i++)
+            {
+                if (args[i].StartsWith("--output="))
+                    outputPath = args[i].Substring("--output=".Length);
+            }
+
+            if (string.IsNullOrWhiteSpace(outputPath))
+                outputPath = PathState.Load() ?? Directory.GetCurrentDirectory();
+
+            var basePath = outputPath!;
+            var config = ConfigManager.Load(basePath);
+            if (config == null)
+            {
+                Error("Solution configuration not found. Run 'new solution' first.");
+                return;
+            }
+
+            var provider = config.DatabaseProvider;
+            if (string.IsNullOrWhiteSpace(provider) || provider.Equals("Mongo", StringComparison.OrdinalIgnoreCase))
+            {
+                Info("No migrations to remove for the selected provider.");
+                return;
+            }
+
+            if (!EnsureEfTool(basePath))
+                return;
+
+            var infraProj = $"{config.SolutionName}.Infrastructure/{config.SolutionName}.Infrastructure.csproj";
+            var startProj = $"{config.StartupProject}/{config.StartupProject}.csproj";
+            var migrations = ListMigrations(infraProj, startProj, basePath);
+            if (migrations.Length == 0)
+            {
+                Info("No migrations found.");
+                return;
+            }
+            var prev = migrations.Length > 1 ? migrations[migrations.Length - 2] : "0";
+            if (!RunCommand($"dotnet ef database update {prev} --project {infraProj} --startup-project {startProj} --no-build", basePath))
+            {
+                Error("Failed to rollback database; migration removal aborted.");
+                return;
+            }
+            if (!RunCommand($"dotnet ef migrations remove --force --project {infraProj} --startup-project {startProj} --no-build", basePath))
+            {
+                Error("Failed to remove migration.");
+                return;
+            }
+            RunCommand("dotnet build", basePath);
+
             return;
         }
 
@@ -122,7 +209,7 @@ class Program
             if (string.IsNullOrWhiteSpace(outputPath))
                 outputPath = Ask("Output path", Directory.GetCurrentDirectory());
             if (string.IsNullOrWhiteSpace(startup))
-                startup = Ask("Startup project", $"{solutionName}.API");
+                startup = $"{solutionName}.API";
             if (string.IsNullOrWhiteSpace(style))
                 style = AskOption("Select API style", new[] { "controller", "fast" }).ToLower();
             if (string.IsNullOrWhiteSpace(style))
@@ -200,7 +287,7 @@ class Program
         }
 
         var outputPath = Ask("Enter output path", Directory.GetCurrentDirectory());
-        var startup = Ask("Startup project", $"{solutionName}.API");
+        var startup = $"{solutionName}.API";
         var style = AskOption("Select API style", new[] { "controller", "fast" }).ToLower();
         if (string.IsNullOrWhiteSpace(style)) style = "controller";
 
@@ -239,6 +326,7 @@ class Program
         var provider = DatabaseProviderSelector.Choose();
         var config = new SolutionConfig { SolutionName = solutionName, SolutionPath = solutionDir, StartupProject = startupProject, DatabaseProvider = provider, ApiStyle = apiStyle };
         ConfigManager.Save(solutionDir, config);
+        PathState.Save(solutionDir);
         new ApplicationStep().Execute(config, string.Empty);
         new ProjectUpdateStep().Execute(config, string.Empty);
 
@@ -296,6 +384,118 @@ class Program
         }
 
         return success;
+    }
+
+    public static (bool Success, string Output) RunCommandCapture(string command, string? workingDir = null)
+    {
+        string shell, shellArgs;
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            shell = "cmd.exe";
+            shellArgs = $"/c {command}";
+        }
+        else
+        {
+            shell = "/bin/bash";
+            shellArgs = $"-c \"{command}\"";
+        }
+
+        var process = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = shell,
+                Arguments = shellArgs,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = workingDir ?? Directory.GetCurrentDirectory()
+            }
+        };
+
+        process.Start();
+        process.WaitForExit();
+
+        var stdout = process.StandardOutput.ReadToEnd();
+        var stderr = process.StandardError.ReadToEnd();
+        bool success = process.ExitCode == 0;
+        var output = string.IsNullOrWhiteSpace(stderr) ? stdout : stdout + stderr;
+        return (success, output);
+    }
+
+    public static void RunProject(string project, string basePath)
+    {
+        var process = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = "dotnet",
+                Arguments = $"run --project {project}",
+                WorkingDirectory = basePath,
+                UseShellExecute = false
+            }
+        };
+        process.Start();
+        process.WaitForExit();
+    }
+
+    static void UpdateMigrations(SolutionConfig config, string basePath)
+    {
+        var provider = config.DatabaseProvider;
+        if (string.IsNullOrWhiteSpace(provider) || provider.Equals("Mongo", StringComparison.OrdinalIgnoreCase))
+        {
+            Info("No migrations for the selected provider.");
+            return;
+        }
+
+        if (!EnsureEfTool(basePath))
+            return;
+
+        if (RunCommand("dotnet build", basePath))
+        {
+            var infraProj = $"{config.SolutionName}.Infrastructure/{config.SolutionName}.Infrastructure.csproj";
+            var startProj = $"{config.StartupProject}/{config.StartupProject}.csproj";
+            var migName = $"Auto_{DateTime.UtcNow:yyyyMMddHHmmss}";
+            var (success, output) = RunCommandCapture($"dotnet ef migrations add {migName} --project {infraProj} --startup-project {startProj} --output-dir Migrations", basePath);
+            if (success)
+            {
+                RunCommand($"dotnet ef database update --project {infraProj} --startup-project {startProj}", basePath);
+            }
+            else if (output.Contains("No changes were detected", StringComparison.OrdinalIgnoreCase))
+            {
+                Info("No changes were detected.");
+            }
+            else
+            {
+                Error(output.Trim());
+            }
+        }
+        else
+        {
+            Console.WriteLine("❌ Build failed; skipping migrations.");
+        }
+    }
+
+    static string[] ListMigrations(string infraProj, string startProj, string basePath)
+    {
+        var (success, output) = RunCommandCapture($"dotnet ef migrations list --project {infraProj} --startup-project {startProj} --no-build", basePath);
+        if (!success)
+            return Array.Empty<string>();
+        var lines = output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        var regex = new Regex("^\\d+_");
+        var list = new List<string>();
+        foreach (var line in lines)
+        {
+            var trimmed = line.Trim();
+            if (!regex.IsMatch(trimmed))
+                continue;
+            var space = trimmed.IndexOf(' ');
+            if (space >= 0)
+                trimmed = trimmed.Substring(0, space);
+            list.Add(trimmed);
+        }
+        return list.ToArray();
     }
 
     public static bool EnsureEfTool(string? workingDir = null)
