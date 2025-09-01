@@ -117,11 +117,11 @@ When run, the command asks whether to check for model changes. Choosing **y** cr
 Work with EF Core migrations without starting the application:
 
 ```bash
-dotnet-arch update migration [--output=Path]
+dotnet-arch update migration [Name] [--output=Path]
 dotnet-arch remove migration [--output=Path]
 ```
 
-`update migration` rebuilds the most recent migration: it rolls the database back to the previous migration, removes the last migration, and then regenerates it. `remove migration` rolls back the database to the previous state and deletes the most recent migration. Both commands accept an optional `--output` to override the stored solution path.
+`update migration` rebuilds the most recent migration: it rolls the database back to the previous migration, removes the last migration, and then regenerates it with the supplied `Name`. If no name is provided on the command line the tool will prompt for one to avoid placeholder names. `remove migration` rolls back the database to the previous state and deletes the most recent migration. Both commands accept an optional `--output` to override the stored solution path, and they automatically pass `--project`, `--startup-project`, and migration folder arguments to `dotnet ef` so you don't have to.
 
 ---
 
