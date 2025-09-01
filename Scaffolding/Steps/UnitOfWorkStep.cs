@@ -11,17 +11,17 @@ public class UnitOfWorkStep : IScaffoldStep
         var solution = config.SolutionName;
         var basePath = config.SolutionPath;
         var plural = Naming.Pluralize(entity);
-        var coreDir = Path.Combine(basePath, $"{solution}.Core", "Interfaces");
-        Directory.CreateDirectory(coreDir);
-        var uowInterfaceFile = Path.Combine(coreDir, "IUnitOfWork.cs");
+        var appInterfaces = Path.Combine(basePath, $"{solution}.Application", "Common", "Interfaces");
+        Directory.CreateDirectory(appInterfaces);
+        var uowInterfaceFile = Path.Combine(appInterfaces, "IUnitOfWork.cs");
         if (!File.Exists(uowInterfaceFile))
         {
             var iContent = """
 using System;
 using System.Threading.Tasks;
-using {{solution}}.Core.Features.{{entities}};
+using {{solution}}.Application.Common.Interfaces.Repositories;
 
-namespace {{solution}}.Core.Interfaces;
+namespace {{solution}}.Application.Common.Interfaces;
 
 public interface IUnitOfWork : IDisposable
 {
@@ -37,7 +37,7 @@ public interface IUnitOfWork : IDisposable
         else
         {
             var lines = File.ReadAllLines(uowInterfaceFile).ToList();
-            var usingLine = $"using {solution}.Core.Features.{plural};";
+            var usingLine = $"using {solution}.Application.Common.Interfaces.Repositories;";
             if (!lines.Contains(usingLine))
                 lines.Insert(0, usingLine);
             var propLine = $"    I{entity}Repository {entity}Repository {{ get; }}";
@@ -57,10 +57,10 @@ public interface IUnitOfWork : IDisposable
         {
             var uContent = """
 using System.Threading.Tasks;
-using {{solution}}.Core.Features.{{entities}};
-using {{solution}}.Core.Interfaces;
+using {{solution}}.Application.Common.Interfaces;
+using {{solution}}.Application.Common.Interfaces.Repositories;
 using {{solution}}.Infrastructure.Persistence;
-using {{solution}}.Infrastructure.Features.{{entities}};
+using {{solution}}.Infrastructure.Repositories;
 
 namespace {{solution}}.Infrastructure;
 
@@ -87,10 +87,10 @@ public class UnitOfWork : IUnitOfWork
         else
         {
             var lines = File.ReadAllLines(uowFile).ToList();
-            var usingDomain = $"using {solution}.Core.Features.{plural};";
-            var usingRepo = $"using {solution}.Infrastructure.Features.{plural};";
+            var usingRepo = $"using {solution}.Infrastructure.Repositories;";
             if (!lines.Contains(usingRepo)) lines.Insert(0, usingRepo);
-            if (!lines.Contains(usingDomain)) lines.Insert(0, usingDomain);
+            var usingInterface = $"using {solution}.Application.Common.Interfaces.Repositories;";
+            if (!lines.Contains(usingInterface)) lines.Insert(0, usingInterface);
 
             var fieldLine = $"    private I{entity}Repository? _{lower}Repository;";
             if (!lines.Any(l => l.Contains(fieldLine)))

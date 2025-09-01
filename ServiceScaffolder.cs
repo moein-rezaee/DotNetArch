@@ -501,13 +501,13 @@ static class ServiceScaffolder
         }
 
         lines.RemoveAll(l => l.Contains("DotNetEnv.Env.Load("));
-        var loadLine = "DotNetEnv.Env.Load(Path.Combine(Directory.GetCurrentDirectory(), \"config\", $\".env.{env.ToLower()}\"));";
+        var loadLine = "DotNetEnv.Env.Load(Path.Combine(Directory.GetCurrentDirectory(), \"config\", \"env\", $\".env.{env.ToLower()}\"));";
         var loadIdx = lines.FindIndex(l => l.Contains("var builder"));
         if (loadIdx >= 0)
             lines.Insert(loadIdx + 1, loadLine);
 
         lines.RemoveAll(l => l.Contains("AddJsonFile") && l.Contains("appsettings"));
-        var addJsonLine = "builder.Configuration.AddJsonFile(Path.Combine(\"config\", $\"appsettings.{env.ToLower()}.json\"), optional: true, reloadOnChange: true);";
+        var addJsonLine = "builder.Configuration.AddJsonFile(Path.Combine(\"config\", \"settings\", $\"appsettings.{env.ToLower()}.json\"), optional: true, reloadOnChange: true);";
         var jsonIdx = lines.FindIndex(l => l.Contains("var builder"));
         if (jsonIdx >= 0)
             lines.Insert(jsonIdx + 3, addJsonLine);
@@ -518,23 +518,22 @@ static class ServiceScaffolder
     static void EnsureEnvFiles(SolutionConfig config, string provider)
     {
         var projectDir = Path.Combine(config.SolutionPath, config.StartupProject);
-        var configDir = Path.Combine(projectDir, "config");
+        var configDir = Path.Combine(projectDir, "config", "env");
         Directory.CreateDirectory(configDir);
         foreach (var env in new[] { "development", "test", "production" })
         {
             var fileName = $".env.{env}";
             var path = Path.Combine(configDir, fileName);
 
-            // move old files if necessary
             var oldUpper = Path.Combine(projectDir, $".env.{char.ToUpper(env[0]) + env[1..]}");
             if (File.Exists(oldUpper)) File.Move(oldUpper, path, true);
             var oldLower = Path.Combine(projectDir, fileName);
             if (File.Exists(oldLower)) File.Move(oldLower, path, true);
 
+            if (!File.Exists(path))
+                continue;
             var user = env switch { "production" => "produser", "test" => "testuser", _ => "devuser" };
             var pass = env switch { "production" => "prodpass", "test" => "testpass", _ => "devpass" };
-            if (!File.Exists(path))
-                File.WriteAllLines(path, Array.Empty<string>());
             var lines = File.ReadAllLines(path).ToList();
             if (provider == "Redis")
             {
@@ -578,7 +577,7 @@ static class ServiceScaffolder
     static void EnsureAppSettingsFiles(SolutionConfig config, string provider)
     {
         var projectDir = Path.Combine(config.SolutionPath, config.StartupProject);
-        var configDir = Path.Combine(projectDir, "config");
+        var configDir = Path.Combine(projectDir, "config", "settings");
         Directory.CreateDirectory(configDir);
 
         var defaultFile = Path.Combine(projectDir, "appsettings.json");
@@ -593,6 +592,9 @@ static class ServiceScaffolder
             if (File.Exists(oldCap)) File.Move(oldCap, path, true);
             var oldLower = Path.Combine(projectDir, fileName);
             if (File.Exists(oldLower)) File.Move(oldLower, path, true);
+
+            if (!File.Exists(path))
+                continue;
 
             JsonNode root = File.Exists(path) && !string.IsNullOrWhiteSpace(File.ReadAllText(path))
                 ? JsonNode.Parse(File.ReadAllText(path))!

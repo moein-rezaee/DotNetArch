@@ -50,7 +50,7 @@ using MediatR;
 using System.Threading;
 using System.Threading.Tasks;
 using {{solution}}.Core.Features.{{entities}};
-using {{solution}}.Core.Interfaces;
+using {{solution}}.Application.Common.Interfaces;
 
 namespace {{solution}}.Application.Features.{{entities}}.Commands.Create;
 
@@ -95,7 +95,7 @@ using MediatR;
 using System.Threading;
 using System.Threading.Tasks;
 using {{solution}}.Core.Features.{{entities}};
-using {{solution}}.Core.Interfaces;
+using {{solution}}.Application.Common.Interfaces;
 
 namespace {{solution}}.Application.Features.{{entities}}.Commands.Update;
 
@@ -137,7 +137,7 @@ public record Delete{{entity}}Command(int Id) : IRequest;
 using MediatR;
 using System.Threading;
 using System.Threading.Tasks;
-using {{solution}}.Core.Interfaces;
+using {{solution}}.Application.Common.Interfaces;
 
 namespace {{solution}}.Application.Features.{{entities}}.Commands.Delete;
 
@@ -186,7 +186,7 @@ using MediatR;
 using System.Threading;
 using System.Threading.Tasks;
 using {{solution}}.Core.Features.{{entities}};
-using {{solution}}.Core.Interfaces;
+using {{solution}}.Application.Common.Interfaces;
 
 namespace {{solution}}.Application.Features.{{entities}}.Queries.GetById;
 
@@ -229,7 +229,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using {{solution}}.Core.Features.{{entities}};
-using {{solution}}.Core.Interfaces;
+using {{solution}}.Application.Common.Interfaces;
 
 namespace {{solution}}.Application.Features.{{entities}}.Queries.GetAll;
 
@@ -259,7 +259,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using {{solution}}.Core.Common;
 using {{solution}}.Core.Features.{{entities}};
-using {{solution}}.Core.Interfaces;
+using {{solution}}.Application.Common.Interfaces;
 
 namespace {{solution}}.Application.Features.{{entities}}.Queries.GetList;
 
