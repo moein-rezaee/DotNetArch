@@ -113,38 +113,82 @@ class Program
                 return;
             }
 
-            var provider = config.DatabaseProvider;
             var checkMigrations = AskYesNo(
                 "Check for entity changes and apply migrations before running?",
                 false);
-            if (checkMigrations && !string.IsNullOrWhiteSpace(provider) && !provider.Equals("Mongo", StringComparison.OrdinalIgnoreCase))
-            {
-                if (!EnsureEfTool(basePath))
-                    return;
-                if (RunCommand("dotnet build", basePath))
-                {
-                    var infraProj = $"{config.SolutionName}.Infrastructure/{config.SolutionName}.Infrastructure.csproj";
-                    var startProj = $"{config.StartupProject}/{config.StartupProject}.csproj";
-                    var migName = $"Auto_{DateTime.UtcNow:yyyyMMddHHmmss}";
-                    var (success, output) = RunCommandCapture($"dotnet ef migrations add {migName} --project {infraProj} --startup-project {startProj} --output-dir Migrations", basePath);
-                    if (success)
-                    {
-                        RunCommand($"dotnet ef database update --project {infraProj} --startup-project {startProj}", basePath);
-                    }
-                    else if (!output.Contains("No changes were detected", StringComparison.OrdinalIgnoreCase))
-                    {
-                        Error(output.Trim());
-                        return;
-                    }
-                }
-                else
-                {
-                    Console.WriteLine("❌ Build failed; skipping migrations.");
-                }
-            }
+            if (checkMigrations)
+                UpdateMigrations(config, basePath);
 
             var runProj = $"{config.StartupProject}/{config.StartupProject}.csproj";
             RunProject(runProj, basePath);
+            return;
+        }
+
+        if (args.Length >= 2 && args[0].ToLower() == "update" && args[1].ToLower() == "migration")
+        {
+            string? outputPath = null;
+            for (int i = 2; i < args.Length; i++)
+            {
+                if (args[i].StartsWith("--output="))
+                    outputPath = args[i].Substring("--output=".Length);
+            }
+
+            if (string.IsNullOrWhiteSpace(outputPath))
+                outputPath = PathState.Load() ?? Directory.GetCurrentDirectory();
+
+            var basePath = outputPath!;
+            var config = ConfigManager.Load(basePath);
+            if (config == null)
+            {
+                Error("Solution configuration not found. Run 'new solution' first.");
+                return;
+            }
+
+            UpdateMigrations(config, basePath);
+            return;
+        }
+
+        if (args.Length >= 2 && args[0].ToLower() == "remove" && args[1].ToLower() == "migration")
+        {
+            string? outputPath = null;
+            for (int i = 2; i < args.Length; i++)
+            {
+                if (args[i].StartsWith("--output="))
+                    outputPath = args[i].Substring("--output=".Length);
+            }
+
+            if (string.IsNullOrWhiteSpace(outputPath))
+                outputPath = PathState.Load() ?? Directory.GetCurrentDirectory();
+
+            var basePath = outputPath!;
+            var config = ConfigManager.Load(basePath);
+            if (config == null)
+            {
+                Error("Solution configuration not found. Run 'new solution' first.");
+                return;
+            }
+
+            var provider = config.DatabaseProvider;
+            if (string.IsNullOrWhiteSpace(provider) || provider.Equals("Mongo", StringComparison.OrdinalIgnoreCase))
+            {
+                Info("No migrations to remove for the selected provider.");
+                return;
+            }
+
+            if (!EnsureEfTool(basePath))
+                return;
+
+            if (RunCommand("dotnet build", basePath))
+            {
+                var infraProj = $"{config.SolutionName}.Infrastructure/{config.SolutionName}.Infrastructure.csproj";
+                var startProj = $"{config.StartupProject}/{config.StartupProject}.csproj";
+                RunCommand($"dotnet ef migrations remove --project {infraProj} --startup-project {startProj}", basePath);
+            }
+            else
+            {
+                Console.WriteLine("❌ Build failed; skipping migration removal.");
+            }
+
             return;
         }
 
@@ -406,6 +450,43 @@ class Program
         };
         process.Start();
         process.WaitForExit();
+    }
+
+    static void UpdateMigrations(SolutionConfig config, string basePath)
+    {
+        var provider = config.DatabaseProvider;
+        if (string.IsNullOrWhiteSpace(provider) || provider.Equals("Mongo", StringComparison.OrdinalIgnoreCase))
+        {
+            Info("No migrations for the selected provider.");
+            return;
+        }
+
+        if (!EnsureEfTool(basePath))
+            return;
+
+        if (RunCommand("dotnet build", basePath))
+        {
+            var infraProj = $"{config.SolutionName}.Infrastructure/{config.SolutionName}.Infrastructure.csproj";
+            var startProj = $"{config.StartupProject}/{config.StartupProject}.csproj";
+            var migName = $"Auto_{DateTime.UtcNow:yyyyMMddHHmmss}";
+            var (success, output) = RunCommandCapture($"dotnet ef migrations add {migName} --project {infraProj} --startup-project {startProj} --output-dir Migrations", basePath);
+            if (success)
+            {
+                RunCommand($"dotnet ef database update --project {infraProj} --startup-project {startProj}", basePath);
+            }
+            else if (output.Contains("No changes were detected", StringComparison.OrdinalIgnoreCase))
+            {
+                Info("No changes were detected.");
+            }
+            else
+            {
+                Error(output.Trim());
+            }
+        }
+        else
+        {
+            Console.WriteLine("❌ Build failed; skipping migrations.");
+        }
     }
 
     public static bool EnsureEfTool(string? workingDir = null)
