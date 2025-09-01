@@ -114,7 +114,10 @@ class Program
             }
 
             var provider = config.DatabaseProvider;
-            if (!string.IsNullOrWhiteSpace(provider) && !provider.Equals("Mongo", StringComparison.OrdinalIgnoreCase))
+            var checkMigrations = AskYesNo(
+                "Check for entity changes and apply migrations before running?",
+                false);
+            if (checkMigrations && !string.IsNullOrWhiteSpace(provider) && !provider.Equals("Mongo", StringComparison.OrdinalIgnoreCase))
             {
                 if (!EnsureEfTool(basePath))
                     return;
