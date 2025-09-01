@@ -102,6 +102,16 @@ dotnet-arch new action --entity=EntityName --action=getfile --is-command=false -
 
 The tool generates the command or query, handler, validator, repository method, and controller endpoint for the specified action. If the entity slice is missing, a minimal repository and controller are also created with only this action stub. Migrations are applied automatically after scaffolding so the database stays in sync.
 
+#### Run the Startup Project
+
+After scaffolding, launch the API with automatic EF Core migrations:
+
+```
+dotnet-arch exec [--output=Path]
+```
+
+This checks for model changes, creates a new migration if needed, applies pending migrations, and then runs the configured startup project. The optional `--output` overrides the last solution path stored by the tool.
+
 ---
 
 #### **How to Clone and Run the Project**
@@ -173,12 +183,13 @@ We welcome contributions to DotNetArch! Here’s how you can contribute:
 - **Automatic package & service registration**: Required NuGet packages are added to project files and services like `DbContext`, `IMediator`, `IUnitOfWork`, and validators are registered in `Program.cs`.
 - **`new action` command**: Add custom commands or queries with handlers, validators, repository methods, and controller endpoints.
 - **Composable actions and slices**: Actions scaffolded before a full `new crud` run are preserved and the later CRUD generation augments the existing files instead of overwriting them.
+- **`exec` command**: Run the startup project while automatically generating and applying pending EF Core migrations.
 - **Correct namespace wiring**: `Program.cs` updates include the necessary `using` directives and service registrations for each entity's repository without malformed entries.
 - **Configurable startup project**: `dotnet-arch.yml` tracks which project is the startup target so controllers are added to the correct application entry point.
 - **Custom output path**: Both `new solution` and `new crud` accept an `--output` option so code can be generated in test directories or alternative locations.
 - **Development Swagger setup**: API projects automatically reference `Microsoft.AspNetCore.OpenApi` and `Swashbuckle.AspNetCore`, register Swagger services, and enable Swagger UI in development while removing default template files and sample endpoints.
 - **Feature-based folder structure**: Each layer organizes code under `Features/<Entity>` so all slices stay grouped.
-  - **Automatic migrations**: `new crud` and `new action` verify `dotnet-ef` and attempt installation if needed. For relational providers (SQL Server, SQLite, PostgreSQL) migrations and database updates run automatically; for MongoDB the process skips migrations. Generated `Program.cs` calls `Database.Migrate()` on startup to apply any pending migrations so new tables are created automatically.
+  - **Automatic migrations**: `new crud`, `new action`, and `exec` verify `dotnet-ef` and attempt installation if needed. For relational providers (SQL Server, SQLite, PostgreSQL) migrations and database updates run automatically; for MongoDB the process skips migrations. Generated `Program.cs` calls `Database.Migrate()` on startup to apply any pending migrations so new tables are created automatically.
 
 ---
 

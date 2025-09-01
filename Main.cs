@@ -93,6 +93,58 @@ class Program
             return;
         }
 
+        if (args.Length >= 1 && args[0].ToLower() == "exec")
+        {
+            string? outputPath = null;
+            for (int i = 1; i < args.Length; i++)
+            {
+                if (args[i].StartsWith("--output="))
+                    outputPath = args[i].Substring("--output=".Length);
+            }
+
+            if (string.IsNullOrWhiteSpace(outputPath))
+                outputPath = PathState.Load() ?? Directory.GetCurrentDirectory();
+
+            var basePath = outputPath!;
+            var config = ConfigManager.Load(basePath);
+            if (config == null)
+            {
+                Error("Solution configuration not found. Run 'new solution' first.");
+                return;
+            }
+
+            var provider = config.DatabaseProvider;
+            if (!string.IsNullOrWhiteSpace(provider) && !provider.Equals("Mongo", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!EnsureEfTool(basePath))
+                    return;
+                if (RunCommand("dotnet build", basePath))
+                {
+                    var infraProj = $"{config.SolutionName}.Infrastructure/{config.SolutionName}.Infrastructure.csproj";
+                    var startProj = $"{config.StartupProject}/{config.StartupProject}.csproj";
+                    var migName = $"Auto_{DateTime.UtcNow:yyyyMMddHHmmss}";
+                    var (success, output) = RunCommandCapture($"dotnet ef migrations add {migName} --project {infraProj} --startup-project {startProj} --output-dir Migrations", basePath);
+                    if (success)
+                    {
+                        RunCommand($"dotnet ef database update --project {infraProj} --startup-project {startProj}", basePath);
+                    }
+                    else if (!output.Contains("No changes were detected", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Error(output.Trim());
+                        return;
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("❌ Build failed; skipping migrations.");
+                }
+            }
+
+            var runProj = $"{config.StartupProject}/{config.StartupProject}.csproj";
+            RunProject(runProj, basePath);
+            return;
+        }
+
         if (args.Length >= 2 && args[0].ToLower() == "new" && args[1].ToLower() == "solution")
         {
             string? solutionName = null;
@@ -297,6 +349,60 @@ class Program
         }
 
         return success;
+    }
+
+    public static (bool Success, string Output) RunCommandCapture(string command, string? workingDir = null)
+    {
+        string shell, shellArgs;
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            shell = "cmd.exe";
+            shellArgs = $"/c {command}";
+        }
+        else
+        {
+            shell = "/bin/bash";
+            shellArgs = $"-c \"{command}\"";
+        }
+
+        var process = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = shell,
+                Arguments = shellArgs,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = workingDir ?? Directory.GetCurrentDirectory()
+            }
+        };
+
+        process.Start();
+        process.WaitForExit();
+
+        var stdout = process.StandardOutput.ReadToEnd();
+        var stderr = process.StandardError.ReadToEnd();
+        bool success = process.ExitCode == 0;
+        var output = string.IsNullOrWhiteSpace(stderr) ? stdout : stdout + stderr;
+        return (success, output);
+    }
+
+    public static void RunProject(string project, string basePath)
+    {
+        var process = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = "dotnet",
+                Arguments = $"run --project {project}",
+                WorkingDirectory = basePath,
+                UseShellExecute = false
+            }
+        };
+        process.Start();
+        process.WaitForExit();
     }
 
     public static bool EnsureEfTool(string? workingDir = null)
