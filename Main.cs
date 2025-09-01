@@ -189,8 +189,12 @@ class Program
                     return;
                 }
                 var prev = migrations.Length > 1 ? migrations[migrations.Length - 2] : "0";
-                RunCommand($"dotnet ef database update {prev} --project {infraProj} --startup-project {startProj}", basePath);
-                RunCommand($"dotnet ef migrations remove --project {infraProj} --startup-project {startProj}", basePath);
+                if (!RunCommand($"dotnet ef database update {prev} --project {infraProj} --startup-project {startProj}", basePath))
+                {
+                    Error("Failed to rollback database; migration removal aborted.");
+                    return;
+                }
+                RunCommand($"dotnet ef migrations remove --force --project {infraProj} --startup-project {startProj}", basePath);
             }
             else
             {
