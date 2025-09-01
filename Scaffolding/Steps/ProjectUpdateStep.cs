@@ -260,6 +260,58 @@ public static class DependencyInjection
             }
             File.WriteAllText(infraDi, infraContent.Replace("{{solution}}", solution));
         }
+        // ensure design-time factory for EF Core so migrations can run without full host
+        var persistenceDir = Path.Combine(infraDir, "Persistence");
+        Directory.CreateDirectory(persistenceDir);
+        var factoryFile = Path.Combine(persistenceDir, "AppDbContextFactory.cs");
+        if (!File.Exists(factoryFile))
+        {
+            string factoryContent;
+            if (provider == "SQLite")
+            {
+                factoryContent = """
+using System.IO;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Design;
+
+namespace {{solution}}.Infrastructure.Persistence;
+
+public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
+{
+    public AppDbContext CreateDbContext(string[] args)
+    {
+        var dbPath = Path.Combine(AppContext.BaseDirectory, "..", "{{solution}}.Infrastructure", "Persistence", "Data", "app.db");
+        Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseSqlite($"Data Source={dbPath}")
+            .Options;
+        return new AppDbContext(options);
+    }
+}
+""";
+            }
+            else
+            {
+                factoryContent = """
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Design;
+
+namespace {{solution}}.Infrastructure.Persistence;
+
+public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
+{
+    public AppDbContext CreateDbContext(string[] args)
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseSqlServer("Server=.;Database=AppDb;Trusted_Connection=True;")
+            .Options;
+        return new AppDbContext(options);
+    }
+}
+""";
+            }
+            File.WriteAllText(factoryFile, factoryContent.Replace("{{solution}}", solution));
+        }
     }
 
     static void UpdateProgram(string solution, string provider, string entity, string basePath, string startupProject, string apiStyle)
