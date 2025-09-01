@@ -207,7 +207,10 @@ public class ProjectUpdateStep : IScaffoldStep
         if (idx >= 0)
         {
             if (!lines.Any(l => l.Contains("ASPNETCORE_ENVIRONMENT")))
+            {
                 lines.Insert(idx, "var env = Environment.GetEnvironmentVariable(\"ASPNETCORE_ENVIRONMENT\") ?? \"development\";");
+                idx++; // builder line shifts down
+            }
 
             var insertIndex = idx + 1;
             lines.Insert(insertIndex++, "DotNetEnv.Env.Load(Path.Combine(Directory.GetCurrentDirectory(), \"config\", $\".env.{env.ToLower()}\"));");
