@@ -112,9 +112,9 @@ dotnet-arch new service [--output=Path]
 
 The CLI lets you choose between **Custom**, **Cache**, and **Message Broker** services. During generation you select the desired dependency injection lifetime (scoped, transient, or singleton).
 
-Custom services can optionally target a specific entity. If an entity is provided the service is created alongside its command/query folders. If no entity is supplied the service is treated as **Common** and emitted under `Application/Common`. The Common folder now includes `Services`, `Interfaces`, and `Models` subfolders with a reusable `PageResult<T>` model scaffolded automatically.
+Custom services first prompt for an entity name. When provided, the service is placed under `Application/Features/<Entity>/Services/<EntityService>` with the service name defaulting to `<Entity>Service`. If no entity is supplied, the service name becomes mandatory; internal services land in `Application/Common/Services` while external services are emitted under `Infrastructure/Services/<ServiceName>` with their interfaces in `Application/Common/Interfaces`. Service names are normalized to **PascalCase** and suffixed with `Service` if missing. Registrations are appended to per‑layer `DependencyInjection` extension classes and invoked from `Program.cs`.
 
-Selecting **Cache** or **Message Broker** produces ready‑to‑use wrappers for external dependencies (currently Redis and RabbitMQ). Required NuGet packages are installed, classes are placed under `Infrastructure/Services/<Provider>` and are registered for dependency injection using the chosen lifetime.
+Selecting **Cache** or **Message Broker** scaffolds ready‑to‑use Redis or RabbitMQ wrappers. Their NuGet packages are added automatically, interfaces live in `Application/Common/Interfaces` and implementations in `Infrastructure/Services/<Provider>`. These services are registered as singletons, `.env.development`, `.env.test`, and `.env.production` files are created with placeholder credentials, and the startup project loads them via **DotNetEnv**.
 
 #### Run the Startup Project
 
