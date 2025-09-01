@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Security.Cryptography;
 using DotNetArch.Scaffolding;
 
 static class ServiceScaffolder
@@ -119,8 +120,8 @@ static class ServiceScaffolder
             "            var cfg = sp.GetRequiredService<IConfiguration>();",
             "            var host = cfg[\"Redis:Host\"];",
             "            var port = cfg[\"Redis:Port\"];",
-            "            var user = Environment.GetEnvironmentVariable(\"REDIS_USER\");",
-            "            var pass = Environment.GetEnvironmentVariable(\"REDIS_PASSWORD\");",
+            "            var user = cfg[\"Redis:User\"];",
+            "            var pass = cfg[\"Redis:Password\"];",
             "            return ConnectionMultiplexer.Connect($\"{host}:{port},user={user},password={pass}\");",
             "        });"
         });
@@ -154,8 +155,8 @@ static class ServiceScaffolder
             "            var cfg = sp.GetRequiredService<IConfiguration>();",
             "            var host = cfg[\"RabbitMq:Host\"];",
             "            var port = int.Parse(cfg[\"RabbitMq:Port\"] ?? \"5672\");",
-            "            var user = Environment.GetEnvironmentVariable(\"RABBITMQ_USER\");",
-            "            var pass = Environment.GetEnvironmentVariable(\"RABBITMQ_PASSWORD\");",
+            "            var user = cfg[\"RabbitMq:User\"];",
+            "            var pass = cfg[\"RabbitMq:Password\"];",
             "            var factory = new ConnectionFactory { HostName = host, Port = port, UserName = user, Password = pass };",
             "            return factory.CreateConnection();",
             "        });"
@@ -255,6 +256,8 @@ static class ServiceScaffolder
             "using System;",
             "using System.Text;",
             "using System.Threading.Tasks;",
+            "using System.Security.Cryptography;",
+            "using Microsoft.Extensions.Configuration;",
             "using StackExchange.Redis;",
             $"using {ifaceNs};",
             "",
@@ -263,9 +266,13 @@ static class ServiceScaffolder
             $"public class {cls} : {iface}",
             "{",
             "    private readonly IDatabase _db;",
-            $"    public {cls}(IConnectionMultiplexer mux)",
+            "    private readonly string _publicKey;",
+            "    private readonly string _privateKey;",
+            $"    public {cls}(IConnectionMultiplexer mux, IConfiguration cfg)",
             "    {",
             "        _db = mux.GetDatabase();",
+            "        _publicKey = cfg[\"Redis:PublicKey\"] ?? string.Empty;",
+            "        _privateKey = cfg[\"Redis:PrivateKey\"] ?? string.Empty;",
             "    }",
             "    public async Task<string?> GetAsync(string key, bool decode = false)",
             "    {",
@@ -279,8 +286,22 @@ static class ServiceScaffolder
             "        var stored = encode ? Encode(value) : value;",
             "        return _db.StringSetAsync(key, stored, expiry);",
             "    }",
-            "    private static string Encode(string value) => Convert.ToBase64String(Encoding.UTF8.GetBytes(value));",
-            "    private static string Decode(string value) => Encoding.UTF8.GetString(Convert.FromBase64String(value));",
+            "    private string Encode(string value)",
+            "    {",
+            "        using var rsa = RSA.Create();",
+            "        rsa.ImportRSAPublicKey(Convert.FromBase64String(_publicKey), out _);",
+            "        var bytes = Encoding.UTF8.GetBytes(value);",
+            "        var enc = rsa.Encrypt(bytes, RSAEncryptionPadding.OaepSHA256);",
+            "        return Convert.ToBase64String(enc);",
+            "    }",
+            "    private string Decode(string value)",
+            "    {",
+            "        using var rsa = RSA.Create();",
+            "        rsa.ImportRSAPrivateKey(Convert.FromBase64String(_privateKey), out _);",
+            "        var bytes = Convert.FromBase64String(value);",
+            "        var dec = rsa.Decrypt(bytes, RSAEncryptionPadding.OaepSHA256);",
+            "        return Encoding.UTF8.GetString(dec);",
+            "    }",
             "}",
             "",
         };
@@ -453,18 +474,42 @@ static class ServiceScaffolder
         var lines = File.ReadAllLines(programPath).ToList();
         var usingLine = "using DotNetEnv;";
         var ioUsing = "using System.IO;";
+        var cfgUsing = "using Microsoft.Extensions.Configuration;";
+        var sysUsing = "using System;";
         var uIdx = lines.FindLastIndex(l => l.StartsWith("using "));
         if (!lines.Any(l => l.Trim() == usingLine))
             lines.Insert(uIdx + 1, usingLine);
         if (!lines.Any(l => l.Trim() == ioUsing))
             lines.Insert(uIdx + 2, ioUsing);
-        var loadLine = "DotNetEnv.Env.Load(Path.Combine(Directory.GetCurrentDirectory(), $\".env.{builder.Environment.EnvironmentName.ToLower()}\"));";
+        if (!lines.Any(l => l.Trim() == cfgUsing))
+            lines.Insert(uIdx + 3, cfgUsing);
+        if (!lines.Any(l => l.Trim() == sysUsing))
+            lines.Insert(uIdx + 4, sysUsing);
+
+        var envVarLine = "var env = Environment.GetEnvironmentVariable(\"ASPNETCORE_ENVIRONMENT\") ?? \"development\";";
+        if (!lines.Any(l => l.Trim() == envVarLine))
+        {
+            var idx = lines.FindIndex(l => l.Contains("var builder"));
+            if (idx >= 0)
+                lines.Insert(idx, envVarLine);
+        }
+
+        var loadLine = "DotNetEnv.Env.Load(Path.Combine(Directory.GetCurrentDirectory(), $\".env.{env.ToLower()}\"));";
         if (!lines.Any(l => l.Contains(loadLine)))
         {
             var idx = lines.FindIndex(l => l.Contains("var builder"));
             if (idx >= 0)
-                lines.Insert(idx, loadLine);
+                lines.Insert(idx + 1, loadLine);
         }
+
+        var addJsonLine = "builder.Configuration.AddJsonFile($\"appsettings.{env.ToLower()}.json\", optional: true, reloadOnChange: true);";
+        if (!lines.Any(l => l.Contains(addJsonLine)))
+        {
+            var idx = lines.FindIndex(l => l.Contains("var builder"));
+            if (idx >= 0)
+                lines.Insert(idx + 3, addJsonLine);
+        }
+
         File.WriteAllLines(programPath, lines);
     }
 
@@ -480,13 +525,16 @@ static class ServiceScaffolder
             var lines = File.ReadAllLines(path).ToList();
             if (provider == "Redis")
             {
-                EnsureEnvVar(lines, "REDIS_USER", user);
-                EnsureEnvVar(lines, "REDIS_PASSWORD", pass);
+                var keys = GenerateRsaKeys();
+                EnsureEnvVar(lines, "REDIS__USER", user);
+                EnsureEnvVar(lines, "REDIS__PASSWORD", pass);
+                EnsureEnvVar(lines, "REDIS__PUBLICKEY", keys.publicKey);
+                EnsureEnvVar(lines, "REDIS__PRIVATEKEY", keys.privateKey);
             }
             else
             {
-                EnsureEnvVar(lines, "RABBITMQ_USER", user);
-                EnsureEnvVar(lines, "RABBITMQ_PASSWORD", pass);
+                EnsureEnvVar(lines, "RABBITMQ__USER", user);
+                EnsureEnvVar(lines, "RABBITMQ__PASSWORD", pass);
             }
             File.WriteAllLines(path, lines);
         }
@@ -496,6 +544,14 @@ static class ServiceScaffolder
     {
         if (!lines.Any(l => l.StartsWith(key + "=")))
             lines.Add($"{key}={value}");
+    }
+
+    static (string publicKey, string privateKey) GenerateRsaKeys()
+    {
+        using var rsa = RSA.Create(2048);
+        var pub = Convert.ToBase64String(rsa.ExportRSAPublicKey());
+        var priv = Convert.ToBase64String(rsa.ExportRSAPrivateKey());
+        return (pub, priv);
     }
 
     static void InstallPackage(SolutionConfig config, string package)
@@ -508,7 +564,7 @@ static class ServiceScaffolder
     static void EnsureAppSettingsFiles(SolutionConfig config, string provider)
     {
         var projectDir = Path.Combine(config.SolutionPath, config.StartupProject);
-        foreach (var env in new[] { "Development", "Test", "Production" })
+        foreach (var env in new[] { "development", "test", "production" })
         {
             var path = Path.Combine(projectDir, $"appsettings.{env}.json");
             JsonNode root = File.Exists(path) && !string.IsNullOrWhiteSpace(File.ReadAllText(path))
