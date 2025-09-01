@@ -27,7 +27,7 @@ using {{solution}}.Application.Features.{{entities}}.Commands.Delete;
 using {{solution}}.Application.Features.{{entities}}.Queries.GetById;
 using {{solution}}.Application.Features.{{entities}}.Queries.GetAll;
 using {{solution}}.Application.Features.{{entities}}.Queries.GetList;
-using {{solution}}.Core.Common;
+using {{solution}}.Application.Common.Models;
 using {{solution}}.Core.Features.{{entities}};
 
 namespace {{startupProject}}.Features.{{entities}};
@@ -117,7 +117,7 @@ public class {{entity}}Controller : ControllerBase
                 $"using {solution}.Application.Features.{plural}.Queries.GetById;",
                 $"using {solution}.Application.Features.{plural}.Queries.GetAll;",
                 $"using {solution}.Application.Features.{plural}.Queries.GetList;",
-                $"using {solution}.Core.Common;",
+                $"using {solution}.Application.Common.Models;",
                 $"using {solution}.Core.Features.{plural};"
             };
             foreach (var u in requiredUsings)

@@ -246,7 +246,7 @@ public class Get{{entity}}AllHandler : IRequestHandler<Get{{entity}}AllQuery, Li
         Directory.CreateDirectory(getListDir);
         File.WriteAllText(Path.Combine(getListDir, $"Get{entity}ListQuery.cs"), Fill(@"
 using MediatR;
-using {{solution}}.Core.Common;
+using {{solution}}.Application.Common.Models;
 using {{solution}}.Core.Features.{{entities}};
 
 namespace {{solution}}.Application.Features.{{entities}}.Queries.GetList;
@@ -257,7 +257,7 @@ public record Get{{entity}}ListQuery(int Page = 1, int PageSize = 10) : IRequest
 using MediatR;
 using System.Threading;
 using System.Threading.Tasks;
-using {{solution}}.Core.Common;
+using {{solution}}.Application.Common.Models;
 using {{solution}}.Core.Features.{{entities}};
 using {{solution}}.Application.Common.Interfaces;
 
