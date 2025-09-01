@@ -110,7 +110,11 @@ Scaffold application or infrastructure services through an interactive menu:
 dotnet-arch new service [--output=Path]
 ```
 
-The CLI lets you choose between **Custom**, **Cache**, and **Message Broker** services. Custom services can optionally target a specific entity; if no entity is provided they're placed under `Common`. External services like cache or message brokers are generated in the `Infrastructure` layer, while internal logic services go to `Application`. An interface and implementation are created and registered for dependency injection automatically.
+The CLI lets you choose between **Custom**, **Cache**, and **Message Broker** services. During generation you select the desired dependency injection lifetime (scoped, transient, or singleton).
+
+Custom services can optionally target a specific entity. If an entity is provided the service is created alongside its command/query folders. If no entity is supplied the service is treated as **Common** and emitted under `Application/Common`. The Common folder now includes `Services`, `Interfaces`, and `Models` subfolders with a reusable `PageResult<T>` model scaffolded automatically.
+
+Selecting **Cache** or **Message Broker** produces ready‑to‑use wrappers for external dependencies (currently Redis and RabbitMQ). Required NuGet packages are installed, classes are placed under `Infrastructure/Services/<Provider>` and are registered for dependency injection using the chosen lifetime.
 
 #### Run the Startup Project
 
