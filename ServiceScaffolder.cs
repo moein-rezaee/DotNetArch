@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Security.Cryptography;
+using System.Xml.Linq;
 using DotNetArch.Scaffolding;
 
 static class ServiceScaffolder
@@ -112,7 +113,7 @@ static class ServiceScaffolder
         Directory.CreateDirectory(infraDir);
         var classNs = $"{solution}.Infrastructure.Services.Redis";
         WriteRedisClass(infraDir, classNs, cls, iface, ifaceNs);
-        InstallPackage(config, "StackExchange.Redis");
+        InstallPackage(config, "StackExchange.Redis", "2.9.11");
         var extra = string.Join(Environment.NewLine, new[]
         {
             "        services.AddSingleton<IConnectionMultiplexer>(sp =>",
@@ -147,7 +148,7 @@ static class ServiceScaffolder
         Directory.CreateDirectory(infraDir);
         var classNs = $"{solution}.Infrastructure.Services.RabbitMq";
         WriteRabbitClass(infraDir, classNs, cls, iface, ifaceNs);
-        InstallPackage(config, "RabbitMQ.Client");
+        InstallPackage(config, "RabbitMQ.Client", "7.1.2");
         var extra = string.Join(Environment.NewLine, new[]
         {
             "        services.AddSingleton<IConnection>(sp =>",
@@ -568,11 +569,30 @@ static class ServiceScaffolder
         return (Convert.ToBase64String(aes.Key), Convert.ToBase64String(aes.IV));
     }
 
-    static void InstallPackage(SolutionConfig config, string package)
+    static void InstallPackage(SolutionConfig config, string package, string version)
     {
         var infraProj = Path.Combine(config.SolutionPath, $"{config.SolutionName}.Infrastructure/{config.SolutionName}.Infrastructure.csproj");
-        if (File.Exists(infraProj))
-            Program.RunCommand($"dotnet add {infraProj} package {package}", config.SolutionPath, print: false);
+        if (!File.Exists(infraProj)) return;
+        if (!Program.RunCommand($"dotnet add {infraProj} package {package}", config.SolutionPath, print: false))
+        {
+            var doc = XDocument.Load(infraProj);
+            var ns = doc.Root!.Name.Namespace;
+            var itemGroup = doc.Root.Elements(ns + "ItemGroup").FirstOrDefault();
+            if (itemGroup == null)
+            {
+                itemGroup = new XElement(ns + "ItemGroup");
+                doc.Root.Add(itemGroup);
+            }
+            var exists = itemGroup.Elements(ns + "PackageReference")
+                .Any(x => string.Equals(x.Attribute("Include")?.Value, package, StringComparison.OrdinalIgnoreCase));
+            if (!exists)
+            {
+                itemGroup.Add(new XElement(ns + "PackageReference",
+                    new XAttribute("Include", package),
+                    new XAttribute("Version", version)));
+                doc.Save(infraProj);
+            }
+        }
     }
 
     static void EnsureAppSettingsFiles(SolutionConfig config, string provider)

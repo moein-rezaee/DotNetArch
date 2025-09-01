@@ -12,17 +12,16 @@ public class RepositoryStep : IScaffoldStep
         var basePath = config.SolutionPath;
         var plural = Naming.Pluralize(entity);
 
-        // ensure common models directory and PagedResult
-        var appCommon = Path.Combine(basePath, $"{solution}.Application", "Common");
-        var modelsDir = Path.Combine(appCommon, "Models");
-        Directory.CreateDirectory(modelsDir);
-        var pagedResultFile = Path.Combine(modelsDir, "PagedResult.cs");
+        // ensure core models directory and PagedResult
+        var coreModelsDir = Path.Combine(basePath, $"{solution}.Core", "Models");
+        Directory.CreateDirectory(coreModelsDir);
+        var pagedResultFile = Path.Combine(coreModelsDir, "PagedResult.cs");
         if (!File.Exists(pagedResultFile))
         {
             var pagedContent = """
 using System.Collections.Generic;
 
-namespace {{solution}}.Application.Common.Models;
+namespace {{solution}}.Core.Models;
 
 public record PagedResult<T>(List<T> Items, int TotalCount, int Page, int PageSize);
 """;
@@ -30,13 +29,14 @@ public record PagedResult<T>(List<T> Items, int TotalCount, int Page, int PageSi
         }
 
         // repository interface in Application layer
+        var appCommon = Path.Combine(basePath, $"{solution}.Application", "Common");
         var ifaceDir = Path.Combine(appCommon, "Interfaces", "Repositories");
         Directory.CreateDirectory(ifaceDir);
         var ifaceFile = Path.Combine(ifaceDir, $"I{entity}Repository.cs");
         var ifaceTemplate = """
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using {{solution}}.Application.Common.Models;
+using {{solution}}.Core.Models;
 using {{solution}}.Core.Features.{{entities}};
 
 namespace {{solution}}.Application.Common.Interfaces.Repositories;
@@ -68,8 +68,8 @@ public interface I{{entity}}Repository
                 var idx = text.LastIndexOf("}");
                 text = text.Insert(idx, insert);
             }
-            if (!text.Contains("using " + solution + ".Application.Common.Models;"))
-                text = "using " + solution + ".Application.Common.Models;" + Environment.NewLine + text;
+            if (!text.Contains("using " + solution + ".Core.Models;"))
+                text = "using " + solution + ".Core.Models;" + Environment.NewLine + text;
             if (!text.Contains("using " + solution + ".Core.Features." + plural + ";"))
                 text = "using " + solution + ".Core.Features." + plural + ";" + Environment.NewLine + text;
             File.WriteAllText(ifaceFile, text);
@@ -84,7 +84,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
-using {{solution}}.Application.Common.Models;
+using {{solution}}.Core.Models;
 using {{solution}}.Application.Common.Interfaces.Repositories;
 using {{solution}}.Core.Features.{{entities}};
 using {{solution}}.Infrastructure.Persistence;
@@ -147,7 +147,7 @@ public class {{entity}}Repository : I{{entity}}Repository
                 "using System.Threading.Tasks;",
                 "using Microsoft.EntityFrameworkCore;",
                 "using System.Collections.Generic;",
-                "using " + solution + ".Application.Common.Models;",
+                "using " + solution + ".Core.Models;",
                 "using " + solution + ".Application.Common.Interfaces.Repositories;",
                 "using " + solution + ".Core.Features." + plural + ";",
                 "using " + solution + ".Infrastructure.Persistence;"

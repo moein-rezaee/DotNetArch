@@ -30,7 +30,7 @@ using {{solution}}.Application.Features.{{entities}}.Queries.GetById;
 using {{solution}}.Application.Features.{{entities}}.Queries.GetAll;
 using {{solution}}.Application.Features.{{entities}}.Queries.GetList;
 using {{solution}}.Core.Features.{{entities}};
-using {{solution}}.Application.Common.Models;
+using {{solution}}.Core.Models;
 
 namespace {{startupProject}}.Features.{{entities}};
 
@@ -94,7 +94,7 @@ public static class {{entity}}Endpoints
         EnsureUsing($"{solution}.Application.Features.{plural}.Queries.GetById");
         EnsureUsing($"{solution}.Application.Features.{plural}.Queries.GetAll");
         EnsureUsing($"{solution}.Application.Features.{plural}.Queries.GetList");
-        EnsureUsing($"{solution}.Application.Common.Models");
+        EnsureUsing($"{solution}.Core.Models");
 
         if (!lines.Any(l => l.Contains($"Get{entity}ByIdQuery")))
         {
