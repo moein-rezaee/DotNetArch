@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using DotNetArch.Scaffolding;
 using DotNetArch.Scaffolding.Steps;
 
@@ -183,28 +185,26 @@ class Program
             if (!EnsureEfTool(basePath))
                 return;
 
-            if (RunCommand("dotnet build", basePath))
+            var infraProj = $"{config.SolutionName}.Infrastructure/{config.SolutionName}.Infrastructure.csproj";
+            var startProj = $"{config.StartupProject}/{config.StartupProject}.csproj";
+            var migrations = ListMigrations(infraProj, startProj, basePath);
+            if (migrations.Length == 0)
             {
-                var infraProj = $"{config.SolutionName}.Infrastructure/{config.SolutionName}.Infrastructure.csproj";
-                var startProj = $"{config.StartupProject}/{config.StartupProject}.csproj";
-                var migrations = ListMigrations(infraProj, startProj, basePath);
-                if (migrations.Length == 0)
-                {
-                    Info("No migrations found.");
-                    return;
-                }
-                var prev = migrations.Length > 1 ? migrations[migrations.Length - 2] : "0";
-                if (!RunCommand($"dotnet ef database update {prev} --project {infraProj} --startup-project {startProj}", basePath))
-                {
-                    Error("Failed to rollback database; migration removal aborted.");
-                    return;
-                }
-                RunCommand($"dotnet ef migrations remove --force --project {infraProj} --startup-project {startProj}", basePath);
+                Info("No migrations found.");
+                return;
             }
-            else
+            var prev = migrations.Length > 1 ? migrations[migrations.Length - 2] : "0";
+            if (!RunCommand($"dotnet ef database update {prev} --project {infraProj} --startup-project {startProj} --no-build", basePath))
             {
-                Console.WriteLine("❌ Build failed; skipping migration removal.");
+                Error("Failed to rollback database; migration removal aborted.");
+                return;
             }
+            if (!RunCommand($"dotnet ef migrations remove --force --project {infraProj} --startup-project {startProj} --no-build", basePath))
+            {
+                Error("Failed to remove migration.");
+                return;
+            }
+            RunCommand("dotnet build", basePath);
 
             return;
         }
@@ -508,18 +508,23 @@ class Program
 
     static string[] ListMigrations(string infraProj, string startProj, string basePath)
     {
-        var (success, output) = RunCommandCapture($"dotnet ef migrations list --project {infraProj} --startup-project {startProj}", basePath);
+        var (success, output) = RunCommandCapture($"dotnet ef migrations list --project {infraProj} --startup-project {startProj} --no-build", basePath);
         if (!success)
             return Array.Empty<string>();
         var lines = output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-        for (int i = 0; i < lines.Length; i++)
+        var regex = new Regex("^\\d+_");
+        var list = new List<string>();
+        foreach (var line in lines)
         {
-            var space = lines[i].IndexOf(' ');
+            var trimmed = line.Trim();
+            if (!regex.IsMatch(trimmed))
+                continue;
+            var space = trimmed.IndexOf(' ');
             if (space >= 0)
-                lines[i] = lines[i].Substring(0, space);
-            lines[i] = lines[i].Trim();
+                trimmed = trimmed.Substring(0, space);
+            list.Add(trimmed);
         }
-        return lines;
+        return list.ToArray();
     }
 
     static void RefreshLastMigration(SolutionConfig config, string basePath, string? name = null)
@@ -546,16 +551,11 @@ class Program
         var last = migrations[migrations.Length - 1];
         var prev = migrations.Length > 1 ? migrations[migrations.Length - 2] : "0";
         var migName = name;
-        var defaultName = last.Contains('_') ? last.Substring(last.IndexOf('_') + 1) : last;
         if (string.IsNullOrWhiteSpace(migName))
-        {
-            migName = Ask("Enter migration name", defaultName);
-            if (string.IsNullOrWhiteSpace(migName))
-            {
-                Error("Migration name is required.");
-                return;
-            }
-        }
+            migName = Ask("Enter migration name", "NoName");
+        if (string.IsNullOrWhiteSpace(migName))
+            migName = "NoName";
+        Info($"Using migration name: {migName}");
 
         if (!RunCommand($"dotnet ef database update {prev} --project {infraProj} --startup-project {startProj} --no-build", basePath))
         {
