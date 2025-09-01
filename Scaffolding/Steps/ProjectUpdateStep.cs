@@ -189,6 +189,25 @@ public static class DependencyInjection
 """;
             File.WriteAllText(appDi, appContent.Replace("{{solution}}", solution));
         }
+        else
+        {
+            var lines = File.ReadAllLines(appDi).ToList();
+            if (!lines.Any(l => l.Contains("using FluentValidation")))
+            {
+                var insertIndex = lines.FindLastIndex(l => l.StartsWith("using ")) + 1;
+                if (insertIndex < 0) insertIndex = 0;
+                lines.Insert(insertIndex, "using FluentValidation;");
+            }
+            if (!lines.Any(l => l.Contains("AddValidatorsFromAssemblyContaining")))
+            {
+                var idx = lines.FindIndex(l => l.Contains("AddMediatR"));
+                if (idx != -1)
+                {
+                    lines.Insert(idx + 1, "        services.AddValidatorsFromAssemblyContaining<AssemblyMarker>();");
+                }
+            }
+            File.WriteAllLines(appDi, lines);
+        }
 
         var infraDir = Path.Combine(basePath, $"{solution}.Infrastructure");
         Directory.CreateDirectory(infraDir);
