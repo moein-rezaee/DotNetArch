@@ -43,7 +43,7 @@ static class ServiceScaffolder
             var ifaceNs = $"{solution}.Application.Features.{entityFolder}.Interfaces";
             var classNs = $"{solution}.Application.Features.{entityFolder}.Services";
             WriteInterface(ifaceDir, ifaceNs, iface);
-            WriteClass(implDir, classNs, serviceName, iface);
+            WriteClass(implDir, classNs, serviceName, iface, ifaceNs);
 
             var reg = AskLifetime();
             AddServiceToDi(config, "Application", iface, ifaceNs, serviceName, classNs, reg);
@@ -73,7 +73,7 @@ static class ServiceScaffolder
             var implDir = Path.Combine(infraRoot, "Services", serviceName);
             Directory.CreateDirectory(implDir);
             var classNs = $"{solution}.Infrastructure.Services.{serviceName}";
-            WriteClass(implDir, classNs, serviceName, iface);
+            WriteClass(implDir, classNs, serviceName, iface, ifaceNs);
 
             var reg = AskLifetime();
             AddServiceToDi(config, "Infrastructure", iface, ifaceNs, serviceName, classNs, reg);
@@ -90,7 +90,7 @@ static class ServiceScaffolder
             var ifaceNs = $"{solution}.Application.Common.Interfaces";
             var classNs = $"{solution}.Application.Common.Services.{serviceName}";
             WriteInterface(ifaceDir, ifaceNs, iface);
-            WriteClass(implDir, classNs, serviceName, iface);
+            WriteClass(implDir, classNs, serviceName, iface, ifaceNs);
 
             var reg = AskLifetime();
             AddServiceToDi(config, "Application", iface, ifaceNs, serviceName, classNs, reg);
@@ -224,10 +224,11 @@ static class ServiceScaffolder
             $"namespace {ns};{Environment.NewLine}{Environment.NewLine}public interface {iface} {{ }}{Environment.NewLine}");
     }
 
-    static void WriteClass(string dir, string ns, string cls, string iface)
+    static void WriteClass(string dir, string ns, string cls, string iface, string ifaceNs)
     {
-        File.WriteAllText(Path.Combine(dir, $"{cls}.cs"),
-            $"namespace {ns};{Environment.NewLine}{Environment.NewLine}public class {cls} : {iface} {{ }}{Environment.NewLine}");
+        File.WriteAllText(
+            Path.Combine(dir, $"{cls}.cs"),
+            $"using {ifaceNs};{Environment.NewLine}{Environment.NewLine}namespace {ns};{Environment.NewLine}{Environment.NewLine}public class {cls} : {iface} {{ }}{Environment.NewLine}");
     }
 
     static void WriteRedisInterface(string dir, string ns, string iface)
