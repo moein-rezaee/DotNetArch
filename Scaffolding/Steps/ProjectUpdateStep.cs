@@ -36,6 +36,7 @@ public class ProjectUpdateStep : IScaffoldStep
         UpdateInfrastructureProject(solution, basePath, provider);
         UpdateApiProject(solution, provider, basePath, startupProject);
         RemoveTemplateFiles(basePath, startupProject);
+        EnsureConfigFiles(basePath, startupProject);
         UpdateProgram(solution, provider, entity, basePath, startupProject, apiStyle);
     }
 
@@ -178,6 +179,8 @@ public class ProjectUpdateStep : IScaffoldStep
             "using System.IO;",
             "using MediatR;",
             "using FluentValidation;",
+            "using DotNetEnv;",
+            "using Microsoft.Extensions.Configuration;",
             $"using {solution}.Application;",
             "using Microsoft.Extensions.DependencyInjection;"
         };
@@ -203,7 +206,12 @@ public class ProjectUpdateStep : IScaffoldStep
         var idx = lines.FindIndex(l => l.Contains("var builder"));
         if (idx >= 0)
         {
+            if (!lines.Any(l => l.Contains("ASPNETCORE_ENVIRONMENT")))
+                lines.Insert(idx, "var env = Environment.GetEnvironmentVariable(\"ASPNETCORE_ENVIRONMENT\") ?? \"development\";");
+
             var insertIndex = idx + 1;
+            lines.Insert(insertIndex++, "DotNetEnv.Env.Load(Path.Combine(Directory.GetCurrentDirectory(), \"config\", $\".env.{env.ToLower()}\"));");
+            lines.Insert(insertIndex++, "builder.Configuration.AddJsonFile(Path.Combine(\"config\", $\"appsettings.{env.ToLower()}.json\"), optional: true, reloadOnChange: true);");
             if (!lines.Any(l => l.Contains("AddEndpointsApiExplorer")))
                 lines.Insert(insertIndex++, "builder.Services.AddEndpointsApiExplorer();");
             if (!lines.Any(l => l.Contains("AddSwaggerGen")))
@@ -289,6 +297,24 @@ public class ProjectUpdateStep : IScaffoldStep
             }
         }
         File.WriteAllLines(programFile, lines);
+    }
+
+    static void EnsureConfigFiles(string basePath, string startupProject)
+    {
+        var configDir = Path.Combine(basePath, startupProject, "config");
+        Directory.CreateDirectory(configDir);
+        var proj = Path.Combine(basePath, startupProject, $"{startupProject}.csproj");
+        if (File.Exists(proj))
+            Program.RunCommand($"dotnet add {proj} package DotNetEnv", basePath, print: false);
+        var defaultApp = Path.Combine(basePath, startupProject, "appsettings.json");
+        if (File.Exists(defaultApp)) File.Delete(defaultApp);
+        foreach (var env in new[] { "development", "test", "production" })
+        {
+            var envPath = Path.Combine(configDir, $".env.{env}");
+            if (!File.Exists(envPath)) File.WriteAllText(envPath, string.Empty);
+            var appPath = Path.Combine(configDir, $"appsettings.{env}.json");
+            if (!File.Exists(appPath)) File.WriteAllText(appPath, "{}");
+        }
     }
 
     static void RemoveTemplateFiles(string basePath, string startupProject)

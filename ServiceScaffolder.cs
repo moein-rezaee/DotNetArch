@@ -120,8 +120,8 @@ static class ServiceScaffolder
             "            var cfg = sp.GetRequiredService<IConfiguration>();",
             "            var host = cfg[\"Redis:Host\"];",
             "            var port = cfg[\"Redis:Port\"];",
-            "            var user = cfg[\"Redis:User\"];",
-            "            var pass = cfg[\"Redis:Password\"];",
+            "            var user = cfg[\"REDIS_USER\"];",
+            "            var pass = cfg[\"REDIS_PASSWORD\"];",
             "            return ConnectionMultiplexer.Connect($\"{host}:{port},user={user},password={pass}\");",
             "        });"
         });
@@ -155,8 +155,8 @@ static class ServiceScaffolder
             "            var cfg = sp.GetRequiredService<IConfiguration>();",
             "            var host = cfg[\"RabbitMq:Host\"];",
             "            var port = int.Parse(cfg[\"RabbitMq:Port\"] ?? \"5672\");",
-            "            var user = cfg[\"RabbitMq:User\"];",
-            "            var pass = cfg[\"RabbitMq:Password\"];",
+            "            var user = cfg[\"RABBITMQ_USER\"];",
+            "            var pass = cfg[\"RABBITMQ_PASSWORD\"];",
             "            var factory = new ConnectionFactory { HostName = host, Port = port, UserName = user, Password = pass };",
             "            return factory.CreateConnection();",
             "        });"
@@ -266,13 +266,15 @@ static class ServiceScaffolder
             $"public class {cls} : {iface}",
             "{",
             "    private readonly IDatabase _db;",
-            "    private readonly string _publicKey;",
-            "    private readonly string _privateKey;",
+            "    private readonly byte[] _key;",
+            "    private readonly byte[] _iv;",
             $"    public {cls}(IConnectionMultiplexer mux, IConfiguration cfg)",
             "    {",
             "        _db = mux.GetDatabase();",
-            "        _publicKey = cfg[\"Redis:PublicKey\"] ?? string.Empty;",
-            "        _privateKey = cfg[\"Redis:PrivateKey\"] ?? string.Empty;",
+            "        var k = cfg[\"REDIS_SECRET_KEY\"];",
+            "        var v = cfg[\"REDIS_SECRET_IV\"];",
+            "        _key = string.IsNullOrWhiteSpace(k) ? Array.Empty<byte>() : Convert.FromBase64String(k);",
+            "        _iv = string.IsNullOrWhiteSpace(v) ? Array.Empty<byte>() : Convert.FromBase64String(v);",
             "    }",
             "    public async Task<string?> GetAsync(string key, bool decode = false)",
             "    {",
@@ -288,18 +290,22 @@ static class ServiceScaffolder
             "    }",
             "    private string Encode(string value)",
             "    {",
-            "        using var rsa = RSA.Create();",
-            "        rsa.ImportRSAPublicKey(Convert.FromBase64String(_publicKey), out _);",
+            "        if (_key.Length == 0 || _iv.Length == 0) return value;",
+            "        using var aes = Aes.Create();",
+            "        aes.Key = _key;",
+            "        aes.IV = _iv;",
             "        var bytes = Encoding.UTF8.GetBytes(value);",
-            "        var enc = rsa.Encrypt(bytes, RSAEncryptionPadding.OaepSHA256);",
+            "        var enc = aes.CreateEncryptor().TransformFinalBlock(bytes, 0, bytes.Length);",
             "        return Convert.ToBase64String(enc);",
             "    }",
             "    private string Decode(string value)",
             "    {",
-            "        using var rsa = RSA.Create();",
-            "        rsa.ImportRSAPrivateKey(Convert.FromBase64String(_privateKey), out _);",
+            "        if (_key.Length == 0 || _iv.Length == 0) return value;",
+            "        using var aes = Aes.Create();",
+            "        aes.Key = _key;",
+            "        aes.IV = _iv;",
             "        var bytes = Convert.FromBase64String(value);",
-            "        var dec = rsa.Decrypt(bytes, RSAEncryptionPadding.OaepSHA256);",
+            "        var dec = aes.CreateDecryptor().TransformFinalBlock(bytes, 0, bytes.Length);",
             "        return Encoding.UTF8.GetString(dec);",
             "    }",
             "}",
@@ -494,30 +500,37 @@ static class ServiceScaffolder
                 lines.Insert(idx, envVarLine);
         }
 
-        var loadLine = "DotNetEnv.Env.Load(Path.Combine(Directory.GetCurrentDirectory(), $\".env.{env.ToLower()}\"));";
-        if (!lines.Any(l => l.Contains(loadLine)))
-        {
-            var idx = lines.FindIndex(l => l.Contains("var builder"));
-            if (idx >= 0)
-                lines.Insert(idx + 1, loadLine);
-        }
+        lines.RemoveAll(l => l.Contains("DotNetEnv.Env.Load("));
+        var loadLine = "DotNetEnv.Env.Load(Path.Combine(Directory.GetCurrentDirectory(), \"config\", $\".env.{env.ToLower()}\"));";
+        var loadIdx = lines.FindIndex(l => l.Contains("var builder"));
+        if (loadIdx >= 0)
+            lines.Insert(loadIdx + 1, loadLine);
 
-        var addJsonLine = "builder.Configuration.AddJsonFile($\"appsettings.{env.ToLower()}.json\", optional: true, reloadOnChange: true);";
-        if (!lines.Any(l => l.Contains(addJsonLine)))
-        {
-            var idx = lines.FindIndex(l => l.Contains("var builder"));
-            if (idx >= 0)
-                lines.Insert(idx + 3, addJsonLine);
-        }
+        lines.RemoveAll(l => l.Contains("AddJsonFile") && l.Contains("appsettings"));
+        var addJsonLine = "builder.Configuration.AddJsonFile(Path.Combine(\"config\", $\"appsettings.{env.ToLower()}.json\"), optional: true, reloadOnChange: true);";
+        var jsonIdx = lines.FindIndex(l => l.Contains("var builder"));
+        if (jsonIdx >= 0)
+            lines.Insert(jsonIdx + 3, addJsonLine);
 
         File.WriteAllLines(programPath, lines);
     }
 
     static void EnsureEnvFiles(SolutionConfig config, string provider)
     {
+        var projectDir = Path.Combine(config.SolutionPath, config.StartupProject);
+        var configDir = Path.Combine(projectDir, "config");
+        Directory.CreateDirectory(configDir);
         foreach (var env in new[] { "development", "test", "production" })
         {
-            var path = Path.Combine(config.SolutionPath, config.StartupProject, $".env.{env}");
+            var fileName = $".env.{env}";
+            var path = Path.Combine(configDir, fileName);
+
+            // move old files if necessary
+            var oldUpper = Path.Combine(projectDir, $".env.{char.ToUpper(env[0]) + env[1..]}");
+            if (File.Exists(oldUpper)) File.Move(oldUpper, path, true);
+            var oldLower = Path.Combine(projectDir, fileName);
+            if (File.Exists(oldLower)) File.Move(oldLower, path, true);
+
             var user = env switch { "production" => "produser", "test" => "testuser", _ => "devuser" };
             var pass = env switch { "production" => "prodpass", "test" => "testpass", _ => "devpass" };
             if (!File.Exists(path))
@@ -525,16 +538,16 @@ static class ServiceScaffolder
             var lines = File.ReadAllLines(path).ToList();
             if (provider == "Redis")
             {
-                var keys = GenerateRsaKeys();
-                EnsureEnvVar(lines, "REDIS__USER", user);
-                EnsureEnvVar(lines, "REDIS__PASSWORD", pass);
-                EnsureEnvVar(lines, "REDIS__PUBLICKEY", keys.publicKey);
-                EnsureEnvVar(lines, "REDIS__PRIVATEKEY", keys.privateKey);
+                var keys = GenerateAesKey();
+                EnsureEnvVar(lines, "REDIS_USER", user);
+                EnsureEnvVar(lines, "REDIS_PASSWORD", pass);
+                EnsureEnvVar(lines, "REDIS_SECRET_KEY", keys.key);
+                EnsureEnvVar(lines, "REDIS_SECRET_IV", keys.iv);
             }
             else
             {
-                EnsureEnvVar(lines, "RABBITMQ__USER", user);
-                EnsureEnvVar(lines, "RABBITMQ__PASSWORD", pass);
+                EnsureEnvVar(lines, "RABBITMQ_USER", user);
+                EnsureEnvVar(lines, "RABBITMQ_PASSWORD", pass);
             }
             File.WriteAllLines(path, lines);
         }
@@ -546,12 +559,13 @@ static class ServiceScaffolder
             lines.Add($"{key}={value}");
     }
 
-    static (string publicKey, string privateKey) GenerateRsaKeys()
+    static (string key, string iv) GenerateAesKey()
     {
-        using var rsa = RSA.Create(2048);
-        var pub = Convert.ToBase64String(rsa.ExportRSAPublicKey());
-        var priv = Convert.ToBase64String(rsa.ExportRSAPrivateKey());
-        return (pub, priv);
+        using var aes = Aes.Create();
+        aes.KeySize = 128;
+        aes.GenerateKey();
+        aes.GenerateIV();
+        return (Convert.ToBase64String(aes.Key), Convert.ToBase64String(aes.IV));
     }
 
     static void InstallPackage(SolutionConfig config, string package)
@@ -564,25 +578,32 @@ static class ServiceScaffolder
     static void EnsureAppSettingsFiles(SolutionConfig config, string provider)
     {
         var projectDir = Path.Combine(config.SolutionPath, config.StartupProject);
+        var configDir = Path.Combine(projectDir, "config");
+        Directory.CreateDirectory(configDir);
+
+        var defaultFile = Path.Combine(projectDir, "appsettings.json");
+        if (File.Exists(defaultFile)) File.Delete(defaultFile);
+
         foreach (var env in new[] { "development", "test", "production" })
         {
-            var path = Path.Combine(projectDir, $"appsettings.{env}.json");
+            var fileName = $"appsettings.{env}.json";
+            var path = Path.Combine(configDir, fileName);
+
+            var oldCap = Path.Combine(projectDir, $"appsettings.{char.ToUpper(env[0]) + env[1..]}.json");
+            if (File.Exists(oldCap)) File.Move(oldCap, path, true);
+            var oldLower = Path.Combine(projectDir, fileName);
+            if (File.Exists(oldLower)) File.Move(oldLower, path, true);
+
             JsonNode root = File.Exists(path) && !string.IsNullOrWhiteSpace(File.ReadAllText(path))
                 ? JsonNode.Parse(File.ReadAllText(path))!
                 : new JsonObject();
             if (root[provider] == null)
             {
-                var obj = new JsonObject();
-                if (provider == "Redis")
+                var obj = new JsonObject
                 {
-                    obj["Host"] = "localhost";
-                    obj["Port"] = 6379;
-                }
-                else
-                {
-                    obj["Host"] = "localhost";
-                    obj["Port"] = 5672;
-                }
+                    ["Host"] = "localhost",
+                    ["Port"] = provider == "Redis" ? 6379 : 5672
+                };
                 root[provider] = obj;
                 File.WriteAllText(path, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
             }
