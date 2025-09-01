@@ -33,7 +33,7 @@ class Program
             }
 
             if (string.IsNullOrWhiteSpace(outputPath))
-                outputPath = Ask("Output path", Directory.GetCurrentDirectory());
+                outputPath = PathState.Load() ?? Directory.GetCurrentDirectory();
 
             var basePath = outputPath!;
             var config = ConfigManager.Load(basePath);
@@ -79,7 +79,7 @@ class Program
             if (isCommand == null)
                 isCommand = AskYesNo("Is command?", true);
             if (string.IsNullOrWhiteSpace(outputPath))
-                outputPath = Ask("Output path", Directory.GetCurrentDirectory());
+                outputPath = PathState.Load() ?? Directory.GetCurrentDirectory();
 
             var basePath = outputPath!;
             var config = ConfigManager.Load(basePath);
@@ -122,7 +122,7 @@ class Program
             if (string.IsNullOrWhiteSpace(outputPath))
                 outputPath = Ask("Output path", Directory.GetCurrentDirectory());
             if (string.IsNullOrWhiteSpace(startup))
-                startup = Ask("Startup project", $"{solutionName}.API");
+                startup = $"{solutionName}.API";
             if (string.IsNullOrWhiteSpace(style))
                 style = AskOption("Select API style", new[] { "controller", "fast" }).ToLower();
             if (string.IsNullOrWhiteSpace(style))
@@ -200,7 +200,7 @@ class Program
         }
 
         var outputPath = Ask("Enter output path", Directory.GetCurrentDirectory());
-        var startup = Ask("Startup project", $"{solutionName}.API");
+        var startup = $"{solutionName}.API";
         var style = AskOption("Select API style", new[] { "controller", "fast" }).ToLower();
         if (string.IsNullOrWhiteSpace(style)) style = "controller";
 
@@ -239,6 +239,7 @@ class Program
         var provider = DatabaseProviderSelector.Choose();
         var config = new SolutionConfig { SolutionName = solutionName, SolutionPath = solutionDir, StartupProject = startupProject, DatabaseProvider = provider, ApiStyle = apiStyle };
         ConfigManager.Save(solutionDir, config);
+        PathState.Save(solutionDir);
         new ApplicationStep().Execute(config, string.Empty);
         new ProjectUpdateStep().Execute(config, string.Empty);
 

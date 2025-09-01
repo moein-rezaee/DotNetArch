@@ -167,6 +167,7 @@ We welcome contributions to DotNetArch! Here’s how you can contribute:
 - **Ease of Use**: Intuitive and straightforward CLI commands.
 - **`new crud` scaffolding**: Generates vertical-slice CQRS CRUD with MediatR, FluentValidation, EF Core repositories, and paginated results.
 - **Database Provider Selection**: Choose between SQL Server, SQLite, PostgreSQL or MongoDB (default SQLite); the selected provider is stored so future runs don't prompt again.
+  - *Other providers are experimental and require more testing and development before a NuGet release.*
 - **Idempotent Generation**: Re-running commands updates existing files without creating duplicates.
 - **Repository & Unit of Work patterns**: Each entity gets its own repository and UoW registration for clean data access.
 - **Automatic package & service registration**: Required NuGet packages are added to project files and services like `DbContext`, `IMediator`, `IUnitOfWork`, and validators are registered in `Program.cs`.
