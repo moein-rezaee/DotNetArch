@@ -144,7 +144,7 @@ class Program
                 return;
             }
 
-            UpdateMigrations(config, basePath);
+            RefreshLastMigration(config, basePath);
             return;
         }
 
@@ -182,6 +182,14 @@ class Program
             {
                 var infraProj = $"{config.SolutionName}.Infrastructure/{config.SolutionName}.Infrastructure.csproj";
                 var startProj = $"{config.StartupProject}/{config.StartupProject}.csproj";
+                var migrations = ListMigrations(infraProj, startProj, basePath);
+                if (migrations.Length == 0)
+                {
+                    Info("No migrations found.");
+                    return;
+                }
+                var prev = migrations.Length > 1 ? migrations[migrations.Length - 2] : "0";
+                RunCommand($"dotnet ef database update {prev} --project {infraProj} --startup-project {startProj}", basePath);
                 RunCommand($"dotnet ef migrations remove --project {infraProj} --startup-project {startProj}", basePath);
             }
             else
@@ -486,6 +494,70 @@ class Program
         else
         {
             Console.WriteLine("❌ Build failed; skipping migrations.");
+        }
+    }
+
+    static string[] ListMigrations(string infraProj, string startProj, string basePath)
+    {
+        var (success, output) = RunCommandCapture($"dotnet ef migrations list --project {infraProj} --startup-project {startProj}", basePath);
+        if (!success)
+            return Array.Empty<string>();
+        var lines = output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        for (int i = 0; i < lines.Length; i++)
+        {
+            var space = lines[i].IndexOf(' ');
+            if (space >= 0)
+                lines[i] = lines[i].Substring(0, space);
+            lines[i] = lines[i].Trim();
+        }
+        return lines;
+    }
+
+    static void RefreshLastMigration(SolutionConfig config, string basePath)
+    {
+        var provider = config.DatabaseProvider;
+        if (string.IsNullOrWhiteSpace(provider) || provider.Equals("Mongo", StringComparison.OrdinalIgnoreCase))
+        {
+            Info("No migrations for the selected provider.");
+            return;
+        }
+
+        if (!EnsureEfTool(basePath))
+            return;
+
+        if (!RunCommand("dotnet build", basePath))
+        {
+            Console.WriteLine("❌ Build failed; skipping migration update.");
+            return;
+        }
+
+        var infraProj = $"{config.SolutionName}.Infrastructure/{config.SolutionName}.Infrastructure.csproj";
+        var startProj = $"{config.StartupProject}/{config.StartupProject}.csproj";
+        var migrations = ListMigrations(infraProj, startProj, basePath);
+        if (migrations.Length == 0)
+        {
+            Info("No migrations found.");
+            return;
+        }
+
+        var last = migrations[migrations.Length - 1];
+        var prev = migrations.Length > 1 ? migrations[migrations.Length - 2] : "0";
+        var baseName = last.Contains('_') ? last.Substring(last.IndexOf('_') + 1) : last;
+
+        RunCommand($"dotnet ef database update {prev} --project {infraProj} --startup-project {startProj}", basePath);
+        RunCommand($"dotnet ef migrations remove --project {infraProj} --startup-project {startProj}", basePath);
+        var (success, output) = RunCommandCapture($"dotnet ef migrations add {baseName} --project {infraProj} --startup-project {startProj} --output-dir Migrations", basePath);
+        if (success)
+        {
+            RunCommand($"dotnet ef database update --project {infraProj} --startup-project {startProj}", basePath);
+        }
+        else if (output.Contains("No changes were detected", StringComparison.OrdinalIgnoreCase))
+        {
+            Info("No changes were detected.");
+        }
+        else
+        {
+            Error(output.Trim());
         }
     }
 

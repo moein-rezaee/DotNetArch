@@ -121,7 +121,7 @@ dotnet-arch update migration [--output=Path]
 dotnet-arch remove migration [--output=Path]
 ```
 
-`update migration` checks for entity changes, generates a timestamped migration if necessary, and updates the database. `remove migration` deletes the most recent migration. Both commands accept an optional `--output` to override the stored solution path.
+`update migration` rebuilds the most recent migration: it rolls the database back to the previous migration, removes the last migration, and then regenerates it. `remove migration` rolls back the database to the previous state and deletes the most recent migration. Both commands accept an optional `--output` to override the stored solution path.
 
 ---
 
@@ -195,8 +195,8 @@ We welcome contributions to DotNetArch! Here’s how you can contribute:
 - **`new action` command**: Add custom commands or queries with handlers, validators, repository methods, and controller endpoints.
 - **Composable actions and slices**: Actions scaffolded before a full `new crud` run are preserved and the later CRUD generation augments the existing files instead of overwriting them.
 - **`exec` command**: Run the startup project with an optional migration check that can generate and apply pending EF Core migrations.
-- **`update migration` command**: Check for entity changes, create a new migration if needed, and update the database.
-- **`remove migration` command**: Delete the most recent EF Core migration.
+- **`update migration` command**: Rebuild the most recent migration by rolling back the database, removing the last migration, and regenerating it.
+- **`remove migration` command**: Roll the database back and delete the most recent EF Core migration.
 - **Correct namespace wiring**: `Program.cs` updates include the necessary `using` directives and service registrations for each entity's repository without malformed entries.
 - **Configurable startup project**: `dotnet-arch.yml` tracks which project is the startup target so controllers are added to the correct application entry point.
 - **Custom output path**: Commands remember the last solution path but accept an `--output` option so code can be generated in test directories or alternative locations.
