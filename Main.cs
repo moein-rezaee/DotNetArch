@@ -126,35 +126,6 @@ class Program
             return;
         }
 
-        if (args.Length >= 2 && args[0].ToLower() == "update" && args[1].ToLower() == "migration")
-        {
-            string? outputPath = null;
-            string? name = null;
-            for (int i = 2; i < args.Length; i++)
-            {
-                if (args[i].StartsWith("--output="))
-                    outputPath = args[i].Substring("--output=".Length);
-                else if (args[i].StartsWith("--name="))
-                    name = args[i].Substring("--name=".Length);
-                else if (!args[i].StartsWith("--") && name == null)
-                    name = args[i];
-            }
-
-            if (string.IsNullOrWhiteSpace(outputPath))
-                outputPath = PathState.Load() ?? Directory.GetCurrentDirectory();
-
-            var basePath = outputPath!;
-            var config = ConfigManager.Load(basePath);
-            if (config == null)
-            {
-                Error("Solution configuration not found. Run 'new solution' first.");
-                return;
-            }
-
-            RefreshLastMigration(config, basePath, name);
-            return;
-        }
-
         if (args.Length >= 2 && args[0].ToLower() == "remove" && args[1].ToLower() == "migration")
         {
             string? outputPath = null;
@@ -525,69 +496,6 @@ class Program
             list.Add(trimmed);
         }
         return list.ToArray();
-    }
-
-    static void RefreshLastMigration(SolutionConfig config, string basePath, string? name = null)
-    {
-        var provider = config.DatabaseProvider;
-        if (string.IsNullOrWhiteSpace(provider) || provider.Equals("Mongo", StringComparison.OrdinalIgnoreCase))
-        {
-            Info("No migrations for the selected provider.");
-            return;
-        }
-
-        if (!EnsureEfTool(basePath))
-            return;
-
-        var infraProj = $"{config.SolutionName}.Infrastructure/{config.SolutionName}.Infrastructure.csproj";
-        var startProj = $"{config.StartupProject}/{config.StartupProject}.csproj";
-        var migrations = ListMigrations(infraProj, startProj, basePath);
-        if (migrations.Length == 0)
-        {
-            Info("No migrations found.");
-            return;
-        }
-
-        var last = migrations[migrations.Length - 1];
-        var prev = migrations.Length > 1 ? migrations[migrations.Length - 2] : "0";
-        var migName = name;
-        if (string.IsNullOrWhiteSpace(migName))
-            migName = Ask("Enter migration name", "NoName");
-        if (string.IsNullOrWhiteSpace(migName))
-            migName = "NoName";
-        Info($"Using migration name: {migName}");
-
-        if (!RunCommand($"dotnet ef database update {prev} --project {infraProj} --startup-project {startProj} --no-build", basePath))
-        {
-            Error("Failed to rollback database; migration update aborted.");
-            return;
-        }
-
-        if (!RunCommand($"dotnet ef migrations remove --project {infraProj} --startup-project {startProj} --no-build", basePath))
-        {
-            Error("Failed to remove migration.");
-            return;
-        }
-
-        if (!RunCommand("dotnet build", basePath))
-        {
-            Console.WriteLine("❌ Build failed; skipping migration update.");
-            return;
-        }
-
-        var (success, output) = RunCommandCapture($"dotnet ef migrations add {migName} --project {infraProj} --startup-project {startProj} --output-dir Migrations", basePath);
-        if (success)
-        {
-            RunCommand($"dotnet ef database update --project {infraProj} --startup-project {startProj}", basePath);
-        }
-        else if (output.Contains("No changes were detected", StringComparison.OrdinalIgnoreCase))
-        {
-            Info("No changes were detected.");
-        }
-        else
-        {
-            Error(output.Trim());
-        }
     }
 
     public static bool EnsureEfTool(string? workingDir = null)
