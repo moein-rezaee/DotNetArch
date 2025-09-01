@@ -2,6 +2,8 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using DotNetArch.Scaffolding;
 
 static class ServiceScaffolder
@@ -43,9 +45,7 @@ static class ServiceScaffolder
             WriteClass(implDir, classNs, serviceName, iface);
 
             var reg = AskLifetime();
-            var ifaceFqn = $"{ifaceNs}.{iface}";
-            var classFqn = $"{classNs}.{serviceName}";
-            AddServiceToDi(config, "Application", $"{ifaceFqn}, {classFqn}", reg);
+            AddServiceToDi(config, "Application", iface, ifaceNs, serviceName, classNs, reg);
             EnsureProgramCalls(config, "Application");
             Program.Success($"{serviceName} service generated.");
             return;
@@ -75,9 +75,7 @@ static class ServiceScaffolder
             WriteClass(implDir, classNs, serviceName, iface);
 
             var reg = AskLifetime();
-            var ifaceFqn = $"{ifaceNs}.{iface}";
-            var classFqn = $"{classNs}.{serviceName}";
-            AddServiceToDi(config, "Infrastructure", $"{ifaceFqn}, {classFqn}", reg);
+            AddServiceToDi(config, "Infrastructure", iface, ifaceNs, serviceName, classNs, reg);
             EnsureProgramCalls(config, "Infrastructure");
         }
         else
@@ -94,9 +92,7 @@ static class ServiceScaffolder
             WriteClass(implDir, classNs, serviceName, iface);
 
             var reg = AskLifetime();
-            var ifaceFqn = $"{ifaceNs}.{iface}";
-            var classFqn = $"{classNs}.{serviceName}";
-            AddServiceToDi(config, "Application", $"{ifaceFqn}, {classFqn}", reg);
+            AddServiceToDi(config, "Application", iface, ifaceNs, serviceName, classNs, reg);
             EnsureProgramCalls(config, "Application");
         }
         Program.Success($"{serviceName} service generated.");
@@ -116,12 +112,24 @@ static class ServiceScaffolder
         var classNs = $"{solution}.Infrastructure.Services.Redis";
         WriteRedisClass(infraDir, classNs, cls, iface, ifaceNs);
         InstallPackage(config, "StackExchange.Redis");
-        var ifaceFqn = $"{ifaceNs}.{iface}";
-        var classFqn = $"{classNs}.{cls}";
-        AddServiceToDi(config, "Infrastructure", $"{ifaceFqn}, {classFqn}", "AddSingleton");
+        var extra = string.Join(Environment.NewLine, new[]
+        {
+            "        services.AddSingleton<IConnectionMultiplexer>(sp =>",
+            "        {",
+            "            var cfg = sp.GetRequiredService<IConfiguration>();",
+            "            var host = cfg[\"Redis:Host\"];",
+            "            var port = cfg[\"Redis:Port\"];",
+            "            var user = Environment.GetEnvironmentVariable(\"REDIS_USER\");",
+            "            var pass = Environment.GetEnvironmentVariable(\"REDIS_PASSWORD\");",
+            "            return ConnectionMultiplexer.Connect($\"{host}:{port},user={user},password={pass}\");",
+            "        });"
+        });
+        AddServiceToDi(config, "Infrastructure", iface, ifaceNs, cls, classNs, "AddSingleton", extra,
+            new[] { "StackExchange.Redis", "Microsoft.Extensions.Configuration", "System" });
         EnsureProgramCalls(config, "Infrastructure");
         EnsureDotEnv(config);
         EnsureEnvFiles(config, "Redis");
+        EnsureAppSettingsFiles(config, "Redis");
         Program.Success("Redis service generated.");
     }
 
@@ -139,23 +147,35 @@ static class ServiceScaffolder
         var classNs = $"{solution}.Infrastructure.Services.RabbitMq";
         WriteRabbitClass(infraDir, classNs, cls, iface, ifaceNs);
         InstallPackage(config, "RabbitMQ.Client");
-        var ifaceFqn = $"{ifaceNs}.{iface}";
-        var classFqn = $"{classNs}.{cls}";
-        AddServiceToDi(config, "Infrastructure", $"{ifaceFqn}, {classFqn}", "AddSingleton");
+        var extra = string.Join(Environment.NewLine, new[]
+        {
+            "        services.AddSingleton<IConnection>(sp =>",
+            "        {",
+            "            var cfg = sp.GetRequiredService<IConfiguration>();",
+            "            var host = cfg[\"RabbitMq:Host\"];",
+            "            var port = int.Parse(cfg[\"RabbitMq:Port\"] ?? \"5672\");",
+            "            var user = Environment.GetEnvironmentVariable(\"RABBITMQ_USER\");",
+            "            var pass = Environment.GetEnvironmentVariable(\"RABBITMQ_PASSWORD\");",
+            "            var factory = new ConnectionFactory { HostName = host, Port = port, UserName = user, Password = pass };",
+            "            return factory.CreateConnection();",
+            "        });"
+        });
+        AddServiceToDi(config, "Infrastructure", iface, ifaceNs, cls, classNs, "AddSingleton", extra,
+            new[] { "RabbitMQ.Client", "Microsoft.Extensions.Configuration", "System" });
         EnsureProgramCalls(config, "Infrastructure");
         EnsureDotEnv(config);
         EnsureEnvFiles(config, "RabbitMq");
+        EnsureAppSettingsFiles(config, "RabbitMq");
         Program.Success("RabbitMQ service generated.");
     }
 
     static string NormalizeServiceName(string name)
     {
-        var pascal = Regex.Split(name, @"[^a-zA-Z0-9]+").Where(s => s.Length > 0)
-            .Select(s => char.ToUpper(s[0]) + s.Substring(1).ToLower());
-        var result = string.Concat(pascal);
-        if (!result.EndsWith("Service", StringComparison.OrdinalIgnoreCase))
-            result += "Service";
-        return result;
+        name = Regex.Replace(name, "Service$", "", RegexOptions.IgnoreCase);
+        name = Regex.Replace(name, "(?<=[a-z0-9])([A-Z])", " $1");
+        var parts = Regex.Split(name, @"[^a-zA-Z0-9]+").Where(p => p.Length > 0);
+        var pascal = parts.Select(p => char.ToUpper(p[0]) + p.Substring(1).ToLower());
+        return string.Concat(pascal) + "Service";
     }
 
     static string GetEntityFolder(string appRoot, string entityName)
@@ -220,8 +240,8 @@ static class ServiceScaffolder
             "",
             $"public interface {iface}",
             "{",
-            "    Task<string?> GetAsync(string key, bool decrypt = false);",
-            "    Task SetAsync(string key, string value, TimeSpan? expiry = null, bool encrypt = false);",
+            "    Task<string?> GetAsync(string key, bool decode = false);",
+            "    Task SetAsync(string key, string value, TimeSpan? expiry = null, bool encode = false);",
             "}",
             "",
         };
@@ -235,7 +255,6 @@ static class ServiceScaffolder
             "using System;",
             "using System.Text;",
             "using System.Threading.Tasks;",
-            "using Microsoft.Extensions.Configuration;",
             "using StackExchange.Redis;",
             $"using {ifaceNs};",
             "",
@@ -244,25 +263,24 @@ static class ServiceScaffolder
             $"public class {cls} : {iface}",
             "{",
             "    private readonly IDatabase _db;",
-            $"    public {cls}(IConfiguration configuration)",
+            $"    public {cls}(IConnectionMultiplexer mux)",
             "    {",
-            "        var mux = ConnectionMultiplexer.Connect(configuration.GetConnectionString(\"Redis\"));",
             "        _db = mux.GetDatabase();",
             "    }",
-            "    public async Task<string?> GetAsync(string key, bool decrypt = false)",
+            "    public async Task<string?> GetAsync(string key, bool decode = false)",
             "    {",
             "        var value = await _db.StringGetAsync(key);",
             "        if (value.IsNull) return null;",
             "        var str = value.ToString();",
-            "        return decrypt ? Decrypt(str) : str;",
+            "        return decode ? Decode(str) : str;",
             "    }",
-            "    public Task SetAsync(string key, string value, TimeSpan? expiry = null, bool encrypt = false)",
+            "    public Task SetAsync(string key, string value, TimeSpan? expiry = null, bool encode = false)",
             "    {",
-            "        var stored = encrypt ? Encrypt(value) : value;",
+            "        var stored = encode ? Encode(value) : value;",
             "        return _db.StringSetAsync(key, stored, expiry);",
             "    }",
-            "    private static string Encrypt(string value) => Convert.ToBase64String(Encoding.UTF8.GetBytes(value));",
-            "    private static string Decrypt(string value) => Encoding.UTF8.GetString(Convert.FromBase64String(value));",
+            "    private static string Encode(string value) => Convert.ToBase64String(Encoding.UTF8.GetBytes(value));",
+            "    private static string Decode(string value) => Encoding.UTF8.GetString(Convert.FromBase64String(value));",
             "}",
             "",
         };
@@ -292,7 +310,6 @@ static class ServiceScaffolder
         var lines = new[]
         {
             "using System;",
-            "using Microsoft.Extensions.Configuration;",
             "using RabbitMQ.Client;",
             "using RabbitMQ.Client.Events;",
             $"using {ifaceNs};",
@@ -303,13 +320,9 @@ static class ServiceScaffolder
             "{",
             "    private readonly IConnection _connection;",
             "    private readonly IModel _channel;",
-            $"    public {cls}(IConfiguration configuration)",
+            $"    public {cls}(IConnection connection)",
             "    {",
-            "        var factory = new ConnectionFactory",
-            "        {",
-            "            Uri = new Uri(configuration.GetConnectionString(\"RabbitMq\"))",
-            "        };",
-            "        _connection = factory.CreateConnection();",
+            "        _connection = connection;",
             "        _channel = _connection.CreateModel();",
             "    }",
             "    public void Publish(string exchange, string routingKey, byte[] body)",
@@ -333,7 +346,9 @@ static class ServiceScaffolder
         File.WriteAllLines(Path.Combine(dir, $"{cls}.cs"), lines);
     }
 
-    static void AddServiceToDi(SolutionConfig config, string layer, string types, string method)
+    static void AddServiceToDi(SolutionConfig config, string layer,
+        string iface, string ifaceNs, string cls, string clsNs,
+        string method, string? extra = null, string[]? extraUsings = null)
     {
         var root = Path.Combine(config.SolutionPath, $"{config.SolutionName}.{layer}");
         var diPath = Path.Combine(root, "DependencyInjection.cs");
@@ -373,12 +388,33 @@ static class ServiceScaffolder
             File.WriteAllLines(diPath, header);
         }
         var lines = File.ReadAllLines(diPath).ToList();
+        AddUsing(lines, ifaceNs);
+        AddUsing(lines, clsNs);
+        if (extraUsings != null)
+            foreach (var u in extraUsings)
+                AddUsing(lines, u);
         var insertIdx = lines.FindLastIndex(l => l.Contains("return services;"));
-        var registration = $"        services.{method}<{types}>();";
-        if (insertIdx >= 0 && !lines.Any(l => l.Contains(registration)))
+        if (insertIdx >= 0)
         {
-            lines.Insert(insertIdx, registration);
+            if (!string.IsNullOrEmpty(extra) && !lines.Any(l => l.Trim() == extra.Trim()))
+            {
+                lines.Insert(insertIdx, extra);
+                insertIdx++;
+            }
+            var registration = $"        services.{method}<{iface}, {cls}>();";
+            if (!lines.Any(l => l.Contains(registration)))
+                lines.Insert(insertIdx, registration);
             File.WriteAllLines(diPath, lines);
+        }
+    }
+
+    static void AddUsing(System.Collections.Generic.List<string> lines, string ns)
+    {
+        var usingLine = $"using {ns};";
+        if (!lines.Any(l => l.Trim() == usingLine))
+        {
+            var uIdx = lines.FindLastIndex(l => l.StartsWith("using "));
+            lines.Insert(uIdx + 1, usingLine);
         }
     }
 
@@ -444,13 +480,13 @@ static class ServiceScaffolder
             var lines = File.ReadAllLines(path).ToList();
             if (provider == "Redis")
             {
-                var conn = $"redis://{user}:{pass}@localhost:6379";
-                EnsureEnvVar(lines, "ConnectionStrings__Redis", conn);
+                EnsureEnvVar(lines, "REDIS_USER", user);
+                EnsureEnvVar(lines, "REDIS_PASSWORD", pass);
             }
             else
             {
-                var conn = $"amqp://{user}:{pass}@localhost:5672";
-                EnsureEnvVar(lines, "ConnectionStrings__RabbitMq", conn);
+                EnsureEnvVar(lines, "RABBITMQ_USER", user);
+                EnsureEnvVar(lines, "RABBITMQ_PASSWORD", pass);
             }
             File.WriteAllLines(path, lines);
         }
@@ -467,5 +503,33 @@ static class ServiceScaffolder
         var infraProj = Path.Combine(config.SolutionPath, $"{config.SolutionName}.Infrastructure/{config.SolutionName}.Infrastructure.csproj");
         if (File.Exists(infraProj))
             Program.RunCommand($"dotnet add {infraProj} package {package}", config.SolutionPath, print: false);
+    }
+
+    static void EnsureAppSettingsFiles(SolutionConfig config, string provider)
+    {
+        var projectDir = Path.Combine(config.SolutionPath, config.StartupProject);
+        foreach (var env in new[] { "Development", "Test", "Production" })
+        {
+            var path = Path.Combine(projectDir, $"appsettings.{env}.json");
+            JsonNode root = File.Exists(path) && !string.IsNullOrWhiteSpace(File.ReadAllText(path))
+                ? JsonNode.Parse(File.ReadAllText(path))!
+                : new JsonObject();
+            if (root[provider] == null)
+            {
+                var obj = new JsonObject();
+                if (provider == "Redis")
+                {
+                    obj["Host"] = "localhost";
+                    obj["Port"] = 6379;
+                }
+                else
+                {
+                    obj["Host"] = "localhost";
+                    obj["Port"] = 5672;
+                }
+                root[provider] = obj;
+                File.WriteAllText(path, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            }
+        }
     }
 }
