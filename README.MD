@@ -102,6 +102,16 @@ dotnet-arch new action --entity=EntityName --action=getfile --is-command=false -
 
 The tool generates the command or query, handler, validator, repository method, and controller endpoint for the specified action. If the entity slice is missing, a minimal repository and controller are also created with only this action stub. Migrations are applied automatically after scaffolding so the database stays in sync.
 
+#### Add a Service
+
+Scaffold application or infrastructure services through an interactive menu:
+
+```
+dotnet-arch new service [--output=Path]
+```
+
+The CLI lets you choose between **Custom**, **Cache**, and **Message Broker** services. Custom services can optionally target a specific entity; if no entity is provided they're placed under `Common`. External services like cache or message brokers are generated in the `Infrastructure` layer, while internal logic services go to `Application`. An interface and implementation are created and registered for dependency injection automatically.
+
 #### Run the Startup Project
 
 After scaffolding, launch the API and optionally apply EF Core migrations:

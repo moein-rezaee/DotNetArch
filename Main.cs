@@ -95,6 +95,30 @@ class Program
             return;
         }
 
+        if (args.Length >= 2 && args[0].ToLower() == "new" && args[1].ToLower() == "service")
+        {
+            string? outputPath = null;
+            for (int i = 2; i < args.Length; i++)
+            {
+                if (args[i].StartsWith("--output="))
+                    outputPath = args[i].Substring("--output=".Length);
+            }
+
+            if (string.IsNullOrWhiteSpace(outputPath))
+                outputPath = PathState.Load() ?? Directory.GetCurrentDirectory();
+
+            var basePath = outputPath!;
+            var config = ConfigManager.Load(basePath);
+            if (config == null)
+            {
+                Error("Solution configuration not found. Run 'new solution' first.");
+                return;
+            }
+
+            ServiceScaffolder.Generate(config);
+            return;
+        }
+
         if (args.Length >= 1 && args[0].ToLower() == "exec")
         {
             string? outputPath = null;
@@ -222,14 +246,14 @@ class Program
         GenerateSolutionInteractive();
     }
 
-    static string Ask(string message, string? defaultValue = null)
+    public static string Ask(string message, string? defaultValue = null)
     {
         Console.Write($"{message}{(defaultValue != null ? $" [{defaultValue}]" : "")}: ");
         var input = Console.ReadLine();
         return string.IsNullOrWhiteSpace(input) ? (defaultValue ?? string.Empty) : input;
     }
 
-    static bool AskYesNo(string message, bool defaultYes)
+    public static bool AskYesNo(string message, bool defaultYes)
     {
         var def = defaultYes ? "y" : "n";
         while (true)
@@ -246,7 +270,7 @@ class Program
         }
     }
 
-    static string AskOption(string message, string[] options, int defaultIndex = 0)
+    public static string AskOption(string message, string[] options, int defaultIndex = 0)
     {
         Console.WriteLine(message);
         for (int i = 0; i < options.Length; i++)
@@ -258,19 +282,19 @@ class Program
             : options[defaultIndex];
     }
 
-    static void Info(string msg)
+    public static void Info(string msg)
     {
         Console.WriteLine($"ℹ️ {msg}");
         Console.WriteLine();
     }
 
-    static void Success(string msg)
+    public static void Success(string msg)
     {
         Console.WriteLine($"✅ {msg}");
         Console.WriteLine();
     }
 
-    static void Error(string msg)
+    public static void Error(string msg)
     {
         Console.WriteLine($"❌ {msg}");
         Console.WriteLine();
