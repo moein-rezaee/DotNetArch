@@ -96,12 +96,11 @@ public class ProjectUpdateStep : IScaffoldStep
         var doc = XDocument.Load(appProj);
         var packages = doc.Root!.Elements("ItemGroup").Elements("PackageReference");
 
-        // remove DI-specific packages that shouldn't live in the Application project
+        // remove DI-specific MediatR package that shouldn't live in the Application project
         foreach (var pr in packages.Where(p =>
             {
                 var include = (string?)p.Attribute("Include");
-                return include == "MediatR.Extensions.Microsoft.DependencyInjection" ||
-                       include == "FluentValidation.DependencyInjectionExtensions";
+                return include == "MediatR.Extensions.Microsoft.DependencyInjection";
             }).ToList())
         {
             pr.Remove();
@@ -109,6 +108,7 @@ public class ProjectUpdateStep : IScaffoldStep
 
         EnsurePackage(doc, "MediatR", MediatRVersion);
         EnsurePackage(doc, "FluentValidation", FluentValidationVersion);
+        EnsurePackage(doc, "FluentValidation.DependencyInjectionExtensions", FluentValidationVersion);
 
         doc.Save(appProj);
     }
@@ -285,8 +285,10 @@ public static class DependencyInjection
                 idx++;
             }
             var insertIndex = idx + 1;
-            lines.Insert(insertIndex++, "DotNetEnv.Env.Load(Path.Combine(Directory.GetCurrentDirectory(), \"config\", \"env\", $\".env.{env.ToLower()}\"));");
-            lines.Insert(insertIndex++, "builder.Configuration.AddJsonFile(Path.Combine(\"config\", \"settings\", $\"appsettings.{env.ToLower()}.json\"), optional: true, reloadOnChange: true);");
+            if (!lines.Any(l => l.Contains("DotNetEnv.Env.Load")))
+                lines.Insert(insertIndex++, "DotNetEnv.Env.Load(Path.Combine(Directory.GetCurrentDirectory(), \"config\", \"env\", $\".env.{env.ToLower()}\"));");
+            if (!lines.Any(l => l.Contains("appsettings.{env.ToLower()}")))
+                lines.Insert(insertIndex++, "builder.Configuration.AddJsonFile(Path.Combine(\"config\", \"settings\", $\"appsettings.{env.ToLower()}.json\"), optional: true, reloadOnChange: true);");
             if (!lines.Any(l => l.Contains("AddEndpointsApiExplorer")))
                 lines.Insert(insertIndex++, "builder.Services.AddEndpointsApiExplorer();");
             if (!lines.Any(l => l.Contains("AddSwaggerGen")))
