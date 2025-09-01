@@ -49,7 +49,7 @@ public interface IUnitOfWork : IDisposable
             File.WriteAllLines(uowInterfaceFile, lines);
         }
 
-        var infraDir = Path.Combine(basePath, $"{solution}.Infrastructure");
+        var infraDir = Path.Combine(basePath, $"{solution}.Infrastructure", "Persistence");
         Directory.CreateDirectory(infraDir);
         var uowFile = Path.Combine(infraDir, "UnitOfWork.cs");
         var lower = char.ToLowerInvariant(entity[0]) + entity.Substring(1);
@@ -60,9 +60,9 @@ using System.Threading.Tasks;
 using {{solution}}.Application.Common.Interfaces;
 using {{solution}}.Application.Common.Interfaces.Repositories;
 using {{solution}}.Infrastructure.Persistence;
-using {{solution}}.Infrastructure.Repositories;
+using {{solution}}.Infrastructure.Persistence.Repositories;
 
-namespace {{solution}}.Infrastructure;
+namespace {{solution}}.Infrastructure.Persistence;
 
 public class UnitOfWork : IUnitOfWork
 {
@@ -87,7 +87,7 @@ public class UnitOfWork : IUnitOfWork
         else
         {
             var lines = File.ReadAllLines(uowFile).ToList();
-            var usingRepo = $"using {solution}.Infrastructure.Repositories;";
+            var usingRepo = $"using {solution}.Infrastructure.Persistence.Repositories;";
             if (!lines.Contains(usingRepo)) lines.Insert(0, usingRepo);
             var usingInterface = $"using {solution}.Application.Common.Interfaces.Repositories;";
             if (!lines.Contains(usingInterface)) lines.Insert(0, usingInterface);
@@ -107,6 +107,35 @@ public class UnitOfWork : IUnitOfWork
             }
 
             File.WriteAllLines(uowFile, lines);
+        }
+
+        var diPath = Path.Combine(basePath, $"{solution}.Infrastructure", "DependencyInjection.cs");
+        if (File.Exists(diPath))
+        {
+            var lines = File.ReadAllLines(diPath).ToList();
+            var diUsings = new[]
+            {
+                $"using {solution}.Application.Common.Interfaces;",
+                $"using {solution}.Application.Common.Interfaces.Repositories;",
+                $"using {solution}.Infrastructure.Persistence.Repositories;"
+            };
+            foreach (var u in diUsings)
+                if (!lines.Contains(u))
+                    lines.Insert(0, u);
+
+            var methodIdx = lines.FindIndex(l => l.Contains("AddInfrastructure"));
+            if (methodIdx >= 0)
+            {
+                var returnIdx = lines.FindLastIndex(methodIdx, l => l.Contains("return services;"));
+                if (returnIdx >= 0)
+                {
+                    if (!lines.Any(l => l.Contains($"AddScoped<I{entity}Repository, {entity}Repository>()")))
+                        lines.Insert(returnIdx, $"        services.AddScoped<I{entity}Repository, {entity}Repository>();");
+                    if (!lines.Any(l => l.Contains("AddScoped<IUnitOfWork, UnitOfWork>()")))
+                        lines.Insert(returnIdx, "        services.AddScoped<IUnitOfWork, UnitOfWork>();");
+                }
+            }
+            File.WriteAllLines(diPath, lines);
         }
     }
 }

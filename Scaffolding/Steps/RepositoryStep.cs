@@ -76,7 +76,7 @@ public interface I{{entity}}Repository
         }
 
         // repository implementation in Infrastructure
-        var infraDir = Path.Combine(basePath, $"{solution}.Infrastructure", "Repositories");
+        var infraDir = Path.Combine(basePath, $"{solution}.Infrastructure", "Persistence", "Repositories");
         Directory.CreateDirectory(infraDir);
         var repoFile = Path.Combine(infraDir, $"{entity}Repository.cs");
         var repoTemplate = """
@@ -89,7 +89,7 @@ using {{solution}}.Application.Common.Interfaces.Repositories;
 using {{solution}}.Core.Features.{{entities}};
 using {{solution}}.Infrastructure.Persistence;
 
-namespace {{solution}}.Infrastructure.Repositories;
+namespace {{solution}}.Infrastructure.Persistence.Repositories;
 
 public class {{entity}}Repository : I{{entity}}Repository
 {
