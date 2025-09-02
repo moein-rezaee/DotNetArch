@@ -260,24 +260,7 @@ public static class DependencyInjection
             }
             File.WriteAllText(infraDi, infraContent.Replace("{{solution}}", solution));
         }
-        // ensure IUnitOfWork is registered when an implementation exists anywhere under Infrastructure
-        var uowImpl = Directory.GetFiles(infraDir, "UnitOfWork.cs", SearchOption.AllDirectories).FirstOrDefault();
-        if (uowImpl != null)
-        {
-            var lines = File.ReadAllLines(infraDi).ToList();
-            if (!lines.Contains($"using {solution}.Application.Common.Interfaces;"))
-                lines.Insert(0, $"using {solution}.Application.Common.Interfaces;");
-            if (!lines.Contains($"using {solution}.Infrastructure.Persistence;"))
-                lines.Insert(0, $"using {solution}.Infrastructure.Persistence;");
-            var methodIdx = lines.FindIndex(l => l.Contains("AddInfrastructure"));
-            if (methodIdx >= 0)
-            {
-                var returnIdx = lines.FindLastIndex(methodIdx, l => l.Contains("return services;"));
-                if (returnIdx >= 0 && !lines.Any(l => l.Contains("AddScoped<IUnitOfWork, UnitOfWork>()")))
-                    lines.Insert(returnIdx, "        services.AddScoped<IUnitOfWork, UnitOfWork>();");
-            }
-            File.WriteAllLines(infraDi, lines);
-        }
+        EnsureUnitOfWorkRegistration(solution, infraDir, infraDi);
         // ensure design-time factory for EF Core so migrations can run without full host
         var persistenceDir = Path.Combine(infraDir, "Persistence");
         Directory.CreateDirectory(persistenceDir);
@@ -485,5 +468,29 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
             }
             File.WriteAllLines(program, lines);
         }
+    }
+
+    static void EnsureUnitOfWorkRegistration(string solution, string infraDir, string infraDi)
+    {
+        if (!File.Exists(infraDi)) return;
+        var uowImpl = Directory.GetFiles(infraDir, "UnitOfWork.cs", SearchOption.AllDirectories).FirstOrDefault();
+        if (uowImpl == null) return;
+
+        var lines = File.ReadAllLines(infraDi).ToList();
+        var usingInterfaces = $"using {solution}.Application.Common.Interfaces;";
+        if (!lines.Contains(usingInterfaces))
+            lines.Insert(0, usingInterfaces);
+        var usingPersistence = $"using {solution}.Infrastructure.Persistence;";
+        if (!lines.Contains(usingPersistence))
+            lines.Insert(0, usingPersistence);
+
+        var methodIdx = lines.FindIndex(l => l.Contains("AddInfrastructure"));
+        if (methodIdx >= 0)
+        {
+            var returnIdx = lines.FindLastIndex(methodIdx, l => l.Contains("return services"));
+            if (returnIdx >= 0 && !lines.Any(l => l.Contains("AddScoped<IUnitOfWork, UnitOfWork>()")))
+                lines.Insert(returnIdx, "        services.AddScoped<IUnitOfWork, UnitOfWork>();");
+        }
+        File.WriteAllLines(infraDi, lines);
     }
 }
