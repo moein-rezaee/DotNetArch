@@ -68,7 +68,7 @@ After creating a solution you can scaffold a full CRUD vertical slice for an ent
 dotnet-arch new crud --entity=EntityName [--output=Path]
 ```
 
-`--output` points to the solution directory; if omitted, the last path saved by the tool is used (falling back to the current directory). If required arguments are missing the CLI prompts for them. The command reads `dotnet-arch.yml` to locate the solution name and scaffolds the entity slice. Depending on the selected style it creates either API controllers or minimal FastAPI endpoints along with domain models, repositories, unit of work, MediatR handlers and validators. The CLI installs `dotnet-ef` if needed and runs migrations for relational providers (SQL Server, SQLite, PostgreSQL) so schema changes are applied automatically. Each entity is placed under a `Features/<Entity>` folder in every layer and follows a CQRS-aware vertical slice:
+`--output` points to the solution directory; if omitted, the last path saved by the tool is used (falling back to the current directory). If required arguments are missing the CLI prompts for them. The command reads `dotnet-arch.yml` to locate the solution name and scaffolds the entity slice. Depending on the selected style it creates either API controllers or minimal FastAPI endpoints along with domain models, repositories, unit of work, MediatR handlers and validators. The CLI installs `dotnet-ef` if needed and runs migrations for relational providers (SQL Server, SQLite, PostgreSQL) so schema changes are applied automatically. Each feature is grouped under `Features/<Entity>` in every layer; domain entities live in `Core/Features/<Entity>/Entities` while handlers, repositories and other slices sit alongside them following a CQRS-aware vertical structure:
 
 ```
 Application/<Entity>/
@@ -101,6 +101,20 @@ dotnet-arch new action --entity=EntityName --action=getfile --is-command=false -
 ```
 
 The tool generates the command or query, handler, validator, repository method, and controller endpoint for the specified action. If the entity slice is missing, a minimal repository and controller are also created with only this action stub. Migrations are applied automatically after scaffolding so the database stays in sync.
+
+#### Add a Service
+
+Scaffold application or infrastructure services through an interactive menu:
+
+```
+dotnet-arch new service [--output=Path]
+```
+
+The CLI lets you choose between **Custom**, **Cache**, and **Message Broker** services. During generation you select the desired dependency injection lifetime (scoped, transient, or singleton).
+
+Custom services first prompt for an entity name. When provided, the interface is placed under `Application/Features/<Entity>/Interfaces` and the implementation under `Application/Features/<Entity>/Services`; existing feature folders (including pluralized names) are reused. If no entity is supplied, the service name becomes mandatory; internal services land in `Application/Common/Services` while external services are emitted under `Infrastructure/Services/<ServiceName>` with their interfaces in `Application/Common/Interfaces`. Service names are normalized to **PascalCase** and suffixed with `Service` if missing. Registrations are appended to per‑layer `DependencyInjection` extension classes and invoked from `Program.cs`.
+
+Selecting **Cache** or **Message Broker** scaffolds ready‑to‑use Redis or RabbitMQ wrappers. Their NuGet packages are added automatically, interfaces live in `Application/Common/Interfaces` and implementations in `Infrastructure/Services/<Provider>`. The Redis wrapper supports optional encode/decode using AES with a generated secret key and IV plus expiry on stored values, while the RabbitMQ wrapper provides publish and subscribe helpers. These services are registered as singletons and rely on `config/env/.env.development`, `config/env/.env.test`, and `config/env/.env.production` files (with uppercase keys like `REDIS_USER` and `RABBITMQ_PASSWORD`) alongside `config/settings/appsettings.development.json`, `config/settings/appsettings.test.json`, and `config/settings/appsettings.production.json` (with PascalCase keys such as Host and Port); the startup project loads them via **DotNetEnv** and accesses values through `IConfiguration`.
 
 #### Run the Startup Project
 
@@ -193,13 +207,13 @@ We welcome contributions to DotNetArch! Here’s how you can contribute:
 - **Automatic package & service registration**: Required NuGet packages are added to project files and services like `DbContext`, `IMediator`, `IUnitOfWork`, and validators are registered in `Program.cs`.
 - **`new action` command**: Add custom commands or queries with handlers, validators, repository methods, and controller endpoints.
 - **Composable actions and slices**: Actions scaffolded before a full `new crud` run are preserved and the later CRUD generation augments the existing files instead of overwriting them.
-- **`exec` command**: Run the startup project with an optional migration check that can generate and apply pending EF Core migrations.
+- **`exec` command**: Run the startup project with an optional migration check that generates missing migrations, applies any pending ones, and otherwise launches the project directly if no updates are required.
 - **`remove migration` command**: Roll the database back and delete the most recent EF Core migration.
 - **Correct namespace wiring**: `Program.cs` updates include the necessary `using` directives and service registrations for each entity's repository without malformed entries.
 - **Configurable startup project**: `dotnet-arch.yml` tracks which project is the startup target so controllers are added to the correct application entry point.
 - **Custom output path**: Commands remember the last solution path but accept an `--output` option so code can be generated in test directories or alternative locations.
 - **Development Swagger setup**: API projects automatically reference `Microsoft.AspNetCore.OpenApi` and `Swashbuckle.AspNetCore`, register Swagger services, and enable Swagger UI in development while removing default template files and sample endpoints.
-- **Feature-based folder structure**: Each layer organizes code under `Features/<Entity>` so all slices stay grouped.
+- **Feature-based folder structure**: Each layer organizes code under `Features/<Entity>`; domain entities live in an `Entities` subfolder so slices stay grouped and extensible.
   - **Automatic migrations**: `new crud`, `new action`, and `exec` verify `dotnet-ef` and attempt installation if needed. For relational providers (SQL Server, SQLite, PostgreSQL) migrations and database updates run automatically; for MongoDB the process skips migrations. Generated `Program.cs` calls `Database.Migrate()` on startup to apply any pending migrations so new tables are created automatically.
 
 ---
@@ -224,3 +238,4 @@ If you have any questions, suggestions, or issues, feel free to reach out:
 ---
 
 Start simplifying your .NET project setup today with **DotNetArch**! 🚀
+

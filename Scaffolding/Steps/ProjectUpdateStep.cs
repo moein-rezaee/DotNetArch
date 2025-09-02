@@ -26,16 +26,19 @@ public class ProjectUpdateStep : IScaffoldStep
         var startupProject = config.StartupProject;
         var apiStyle = config.ApiStyle;
         var infraPath = Path.Combine(basePath, $"{solution}.Infrastructure");
+        var persistencePath = Path.Combine(infraPath, "Persistence");
         if (provider == "SQLite")
         {
-            var dataDir = Path.Combine(infraPath, "Data");
+            var dataDir = Path.Combine(persistencePath, "Data");
             Directory.CreateDirectory(dataDir);
         }
-        Directory.CreateDirectory(Path.Combine(infraPath, "Migrations"));
+        Directory.CreateDirectory(Path.Combine(persistencePath, PathConstants.Migrations));
         UpdateApplicationProject(solution, basePath);
         UpdateInfrastructureProject(solution, basePath, provider);
         UpdateApiProject(solution, provider, basePath, startupProject);
+        EnsureDependencyInjectionFiles(solution, basePath, provider);
         RemoveTemplateFiles(basePath, startupProject);
+        EnsureConfigFiles(basePath, startupProject);
         UpdateProgram(solution, provider, entity, basePath, startupProject, apiStyle);
     }
 
@@ -93,12 +96,11 @@ public class ProjectUpdateStep : IScaffoldStep
         var doc = XDocument.Load(appProj);
         var packages = doc.Root!.Elements("ItemGroup").Elements("PackageReference");
 
-        // remove DI-specific packages that shouldn't live in the Application project
+        // remove DI-specific MediatR package that shouldn't live in the Application project
         foreach (var pr in packages.Where(p =>
             {
                 var include = (string?)p.Attribute("Include");
-                return include == "MediatR.Extensions.Microsoft.DependencyInjection" ||
-                       include == "FluentValidation.DependencyInjectionExtensions";
+                return include == "MediatR.Extensions.Microsoft.DependencyInjection";
             }).ToList())
         {
             pr.Remove();
@@ -106,6 +108,7 @@ public class ProjectUpdateStep : IScaffoldStep
 
         EnsurePackage(doc, "MediatR", MediatRVersion);
         EnsurePackage(doc, "FluentValidation", FluentValidationVersion);
+        EnsurePackage(doc, "FluentValidation.DependencyInjectionExtensions", FluentValidationVersion);
 
         doc.Save(appProj);
     }
@@ -160,50 +163,227 @@ public class ProjectUpdateStep : IScaffoldStep
         doc.Save(apiProj);
     }
 
+    static void EnsureDependencyInjectionFiles(string solution, string basePath, string provider)
+    {
+        var appDir = Path.Combine(basePath, $"{solution}.Application");
+        Directory.CreateDirectory(appDir);
+        var appDi = Path.Combine(appDir, "DependencyInjection.cs");
+        if (!File.Exists(appDi))
+        {
+            var appContent = """
+using MediatR;
+using FluentValidation;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace {{solution}}.Application;
+
+public static class DependencyInjection
+{
+    public static IServiceCollection AddApplication(this IServiceCollection services)
+    {
+        services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<AssemblyMarker>());
+        services.AddValidatorsFromAssemblyContaining<AssemblyMarker>();
+        return services;
+    }
+}
+""";
+            File.WriteAllText(appDi, appContent.Replace("{{solution}}", solution));
+        }
+        else
+        {
+            var lines = File.ReadAllLines(appDi).ToList();
+            if (!lines.Any(l => l.Contains("using FluentValidation")))
+            {
+                var insertIndex = lines.FindLastIndex(l => l.StartsWith("using ")) + 1;
+                if (insertIndex < 0) insertIndex = 0;
+                lines.Insert(insertIndex, "using FluentValidation;");
+            }
+            if (!lines.Any(l => l.Contains("AddValidatorsFromAssemblyContaining")))
+            {
+                var idx = lines.FindIndex(l => l.Contains("AddMediatR"));
+                if (idx != -1)
+                {
+                    lines.Insert(idx + 1, "        services.AddValidatorsFromAssemblyContaining<AssemblyMarker>();");
+                }
+            }
+            File.WriteAllLines(appDi, lines);
+        }
+
+        var infraDir = Path.Combine(basePath, $"{solution}.Infrastructure");
+        Directory.CreateDirectory(infraDir);
+        var infraDi = Path.Combine(infraDir, "DependencyInjection.cs");
+        if (!File.Exists(infraDi))
+        {
+            string infraContent;
+            if (provider == "SQLite")
+            {
+                infraContent = """
+using System.IO;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using {{solution}}.Infrastructure.Persistence;
+
+namespace {{solution}}.Infrastructure;
+
+public static class DependencyInjection
+{
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
+    {
+        var dbPath = Path.Combine(AppContext.BaseDirectory, "..", "{{solution}}.Infrastructure", "Persistence", "Data", "app.db");
+        Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
+        services.AddDbContext<AppDbContext>(o => o.UseSqlite($"Data Source={dbPath}"));
+        return services;
+    }
+}
+""";
+            }
+            else
+            {
+                infraContent = """
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using {{solution}}.Infrastructure.Persistence;
+
+namespace {{solution}}.Infrastructure;
+
+public static class DependencyInjection
+{
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddDbContext<AppDbContext>(o => o.UseSqlServer("Server=.;Database=AppDb;Trusted_Connection=True;"));
+        return services;
+    }
+}
+""";
+            }
+            File.WriteAllText(infraDi, infraContent.Replace("{{solution}}", solution));
+        }
+        EnsureUnitOfWorkRegistration(solution, infraDir, infraDi);
+        // ensure design-time factory for EF Core so migrations can run without full host
+        var persistenceDir = Path.Combine(infraDir, "Persistence");
+        Directory.CreateDirectory(persistenceDir);
+
+        // ensure a basic AppDbContext exists so the factory compiles even if no entities yet
+        var dbContextFile = Path.Combine(persistenceDir, "AppDbContext.cs");
+        if (!File.Exists(dbContextFile))
+        {
+            var dbContextContent = """
+using Microsoft.EntityFrameworkCore;
+
+namespace {{solution}}.Infrastructure.Persistence;
+
+public class AppDbContext : DbContext
+{
+    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+}
+""";
+            File.WriteAllText(dbContextFile, dbContextContent.Replace("{{solution}}", solution));
+        }
+
+        var factoryFile = Path.Combine(persistenceDir, "AppDbContextFactory.cs");
+        if (!File.Exists(factoryFile))
+        {
+            string factoryContent;
+            if (provider == "SQLite")
+            {
+                factoryContent = """
+using System.IO;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Design;
+
+namespace {{solution}}.Infrastructure.Persistence;
+
+public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
+{
+    public AppDbContext CreateDbContext(string[] args)
+    {
+        var dbPath = Path.Combine(AppContext.BaseDirectory, "..", "{{solution}}.Infrastructure", "Persistence", "Data", "app.db");
+        Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseSqlite($"Data Source={dbPath}")
+            .Options;
+        return new AppDbContext(options);
+    }
+}
+""";
+            }
+            else
+            {
+                factoryContent = """
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Design;
+
+namespace {{solution}}.Infrastructure.Persistence;
+
+public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
+{
+    public AppDbContext CreateDbContext(string[] args)
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseSqlServer("Server=.;Database=AppDb;Trusted_Connection=True;")
+            .Options;
+        return new AppDbContext(options);
+    }
+}
+""";
+            }
+            File.WriteAllText(factoryFile, factoryContent.Replace("{{solution}}", solution));
+        }
+    }
+
     static void UpdateProgram(string solution, string provider, string entity, string basePath, string startupProject, string apiStyle)
     {
         var programFile = Path.Combine(basePath, startupProject, "Program.cs");
         if (!File.Exists(programFile)) return;
         var lines = File.ReadAllLines(programFile).ToList();
 
-        // remove leftover FluentValidation.AspNetCore references from template
         lines.RemoveAll(l => l.Contains("FluentValidation.AspNetCore"));
         lines.RemoveAll(l => l.Contains("AddFluentValidationAutoValidation"));
         lines.RemoveAll(l => l.Contains("AddFluentValidationClientsideAdapters"));
-        // clean up malformed using lines that accidentally contain double dots
         lines.RemoveAll(l => l.TrimStart().StartsWith("using ") && l.Contains(".."));
+
         var usingLines = new List<string>
         {
             "using System;",
             "using System.IO;",
-            "using MediatR;",
-            "using FluentValidation;",
+            "using DotNetEnv;",
+            "using Microsoft.Extensions.Configuration;",
+            "using Microsoft.Extensions.DependencyInjection;",
             $"using {solution}.Application;",
-            "using Microsoft.Extensions.DependencyInjection;"
+            $"using {solution}.Infrastructure;",
+            $"using {solution}.Infrastructure.Persistence;"
         };
-
+        var uowInterface = Path.Combine(basePath, $"{solution}.Application", "Common", "Interfaces", "IUnitOfWork.cs");
+        var hasUow = File.Exists(uowInterface);
+        if (hasUow)
+            usingLines.Add($"using {solution}.Application.Common.Interfaces;");
         if (!string.IsNullOrWhiteSpace(entity))
         {
             var plural = Naming.Pluralize(entity);
             usingLines.Add("using Microsoft.EntityFrameworkCore;");
             usingLines.Add($"using {solution}.Infrastructure.Persistence;");
-            usingLines.Add($"using {solution}.Core.Interfaces;");
-            usingLines.Add($"using {solution}.Infrastructure;");
-            usingLines.Add($"using {solution}.Core.Features.{plural};");
-            usingLines.Add($"using {solution}.Infrastructure.Features.{plural};");
             if (apiStyle == "fast")
                 usingLines.Add($"using {startupProject}.Features.{plural};");
         }
-
         foreach (var u in usingLines)
-        {
             if (!lines.Any(l => l.Trim() == u))
                 lines.Insert(0, u);
-        }
+
         var idx = lines.FindIndex(l => l.Contains("var builder"));
         if (idx >= 0)
         {
+            if (!lines.Any(l => l.Contains("ASPNETCORE_ENVIRONMENT")))
+            {
+                lines.Insert(idx, "var env = Environment.GetEnvironmentVariable(\"ASPNETCORE_ENVIRONMENT\") ?? \"development\";");
+                idx++;
+            }
             var insertIndex = idx + 1;
+            if (!lines.Any(l => l.Contains("DotNetEnv.Env.Load")))
+                lines.Insert(insertIndex++, "DotNetEnv.Env.Load(Path.Combine(Directory.GetCurrentDirectory(), \"config\", \"env\", $\".env.{env.ToLower()}\"));");
+            if (!lines.Any(l => l.Contains("appsettings.{env.ToLower()}")))
+                lines.Insert(insertIndex++, "builder.Configuration.AddJsonFile(Path.Combine(\"config\", \"settings\", $\"appsettings.{env.ToLower()}.json\"), optional: true, reloadOnChange: true);");
             if (!lines.Any(l => l.Contains("AddEndpointsApiExplorer")))
                 lines.Insert(insertIndex++, "builder.Services.AddEndpointsApiExplorer();");
             if (!lines.Any(l => l.Contains("AddSwaggerGen")))
@@ -217,35 +397,12 @@ public class ProjectUpdateStep : IScaffoldStep
             {
                 lines.RemoveAll(l => l.Contains("AddControllers"));
             }
-            if (!string.IsNullOrWhiteSpace(entity) && !lines.Any(l => l.Contains("AddDbContext<AppDbContext>")))
-            {
-                if (provider == "SQLite")
-                {
-                    var sqliteLines = new[]
-                    {
-                        $"var dbPath = Path.Combine(builder.Environment.ContentRootPath, \"..\", \"{solution}.Infrastructure\", \"Data\", \"app.db\");",
-                        "Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);",
-                        "builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlite($\"Data Source={dbPath}\"));"
-                    };
-                    foreach (var l in sqliteLines)
-                        lines.Insert(insertIndex++, l);
-                }
-                else
-                {
-                    lines.Insert(insertIndex++, "builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlServer(\"Server=.;Database=AppDb;Trusted_Connection=True;\"));");
-                }
-            }
-            if (!lines.Any(l => l.Contains("RegisterServicesFromAssemblyContaining<AssemblyMarker>")))
-                lines.Insert(insertIndex++, "builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<AssemblyMarker>());");
-            if (!lines.Any(l => l.Contains("AddValidatorsFromAssemblyContaining<AssemblyMarker>")))
-                lines.Insert(insertIndex++, "builder.Services.AddValidatorsFromAssemblyContaining<AssemblyMarker>();");
-            if (!string.IsNullOrWhiteSpace(entity))
-            {
-                if (!lines.Any(l => l.Contains($"AddScoped<I{entity}Repository, {entity}Repository>()")))
-                    lines.Insert(insertIndex++, $"builder.Services.AddScoped<I{entity}Repository, {entity}Repository>();");
-                if (!lines.Any(l => l.Contains("AddScoped<IUnitOfWork, UnitOfWork>()")))
-                    lines.Insert(insertIndex++, "builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();");
-            }
+            if (!lines.Any(l => l.Contains("AddApplication()")))
+                lines.Insert(insertIndex++, "builder.Services.AddApplication();");
+            if (!lines.Any(l => l.Contains("AddInfrastructure")))
+                lines.Insert(insertIndex++, "builder.Services.AddInfrastructure(builder.Configuration);");
+            if (hasUow && !lines.Any(l => l.Contains("AddScoped<IUnitOfWork, UnitOfWork>()")))
+                lines.Insert(insertIndex++, "builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();");
         }
 
         var buildIdx = lines.FindIndex(l => l.Contains("var app = builder.Build();"));
@@ -283,12 +440,30 @@ public class ProjectUpdateStep : IScaffoldStep
                     "}"
                 };
                 foreach (var ml in migrateLines)
-                {
                     lines.Insert(runIdx++, ml);
-                }
             }
         }
         File.WriteAllLines(programFile, lines);
+    }
+    static void EnsureConfigFiles(string basePath, string startupProject)
+    {
+        var configDir = Path.Combine(basePath, startupProject, "config");
+        var envDir = Path.Combine(configDir, "env");
+        var settingsDir = Path.Combine(configDir, "settings");
+        Directory.CreateDirectory(envDir);
+        Directory.CreateDirectory(settingsDir);
+        var proj = Path.Combine(basePath, startupProject, $"{startupProject}.csproj");
+        if (File.Exists(proj))
+            Program.RunCommand($"dotnet add {proj} package DotNetEnv", basePath, print: false);
+        var defaultApp = Path.Combine(basePath, startupProject, "appsettings.json");
+        if (File.Exists(defaultApp)) File.Delete(defaultApp);
+        foreach (var env in new[] { "development", "test", "production" })
+        {
+            var envPath = Path.Combine(envDir, $".env.{env}");
+            if (!File.Exists(envPath)) File.WriteAllText(envPath, string.Empty);
+            var appPath = Path.Combine(settingsDir, $"appsettings.{env}.json");
+            if (!File.Exists(appPath)) File.WriteAllText(appPath, "{}");
+        }
     }
 
     static void RemoveTemplateFiles(string basePath, string startupProject)
@@ -318,5 +493,29 @@ public class ProjectUpdateStep : IScaffoldStep
             }
             File.WriteAllLines(program, lines);
         }
+    }
+
+    static void EnsureUnitOfWorkRegistration(string solution, string infraDir, string infraDi)
+    {
+        if (!File.Exists(infraDi)) return;
+        var uowImpl = Directory.GetFiles(infraDir, "UnitOfWork.cs", SearchOption.AllDirectories).FirstOrDefault();
+        if (uowImpl == null) return;
+
+        var lines = File.ReadAllLines(infraDi).ToList();
+        var usingInterfaces = $"using {solution}.Application.Common.Interfaces;";
+        if (!lines.Contains(usingInterfaces))
+            lines.Insert(0, usingInterfaces);
+        var usingPersistence = $"using {solution}.Infrastructure.Persistence;";
+        if (!lines.Contains(usingPersistence))
+            lines.Insert(0, usingPersistence);
+
+        var methodIdx = lines.FindIndex(l => l.Contains("AddInfrastructure"));
+        if (methodIdx >= 0)
+        {
+            var returnIdx = lines.FindLastIndex(methodIdx, l => l.Contains("return services"));
+            if (returnIdx >= 0 && !lines.Any(l => l.Contains("AddScoped<IUnitOfWork, UnitOfWork>()")))
+                lines.Insert(returnIdx, "        services.AddScoped<IUnitOfWork, UnitOfWork>();");
+        }
+        File.WriteAllLines(infraDi, lines);
     }
 }

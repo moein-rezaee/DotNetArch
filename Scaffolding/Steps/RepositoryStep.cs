@@ -11,42 +11,35 @@ public class RepositoryStep : IScaffoldStep
         var solution = config.SolutionName;
         var basePath = config.SolutionPath;
         var plural = Naming.Pluralize(entity);
-        var commonDir = Path.Combine(basePath, $"{solution}.Core", "Common");
-        Directory.CreateDirectory(commonDir);
-        var pagedResultFile = Path.Combine(commonDir, "PagedResult.cs");
+
+        // ensure core models directory and PagedResult
+        var coreModelsDir = Path.Combine(basePath, $"{solution}.Core", "Common", "Models");
+        Directory.CreateDirectory(coreModelsDir);
+        var pagedResultFile = Path.Combine(coreModelsDir, "PagedResult.cs");
         if (!File.Exists(pagedResultFile))
         {
-            var pagedContent = """
+        var pagedContent = """
 using System.Collections.Generic;
 
-namespace {{solution}}.Core.Common;
+namespace {{solution}}.Core.Common.Models;
 
 public record PagedResult<T>(List<T> Items, int TotalCount, int Page, int PageSize);
 """;
             File.WriteAllText(pagedResultFile, pagedContent.Replace("{{solution}}", solution));
         }
 
-        var coreDir = Path.Combine(basePath, $"{solution}.Core", "Features", plural);
-        var legacyCoreDir = Path.Combine(basePath, $"{solution}.Core", plural);
-        var ifaceFile = Path.Combine(coreDir, $"I{entity}Repository.cs");
-        var legacyIface = Path.Combine(legacyCoreDir, $"I{entity}Repository.cs");
-        if (File.Exists(legacyIface) && !File.Exists(ifaceFile))
-        {
-            Directory.CreateDirectory(coreDir);
-            File.Move(legacyIface, ifaceFile);
-            if (Directory.Exists(legacyCoreDir) && Directory.GetFileSystemEntries(legacyCoreDir).Length == 0)
-                Directory.Delete(legacyCoreDir, true);
-        }
-        else
-        {
-            Directory.CreateDirectory(coreDir);
-        }
+        // repository interface in Application layer
+        var appCommon = Path.Combine(basePath, $"{solution}.Application", "Common");
+        var ifaceDir = Path.Combine(appCommon, "Interfaces", "Repositories");
+        Directory.CreateDirectory(ifaceDir);
+        var ifaceFile = Path.Combine(ifaceDir, $"I{entity}Repository.cs");
         var ifaceTemplate = """
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using {{solution}}.Core.Common;
+using {{solution}}.Core.Common.Models;
+using {{solution}}.Core.Features.{{entities}}.Entities;
 
-namespace {{solution}}.Core.Features.{{entities}};
+namespace {{solution}}.Application.Common.Interfaces.Repositories;
 
 public interface I{{entity}}Repository
 {
@@ -71,46 +64,32 @@ public interface I{{entity}}Repository
             var text = File.ReadAllText(ifaceFile);
             if (!text.Contains("GetAllAsync"))
             {
-                var insert = $@"    Task<{entity}?> GetByIdAsync(int id);
-    Task<List<{entity}>> GetAllAsync();
-    Task<PagedResult<{entity}>> ListAsync(int page = 1, int pageSize = 10);
-    Task AddAsync({entity} entity);
-    Task UpdateAsync({entity} entity);
-    Task DeleteAsync({entity} entity);
-";
+                var insert = $@"    Task<{entity}?> GetByIdAsync(int id);{Environment.NewLine}    Task<List<{entity}>> GetAllAsync();{Environment.NewLine}    Task<PagedResult<{entity}>> ListAsync(int page = 1, int pageSize = 10);{Environment.NewLine}    Task AddAsync({entity} entity);{Environment.NewLine}    Task UpdateAsync({entity} entity);{Environment.NewLine}    Task DeleteAsync({entity} entity);{Environment.NewLine}";
                 var idx = text.LastIndexOf("}");
                 text = text.Insert(idx, insert);
             }
-            if (!text.Contains("using " + solution + ".Core.Common;"))
-                text = "using " + solution + ".Core.Common;" + Environment.NewLine + text;
+            if (!text.Contains("using " + solution + ".Core.Common.Models;"))
+                text = "using " + solution + ".Core.Common.Models;" + Environment.NewLine + text;
+            if (!text.Contains("using " + solution + ".Core.Features." + plural + ".Entities;"))
+                text = "using " + solution + ".Core.Features." + plural + ".Entities;" + Environment.NewLine + text;
             File.WriteAllText(ifaceFile, text);
         }
 
-        var infraDir = Path.Combine(basePath, $"{solution}.Infrastructure", "Features", plural);
-        var legacyInfraDir = Path.Combine(basePath, $"{solution}.Infrastructure", plural);
+        // repository implementation in Infrastructure
+        var infraDir = Path.Combine(basePath, $"{solution}.Infrastructure", "Persistence", "Repositories");
+        Directory.CreateDirectory(infraDir);
         var repoFile = Path.Combine(infraDir, $"{entity}Repository.cs");
-        var legacyRepo = Path.Combine(legacyInfraDir, $"{entity}Repository.cs");
-        if (File.Exists(legacyRepo) && !File.Exists(repoFile))
-        {
-            Directory.CreateDirectory(infraDir);
-            File.Move(legacyRepo, repoFile);
-            if (Directory.Exists(legacyInfraDir) && Directory.GetFileSystemEntries(legacyInfraDir).Length == 0)
-                Directory.Delete(legacyInfraDir, true);
-        }
-        else
-        {
-            Directory.CreateDirectory(infraDir);
-        }
         var repoTemplate = """
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
-using {{solution}}.Core.Common;
-using {{solution}}.Core.Features.{{entities}};
+using {{solution}}.Core.Common.Models;
+using {{solution}}.Application.Common.Interfaces.Repositories;
+using {{solution}}.Core.Features.{{entities}}.Entities;
 using {{solution}}.Infrastructure.Persistence;
 
-namespace {{solution}}.Infrastructure.Features.{{entities}};
+namespace {{solution}}.Infrastructure.Persistence.Repositories;
 
 public class {{entity}}Repository : I{{entity}}Repository
 {
@@ -158,32 +137,7 @@ public class {{entity}}Repository : I{{entity}}Repository
             var text = File.ReadAllText(repoFile);
             if (!text.Contains("GetAllAsync"))
             {
-                var methods = $@"    public async Task AddAsync({entity} entity) => await _context.Set<{entity}>().AddAsync(entity);
-
-    public async Task DeleteAsync({entity} entity)
-    {{
-        _context.Set<{entity}>().Remove(entity);
-        await Task.CompletedTask;
-    }}
-
-    public async Task<{entity}?> GetByIdAsync(int id) => await _context.Set<{entity}>().FindAsync(id);
-
-    public async Task<List<{entity}>> GetAllAsync() => await _context.Set<{entity}>().ToListAsync();
-
-    public async Task<PagedResult<{entity}>> ListAsync(int page = 1, int pageSize = 10)
-    {{
-        var query = _context.Set<{entity}>();
-        var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
-        var total = await query.CountAsync();
-        return new PagedResult<{entity}>(items, total, page, pageSize);
-    }}
-
-    public Task UpdateAsync({entity} entity)
-    {{
-        _context.Set<{entity}>().Update(entity);
-        return Task.CompletedTask;
-    }}
-";
+                var methods = $@"    public async Task AddAsync({entity} entity) => await _context.Set<{entity}>().AddAsync(entity);{Environment.NewLine}{Environment.NewLine}    public async Task DeleteAsync({entity} entity){Environment.NewLine}    {{{Environment.NewLine}        _context.Set<{entity}>().Remove(entity);{Environment.NewLine}        await Task.CompletedTask;{Environment.NewLine}    }}{Environment.NewLine}{Environment.NewLine}    public async Task<{entity}?> GetByIdAsync(int id) => await _context.Set<{entity}>().FindAsync(id);{Environment.NewLine}{Environment.NewLine}    public async Task<List<{entity}>> GetAllAsync() => await _context.Set<{entity}>().ToListAsync();{Environment.NewLine}{Environment.NewLine}    public async Task<PagedResult<{entity}>> ListAsync(int page = 1, int pageSize = 10){Environment.NewLine}    {{{Environment.NewLine}        var query = _context.Set<{entity}>();{Environment.NewLine}        var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();{Environment.NewLine}        var total = await query.CountAsync();{Environment.NewLine}        return new PagedResult<{entity}>(items, total, page, pageSize);{Environment.NewLine}    }}{Environment.NewLine}{Environment.NewLine}    public Task UpdateAsync({entity} entity){Environment.NewLine}    {{{Environment.NewLine}        _context.Set<{entity}>().Update(entity);{Environment.NewLine}        return Task.CompletedTask;{Environment.NewLine}    }}{Environment.NewLine}";
                 var idx = text.LastIndexOf("}");
                 text = text.Insert(idx, methods);
             }
@@ -193,8 +147,9 @@ public class {{entity}}Repository : I{{entity}}Repository
                 "using System.Threading.Tasks;",
                 "using Microsoft.EntityFrameworkCore;",
                 "using System.Collections.Generic;",
-                "using " + solution + ".Core.Common;",
-                "using " + solution + ".Core.Features." + plural + ";",
+                "using " + solution + ".Core.Common.Models;",
+                "using " + solution + ".Application.Common.Interfaces.Repositories;",
+                "using " + solution + ".Core.Features." + plural + ".Entities;",
                 "using " + solution + ".Infrastructure.Persistence;"
             };
             foreach (var u in requiredUsings)
@@ -204,3 +159,4 @@ public class {{entity}}Repository : I{{entity}}Repository
         }
     }
 }
+

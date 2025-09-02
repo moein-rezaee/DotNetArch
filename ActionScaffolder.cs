@@ -36,6 +36,7 @@ static class ActionScaffolder
             new ProjectUpdateStep(),
             new EntityStep(),
             new DbContextStep(),
+            new RepositoryStep(),
             new UnitOfWorkStep()
         };
         foreach (var step in steps)
@@ -48,6 +49,10 @@ static class ActionScaffolder
         else
             AddControllerMethod(config, entity, action, isCommand);
 
+        // ensure newly added files still have required DI registration
+        new UnitOfWorkStep().Execute(config, entity);
+        new ProjectUpdateStep().Execute(config, entity);
+
         if (!provider.Equals("Mongo", StringComparison.OrdinalIgnoreCase))
         {
             var prev = Directory.GetCurrentDirectory();
@@ -59,7 +64,7 @@ static class ActionScaffolder
                     var infraProj = $"{config.SolutionName}.Infrastructure/{config.SolutionName}.Infrastructure.csproj";
                     var startProj = $"{config.StartupProject}/{config.StartupProject}.csproj";
                     var migName = $"Auto_{entity}_{DateTime.UtcNow:yyyyMMddHHmmss}";
-                    if (Program.RunCommand($"dotnet ef migrations add {migName} --project {infraProj} --startup-project {startProj} --output-dir Migrations", config.SolutionPath))
+                    if (Program.RunCommand($"dotnet ef migrations add {migName} --project {infraProj} --startup-project {startProj} --output-dir {PathConstants.MigrationsRelativePath}", config.SolutionPath))
                     {
                         Program.RunCommand($"dotnet ef database update --project {infraProj} --startup-project {startProj}", config.SolutionPath);
                     }
@@ -89,15 +94,16 @@ static class ActionScaffolder
         var solution = config.SolutionName;
         var plural = Naming.Pluralize(entity);
 
-        var iface = Path.Combine(config.SolutionPath, $"{solution}.Core", "Features", plural, $"I{entity}Repository.cs");
+        var iface = Path.Combine(config.SolutionPath, $"{solution}.Application", "Common", "Interfaces", "Repositories", $"I{entity}Repository.cs");
         Directory.CreateDirectory(Path.GetDirectoryName(iface)!);
         if (!File.Exists(iface))
         {
-            var iContent = """
+            var ifaceTemplate = """
 using System.Threading.Tasks;
-using {{solution}}.Core.Features.{{entities}};
+using {{solution}}.Core.Common.Models;
+using {{solution}}.Core.Features.{{entities}}.Entities;
 
-namespace {{solution}}.Core.Features.{{entities}};
+namespace {{solution}}.Application.Common.Interfaces.Repositories;
 
 public interface I{{entity}}Repository
 {
@@ -107,7 +113,7 @@ public interface I{{entity}}Repository
             var sig = isCommand
                 ? $"Task {Upper(action)}Async({entity} entity);"
                 : $"Task<{entity}?> {Upper(action)}Async(int id);";
-            File.WriteAllText(iface, iContent
+            File.WriteAllText(iface, ifaceTemplate
                 .Replace("{{solution}}", solution)
                 .Replace("{{entity}}", entity)
                 .Replace("{{entities}}", plural)
@@ -127,40 +133,22 @@ public interface I{{entity}}Repository
             }
         }
 
-        var infraDir = Path.Combine(config.SolutionPath, $"{solution}.Infrastructure", "Features", plural);
-        var legacyInfraDir = Path.Combine(config.SolutionPath, $"{solution}.Infrastructure", plural);
-        var impl = Path.Combine(infraDir, $"{entity}Repository.cs");
-        var legacyRepo = Path.Combine(legacyInfraDir, $"{entity}Repository.cs");
-        if (File.Exists(legacyRepo) && !File.Exists(impl))
-        {
-            Directory.CreateDirectory(infraDir);
-            File.Move(legacyRepo, impl);
-            if (Directory.Exists(legacyInfraDir) && Directory.GetFileSystemEntries(legacyInfraDir).Length == 0)
-                Directory.Delete(legacyInfraDir, true);
-        }
-        else
-        {
-            Directory.CreateDirectory(infraDir);
-        }
+        var impl = Path.Combine(config.SolutionPath, $"{solution}.Infrastructure", "Persistence", "Repositories", $"{entity}Repository.cs");
+        Directory.CreateDirectory(Path.GetDirectoryName(impl)!);
+        var mReturn = isCommand ? "Task" : $"Task<{entity}?>";
+        var param = isCommand ? $"{entity} entity" : "int id";
         if (!File.Exists(impl))
         {
-            var mReturn = isCommand ? "Task" : $"Task<{entity}?>";
-            var param = isCommand ? $"{entity} entity" : "int id";
             var body = isCommand
-                ? """
-        // TODO: implement action
-        await Task.CompletedTask;
-"""
-                : $"""
-        // TODO: implement action
-        return await _context.Set<{entity}>().FindAsync(id);
-""";
-            var rContent = """
+                ? "        // TODO: implement action\n        await Task.CompletedTask;\n"
+                : $"        // TODO: implement action\n        return await _context.Set<{entity}>().FindAsync(id);\n";
+            var implTemplate = """
 using System.Threading.Tasks;
-using {{solution}}.Core.Features.{{entities}};
+using {{solution}}.Application.Common.Interfaces.Repositories;
+using {{solution}}.Core.Features.{{entities}}.Entities;
 using {{solution}}.Infrastructure.Persistence;
 
-namespace {{solution}}.Infrastructure.Features.{{entities}};
+namespace {{solution}}.Infrastructure.Persistence.Repositories;
 
 public class {{entity}}Repository : I{{entity}}Repository
 {
@@ -172,7 +160,7 @@ public class {{entity}}Repository : I{{entity}}Repository
 {{body}}    }
 }
 """;
-            File.WriteAllText(impl, rContent
+            File.WriteAllText(impl, implTemplate
                 .Replace("{{solution}}", solution)
                 .Replace("{{entity}}", entity)
                 .Replace("{{entities}}", plural)
@@ -186,8 +174,7 @@ public class {{entity}}Repository : I{{entity}}Repository
             var lines = File.ReadAllLines(impl).ToList();
             if (!lines.Any(l => l.Contains($"{Upper(action)}Async(")))
             {
-                var idx = lines.FindLastIndex(l => l.Trim() == "}");
-                var method = isCommand
+                var insert = isCommand
                     ? new[]
                     {
                         $"    public async Task {Upper(action)}Async({entity} entity)",
@@ -204,7 +191,8 @@ public class {{entity}}Repository : I{{entity}}Repository
                         $"        return await _context.Set<{entity}>().FindAsync(id);",
                         "    }",
                     };
-                lines.InsertRange(idx, method);
+                var idx = lines.FindLastIndex(l => l.Trim() == "}");
+                lines.InsertRange(idx, insert);
                 File.WriteAllLines(impl, lines);
             }
         }
@@ -225,7 +213,7 @@ public class {{entity}}Repository : I{{entity}}Repository
         {
             File.WriteAllText(Path.Combine(dir, $"{Upper(action)}{entity}Command.cs"), Fill("""
 using MediatR;
-using {{solution}}.Core.Features.{{entities}};
+using {{solution}}.Core.Features.{{entities}}.Entities;
 
 namespace {{solution}}.Application.Features.{{entities}}.Commands.{{action}};
 
@@ -235,8 +223,8 @@ public record {{action}}{{entity}}Command({{entity}} Entity) : IRequest;
 using MediatR;
 using System.Threading;
 using System.Threading.Tasks;
-using {{solution}}.Core.Interfaces;
-using {{solution}}.Core.Features.{{entities}};
+using {{solution}}.Application.Common.Interfaces;
+using {{solution}}.Core.Features.{{entities}}.Entities;
 
 namespace {{solution}}.Application.Features.{{entities}}.Commands.{{action}};
 
@@ -269,7 +257,7 @@ public class {{action}}{{entity}}Validator : AbstractValidator<{{action}}{{entit
         {
             File.WriteAllText(Path.Combine(dir, $"{Upper(action)}{entity}Query.cs"), Fill("""
 using MediatR;
-using {{solution}}.Core.Features.{{entities}};
+using {{solution}}.Core.Features.{{entities}}.Entities;
 
 namespace {{solution}}.Application.Features.{{entities}}.Queries.{{action}};
 
@@ -279,8 +267,8 @@ public record {{action}}{{entity}}Query(int Id) : IRequest<{{entity}}?>;
 using MediatR;
 using System.Threading;
 using System.Threading.Tasks;
-using {{solution}}.Core.Interfaces;
-using {{solution}}.Core.Features.{{entities}};
+using {{solution}}.Application.Common.Interfaces;
+using {{solution}}.Core.Features.{{entities}}.Entities;
 
 namespace {{solution}}.Application.Features.{{entities}}.Queries.{{action}};
 
@@ -323,7 +311,7 @@ public class {{action}}{{entity}}Validator : AbstractValidator<{{action}}{{entit
                 "using MediatR;",
                 "using Microsoft.AspNetCore.Builder;",
                 "using Microsoft.AspNetCore.Http;",
-                $"using {solution}.Core.Features.{plural};",
+                $"using {solution}.Core.Features.{plural}.Entities;",
                 "",
                 $"namespace {startupProject}.Features.{plural};",
                 "",
@@ -400,7 +388,7 @@ public class {{action}}{{entity}}Validator : AbstractValidator<{{action}}{{entit
             {
                 "using MediatR;",
                 "using Microsoft.AspNetCore.Mvc;",
-                $"using {solution}.Core.Features.{plural};",
+                $"using {solution}.Core.Features.{plural}.Entities;",
                 $"using {solution}.Application.Features.{plural}.{(isCommand ? "Commands" : "Queries")}.{Upper(action)};",
                 "",
                 $"namespace {config.StartupProject}.Features.{plural};",

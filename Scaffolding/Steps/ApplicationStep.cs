@@ -39,7 +39,7 @@ public class ApplicationStep : IScaffoldStep
         Directory.CreateDirectory(createDir);
         File.WriteAllText(Path.Combine(createDir, $"Create{entity}Command.cs"), Fill(@"
 using MediatR;
-using {{solution}}.Core.Features.{{entities}};
+using {{solution}}.Core.Features.{{entities}}.Entities;
 
 namespace {{solution}}.Application.Features.{{entities}}.Commands.Create;
 
@@ -49,8 +49,8 @@ public record Create{{entity}}Command({{entity}} Entity) : IRequest<{{entity}}>;
 using MediatR;
 using System.Threading;
 using System.Threading.Tasks;
-using {{solution}}.Core.Features.{{entities}};
-using {{solution}}.Core.Interfaces;
+using {{solution}}.Core.Features.{{entities}}.Entities;
+using {{solution}}.Application.Common.Interfaces;
 
 namespace {{solution}}.Application.Features.{{entities}}.Commands.Create;
 
@@ -84,7 +84,7 @@ public class Create{{entity}}Validator : AbstractValidator<Create{{entity}}Comma
         Directory.CreateDirectory(updateDir);
         File.WriteAllText(Path.Combine(updateDir, $"Update{entity}Command.cs"), Fill(@"
 using MediatR;
-using {{solution}}.Core.Features.{{entities}};
+using {{solution}}.Core.Features.{{entities}}.Entities;
 
 namespace {{solution}}.Application.Features.{{entities}}.Commands.Update;
 
@@ -94,8 +94,8 @@ public record Update{{entity}}Command({{entity}} Entity) : IRequest;
 using MediatR;
 using System.Threading;
 using System.Threading.Tasks;
-using {{solution}}.Core.Features.{{entities}};
-using {{solution}}.Core.Interfaces;
+using {{solution}}.Core.Features.{{entities}}.Entities;
+using {{solution}}.Application.Common.Interfaces;
 
 namespace {{solution}}.Application.Features.{{entities}}.Commands.Update;
 
@@ -137,7 +137,7 @@ public record Delete{{entity}}Command(int Id) : IRequest;
 using MediatR;
 using System.Threading;
 using System.Threading.Tasks;
-using {{solution}}.Core.Interfaces;
+using {{solution}}.Application.Common.Interfaces;
 
 namespace {{solution}}.Application.Features.{{entities}}.Commands.Delete;
 
@@ -175,7 +175,7 @@ public class Delete{{entity}}Validator : AbstractValidator<Delete{{entity}}Comma
         Directory.CreateDirectory(getByIdDir);
         File.WriteAllText(Path.Combine(getByIdDir, $"Get{entity}ByIdQuery.cs"), Fill(@"
 using MediatR;
-using {{solution}}.Core.Features.{{entities}};
+using {{solution}}.Core.Features.{{entities}}.Entities;
 
 namespace {{solution}}.Application.Features.{{entities}}.Queries.GetById;
 
@@ -185,8 +185,8 @@ public record Get{{entity}}ByIdQuery(int Id) : IRequest<{{entity}}?>;
 using MediatR;
 using System.Threading;
 using System.Threading.Tasks;
-using {{solution}}.Core.Features.{{entities}};
-using {{solution}}.Core.Interfaces;
+using {{solution}}.Core.Features.{{entities}}.Entities;
+using {{solution}}.Application.Common.Interfaces;
 
 namespace {{solution}}.Application.Features.{{entities}}.Queries.GetById;
 
@@ -217,7 +217,7 @@ public class Get{{entity}}ByIdValidator : AbstractValidator<Get{{entity}}ByIdQue
         File.WriteAllText(Path.Combine(getAllDir, $"Get{entity}AllQuery.cs"), Fill(@"
 using MediatR;
 using System.Collections.Generic;
-using {{solution}}.Core.Features.{{entities}};
+using {{solution}}.Core.Features.{{entities}}.Entities;
 
 namespace {{solution}}.Application.Features.{{entities}}.Queries.GetAll;
 
@@ -228,8 +228,8 @@ using MediatR;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using {{solution}}.Core.Features.{{entities}};
-using {{solution}}.Core.Interfaces;
+using {{solution}}.Core.Features.{{entities}}.Entities;
+using {{solution}}.Application.Common.Interfaces;
 
 namespace {{solution}}.Application.Features.{{entities}}.Queries.GetAll;
 
@@ -246,8 +246,8 @@ public class Get{{entity}}AllHandler : IRequestHandler<Get{{entity}}AllQuery, Li
         Directory.CreateDirectory(getListDir);
         File.WriteAllText(Path.Combine(getListDir, $"Get{entity}ListQuery.cs"), Fill(@"
 using MediatR;
-using {{solution}}.Core.Common;
-using {{solution}}.Core.Features.{{entities}};
+using {{solution}}.Core.Common.Models;
+using {{solution}}.Core.Features.{{entities}}.Entities;
 
 namespace {{solution}}.Application.Features.{{entities}}.Queries.GetList;
 
@@ -257,9 +257,9 @@ public record Get{{entity}}ListQuery(int Page = 1, int PageSize = 10) : IRequest
 using MediatR;
 using System.Threading;
 using System.Threading.Tasks;
-using {{solution}}.Core.Common;
-using {{solution}}.Core.Features.{{entities}};
-using {{solution}}.Core.Interfaces;
+using {{solution}}.Core.Common.Models;
+using {{solution}}.Core.Features.{{entities}}.Entities;
+using {{solution}}.Application.Common.Interfaces;
 
 namespace {{solution}}.Application.Features.{{entities}}.Queries.GetList;
 

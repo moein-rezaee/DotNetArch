@@ -95,6 +95,30 @@ class Program
             return;
         }
 
+        if (args.Length >= 2 && args[0].ToLower() == "new" && args[1].ToLower() == "service")
+        {
+            string? outputPath = null;
+            for (int i = 2; i < args.Length; i++)
+            {
+                if (args[i].StartsWith("--output="))
+                    outputPath = args[i].Substring("--output=".Length);
+            }
+
+            if (string.IsNullOrWhiteSpace(outputPath))
+                outputPath = PathState.Load() ?? Directory.GetCurrentDirectory();
+
+            var basePath = outputPath!;
+            var config = ConfigManager.Load(basePath);
+            if (config == null)
+            {
+                Error("Solution configuration not found. Run 'new solution' first.");
+                return;
+            }
+
+            ServiceScaffolder.Generate(config);
+            return;
+        }
+
         if (args.Length >= 1 && args[0].ToLower() == "exec")
         {
             string? outputPath = null;
@@ -115,11 +139,19 @@ class Program
                 return;
             }
 
-            var checkMigrations = AskYesNo(
-                "Check for entity changes and apply migrations before running?",
-                false);
-            if (checkMigrations)
-                UpdateMigrations(config, basePath);
+            // ensure unit of work and repositories exist before syncing project wiring
+            foreach (var e in config.Entities.Keys)
+                new UnitOfWorkStep().Execute(config, e);
+
+            // keep project wiring (e.g. IUnitOfWork registration) up to date after updates
+            new ProjectUpdateStep().Execute(config, string.Empty);
+
+            // run unit of work step again to apply registrations if DI files were recreated
+            foreach (var e in config.Entities.Keys)
+                new UnitOfWorkStep().Execute(config, e);
+
+            // ensure any pending migrations are applied before running
+            UpdateMigrations(config, basePath);
 
             var runProj = $"{config.StartupProject}/{config.StartupProject}.csproj";
             RunProject(runProj, basePath);
@@ -222,14 +254,14 @@ class Program
         GenerateSolutionInteractive();
     }
 
-    static string Ask(string message, string? defaultValue = null)
+    public static string Ask(string message, string? defaultValue = null)
     {
         Console.Write($"{message}{(defaultValue != null ? $" [{defaultValue}]" : "")}: ");
         var input = Console.ReadLine();
         return string.IsNullOrWhiteSpace(input) ? (defaultValue ?? string.Empty) : input;
     }
 
-    static bool AskYesNo(string message, bool defaultYes)
+    public static bool AskYesNo(string message, bool defaultYes)
     {
         var def = defaultYes ? "y" : "n";
         while (true)
@@ -246,7 +278,7 @@ class Program
         }
     }
 
-    static string AskOption(string message, string[] options, int defaultIndex = 0)
+    public static string AskOption(string message, string[] options, int defaultIndex = 0)
     {
         Console.WriteLine(message);
         for (int i = 0; i < options.Length; i++)
@@ -258,19 +290,19 @@ class Program
             : options[defaultIndex];
     }
 
-    static void Info(string msg)
+    public static void Info(string msg)
     {
         Console.WriteLine($"ℹ️ {msg}");
         Console.WriteLine();
     }
 
-    static void Success(string msg)
+    public static void Success(string msg)
     {
         Console.WriteLine($"✅ {msg}");
         Console.WriteLine();
     }
 
-    static void Error(string msg)
+    public static void Error(string msg)
     {
         Console.WriteLine($"❌ {msg}");
         Console.WriteLine();
@@ -302,11 +334,11 @@ class Program
 
         Directory.SetCurrentDirectory(solutionDir);
 
-        RunCommand($"dotnet new sln -n {solutionName}");
-        RunCommand($"dotnet new classlib -n {solutionName}.Core");
-        RunCommand($"dotnet new classlib -n {solutionName}.Application");
-        RunCommand($"dotnet new classlib -n {solutionName}.Infrastructure");
-        RunCommand($"dotnet new webapi -n {solutionName}.API");
+        RunCommand($"dotnet new sln -n {solutionName} --force");
+        RunCommand($"dotnet new classlib -n {solutionName}.Core --force");
+        RunCommand($"dotnet new classlib -n {solutionName}.Application --force");
+        RunCommand($"dotnet new classlib -n {solutionName}.Infrastructure --force");
+        RunCommand($"dotnet new webapi -n {solutionName}.API --force");
         
 
         DeleteDefaultClass($"{solutionName}.Core");
@@ -457,18 +489,28 @@ class Program
             var infraProj = $"{config.SolutionName}.Infrastructure/{config.SolutionName}.Infrastructure.csproj";
             var startProj = $"{config.StartupProject}/{config.StartupProject}.csproj";
             var migName = $"Auto_{DateTime.UtcNow:yyyyMMddHHmmss}";
-            var (success, output) = RunCommandCapture($"dotnet ef migrations add {migName} --project {infraProj} --startup-project {startProj} --output-dir Migrations", basePath);
-            if (success)
+            var (success, output) = RunCommandCapture($"dotnet ef migrations add {migName} --project {infraProj} --startup-project {startProj} --output-dir {PathConstants.MigrationsRelativePath}", basePath);
+            var proceed = true;
+            if (!success)
             {
-                RunCommand($"dotnet ef database update --project {infraProj} --startup-project {startProj}", basePath);
+                if (output.Contains("No changes were detected", StringComparison.OrdinalIgnoreCase))
+                {
+                    Info("No changes were detected.");
+                }
+                else
+                {
+                    Error(output.Trim());
+                    proceed = false;
+                }
             }
-            else if (output.Contains("No changes were detected", StringComparison.OrdinalIgnoreCase))
+
+            if (proceed)
             {
-                Info("No changes were detected.");
-            }
-            else
-            {
-                Error(output.Trim());
+                var (dbSuccess, dbOutput) = RunCommandCapture($"dotnet ef database update --project {infraProj} --startup-project {startProj}", basePath);
+                if (!dbSuccess)
+                    Error(dbOutput.Trim());
+                else if (dbOutput.Contains("No migrations were applied", StringComparison.OrdinalIgnoreCase))
+                    Info("Database already up to date.");
             }
         }
         else
