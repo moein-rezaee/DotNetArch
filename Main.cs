@@ -326,11 +326,11 @@ class Program
 
         Directory.SetCurrentDirectory(solutionDir);
 
-        RunCommand($"dotnet new sln -n {solutionName}");
-        RunCommand($"dotnet new classlib -n {solutionName}.Core");
-        RunCommand($"dotnet new classlib -n {solutionName}.Application");
-        RunCommand($"dotnet new classlib -n {solutionName}.Infrastructure");
-        RunCommand($"dotnet new webapi -n {solutionName}.API");
+        RunCommand($"dotnet new sln -n {solutionName} --force");
+        RunCommand($"dotnet new classlib -n {solutionName}.Core --force");
+        RunCommand($"dotnet new classlib -n {solutionName}.Application --force");
+        RunCommand($"dotnet new classlib -n {solutionName}.Infrastructure --force");
+        RunCommand($"dotnet new webapi -n {solutionName}.API --force");
         
 
         DeleteDefaultClass($"{solutionName}.Core");
