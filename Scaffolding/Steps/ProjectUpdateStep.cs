@@ -260,9 +260,9 @@ public static class DependencyInjection
             }
             File.WriteAllText(infraDi, infraContent.Replace("{{solution}}", solution));
         }
-        // ensure IUnitOfWork is registered when implementation exists
-        var uowImpl = Path.Combine(infraDir, "Persistence", "UnitOfWork.cs");
-        if (File.Exists(uowImpl))
+        // ensure IUnitOfWork is registered when an implementation exists anywhere under Infrastructure
+        var uowImpl = Directory.GetFiles(infraDir, "UnitOfWork.cs", SearchOption.AllDirectories).FirstOrDefault();
+        if (uowImpl != null)
         {
             var lines = File.ReadAllLines(infraDi).ToList();
             if (!lines.Contains($"using {solution}.Application.Common.Interfaces;"))
