@@ -235,7 +235,7 @@ public record {{action}}{{entity}}Command({{entity}} Entity) : IRequest;
 using MediatR;
 using System.Threading;
 using System.Threading.Tasks;
-using {{solution}}.Core.Interfaces;
+using {{solution}}.Application.Common.Interfaces;
 using {{solution}}.Core.Features.{{entities}};
 
 namespace {{solution}}.Application.Features.{{entities}}.Commands.{{action}};
@@ -279,7 +279,7 @@ public record {{action}}{{entity}}Query(int Id) : IRequest<{{entity}}?>;
 using MediatR;
 using System.Threading;
 using System.Threading.Tasks;
-using {{solution}}.Core.Interfaces;
+using {{solution}}.Application.Common.Interfaces;
 using {{solution}}.Core.Features.{{entities}};
 
 namespace {{solution}}.Application.Features.{{entities}}.Queries.{{action}};
