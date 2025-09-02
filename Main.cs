@@ -141,6 +141,8 @@ class Program
 
             // keep project wiring (e.g. IUnitOfWork registration) up to date before running
             new ProjectUpdateStep().Execute(config, string.Empty);
+            foreach (var e in config.Entities.Keys)
+                new UnitOfWorkStep().Execute(config, e);
 
             var checkMigrations = AskYesNo(
                 "Check for entity changes and apply migrations before running?",
