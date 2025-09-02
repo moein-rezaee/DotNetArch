@@ -352,7 +352,9 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
             "using Microsoft.Extensions.Configuration;",
             "using Microsoft.Extensions.DependencyInjection;",
             $"using {solution}.Application;",
-            $"using {solution}.Infrastructure;"
+            $"using {solution}.Application.Common.Interfaces;",
+            $"using {solution}.Infrastructure;",
+            $"using {solution}.Infrastructure.Persistence;"
         };
         if (!string.IsNullOrWhiteSpace(entity))
         {
@@ -396,6 +398,8 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
                 lines.Insert(insertIndex++, "builder.Services.AddApplication();");
             if (!lines.Any(l => l.Contains("AddInfrastructure")))
                 lines.Insert(insertIndex++, "builder.Services.AddInfrastructure(builder.Configuration);");
+            if (!lines.Any(l => l.Contains("AddScoped<IUnitOfWork, UnitOfWork>()")))
+                lines.Insert(insertIndex++, "builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();");
         }
 
         var buildIdx = lines.FindIndex(l => l.Contains("var app = builder.Build();"));
