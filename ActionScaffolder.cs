@@ -98,7 +98,6 @@ static class ActionScaffolder
         {
             var ifaceTemplate = """
 using System.Threading.Tasks;
-using {{solution}}.Core.Common.Models;
 using {{solution}}.Core.Features.{{entities}}.Entities;
 
 namespace {{solution}}.Application.Common.Interfaces.Repositories;
