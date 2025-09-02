@@ -11,6 +11,16 @@ public class UnitOfWorkStep : IScaffoldStep
         var solution = config.SolutionName;
         var basePath = config.SolutionPath;
         var plural = Naming.Pluralize(entity);
+
+        // ensure repository exists so that generated unit of work compiles
+        var repoInterface = Path.Combine(basePath,
+            $"{solution}.Application", "Common", "Interfaces", "Repositories",
+            $"I{entity}Repository.cs");
+        if (!File.Exists(repoInterface))
+        {
+            // RepositoryStep creates both interface and implementation
+            new RepositoryStep().Execute(config, entity);
+        }
         var appInterfaces = Path.Combine(basePath, $"{solution}.Application", "Common", "Interfaces");
         Directory.CreateDirectory(appInterfaces);
         var uowInterfaceFile = Path.Combine(appInterfaces, "IUnitOfWork.cs");
