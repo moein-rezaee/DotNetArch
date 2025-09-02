@@ -35,8 +35,7 @@ static class ActionScaffolder
         {
             new ProjectUpdateStep(),
             new EntityStep(),
-            new DbContextStep(),
-            new UnitOfWorkStep()
+            new DbContextStep()
         };
         foreach (var step in steps)
             step.Execute(config, entity);
