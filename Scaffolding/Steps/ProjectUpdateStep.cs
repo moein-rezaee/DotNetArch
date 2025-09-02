@@ -352,10 +352,13 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
             "using Microsoft.Extensions.Configuration;",
             "using Microsoft.Extensions.DependencyInjection;",
             $"using {solution}.Application;",
-            $"using {solution}.Application.Common.Interfaces;",
             $"using {solution}.Infrastructure;",
             $"using {solution}.Infrastructure.Persistence;"
         };
+        var uowInterface = Path.Combine(basePath, $"{solution}.Application", "Common", "Interfaces", "IUnitOfWork.cs");
+        var hasUow = File.Exists(uowInterface);
+        if (hasUow)
+            usingLines.Add($"using {solution}.Application.Common.Interfaces;");
         if (!string.IsNullOrWhiteSpace(entity))
         {
             var plural = Naming.Pluralize(entity);
@@ -398,7 +401,7 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
                 lines.Insert(insertIndex++, "builder.Services.AddApplication();");
             if (!lines.Any(l => l.Contains("AddInfrastructure")))
                 lines.Insert(insertIndex++, "builder.Services.AddInfrastructure(builder.Configuration);");
-            if (!lines.Any(l => l.Contains("AddScoped<IUnitOfWork, UnitOfWork>()")))
+            if (hasUow && !lines.Any(l => l.Contains("AddScoped<IUnitOfWork, UnitOfWork>()")))
                 lines.Insert(insertIndex++, "builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();");
         }
 
