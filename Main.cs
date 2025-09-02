@@ -146,6 +146,10 @@ class Program
             // keep project wiring (e.g. IUnitOfWork registration) up to date after updates
             new ProjectUpdateStep().Execute(config, string.Empty);
 
+            // run unit of work step again to apply registrations if DI files were recreated
+            foreach (var e in config.Entities.Keys)
+                new UnitOfWorkStep().Execute(config, e);
+
             var checkMigrations = AskYesNo(
                 "Check for entity changes and apply migrations before running?",
                 false);
