@@ -573,7 +573,8 @@ static class ServiceScaffolder
     {
         var infraProj = Path.Combine(config.SolutionPath, $"{config.SolutionName}.Infrastructure", $"{config.SolutionName}.Infrastructure.csproj");
         if (!File.Exists(infraProj)) return;
-        if (!Program.RunCommand($"dotnet add {infraProj} package {package}", config.SolutionPath, print: false))
+        var addCmd = $"dotnet add \"{infraProj}\" package {package} --version {version}";
+        if (!Program.RunCommand(addCmd, config.SolutionPath, print: false))
         {
             var doc = XDocument.Load(infraProj);
             var ns = doc.Root!.Name.Namespace;
