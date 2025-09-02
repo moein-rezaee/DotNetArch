@@ -207,7 +207,7 @@ We welcome contributions to DotNetArch! Here’s how you can contribute:
 - **Automatic package & service registration**: Required NuGet packages are added to project files and services like `DbContext`, `IMediator`, `IUnitOfWork`, and validators are registered in `Program.cs`.
 - **`new action` command**: Add custom commands or queries with handlers, validators, repository methods, and controller endpoints.
 - **Composable actions and slices**: Actions scaffolded before a full `new crud` run are preserved and the later CRUD generation augments the existing files instead of overwriting them.
-- **`exec` command**: Run the startup project with an optional migration check that can generate and apply pending EF Core migrations.
+- **`exec` command**: Run the startup project with an optional migration check that generates missing migrations, applies any pending ones, and otherwise launches the project directly if no updates are required.
 - **`remove migration` command**: Roll the database back and delete the most recent EF Core migration.
 - **Correct namespace wiring**: `Program.cs` updates include the necessary `using` directives and service registrations for each entity's repository without malformed entries.
 - **Configurable startup project**: `dotnet-arch.yml` tracks which project is the startup target so controllers are added to the correct application entry point.

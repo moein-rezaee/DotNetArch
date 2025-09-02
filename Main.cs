@@ -482,17 +482,27 @@ class Program
             var startProj = $"{config.StartupProject}/{config.StartupProject}.csproj";
             var migName = $"Auto_{DateTime.UtcNow:yyyyMMddHHmmss}";
             var (success, output) = RunCommandCapture($"dotnet ef migrations add {migName} --project {infraProj} --startup-project {startProj} --output-dir {PathConstants.MigrationsRelativePath}", basePath);
-            if (success)
+            var proceed = true;
+            if (!success)
             {
-                RunCommand($"dotnet ef database update --project {infraProj} --startup-project {startProj}", basePath);
+                if (output.Contains("No changes were detected", StringComparison.OrdinalIgnoreCase))
+                {
+                    Info("No changes were detected.");
+                }
+                else
+                {
+                    Error(output.Trim());
+                    proceed = false;
+                }
             }
-            else if (output.Contains("No changes were detected", StringComparison.OrdinalIgnoreCase))
+
+            if (proceed)
             {
-                Info("No changes were detected.");
-            }
-            else
-            {
-                Error(output.Trim());
+                var (dbSuccess, dbOutput) = RunCommandCapture($"dotnet ef database update --project {infraProj} --startup-project {startProj}", basePath);
+                if (!dbSuccess)
+                    Error(dbOutput.Trim());
+                else if (dbOutput.Contains("No migrations were applied", StringComparison.OrdinalIgnoreCase))
+                    Info("Database already up to date.");
             }
         }
         else
