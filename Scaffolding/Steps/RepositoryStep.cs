@@ -37,7 +37,7 @@ public record PagedResult<T>(List<T> Items, int TotalCount, int Page, int PageSi
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using {{solution}}.Core.Common.Models;
-using {{solution}}.Core.Features.{{entities}};
+using {{solution}}.Core.Features.{{entities}}.Entities;
 
 namespace {{solution}}.Application.Common.Interfaces.Repositories;
 
@@ -70,8 +70,8 @@ public interface I{{entity}}Repository
             }
             if (!text.Contains("using " + solution + ".Core.Common.Models;"))
                 text = "using " + solution + ".Core.Common.Models;" + Environment.NewLine + text;
-            if (!text.Contains("using " + solution + ".Core.Features." + plural + ";"))
-                text = "using " + solution + ".Core.Features." + plural + ";" + Environment.NewLine + text;
+            if (!text.Contains("using " + solution + ".Core.Features." + plural + ".Entities;"))
+                text = "using " + solution + ".Core.Features." + plural + ".Entities;" + Environment.NewLine + text;
             File.WriteAllText(ifaceFile, text);
         }
 
@@ -86,7 +86,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using {{solution}}.Core.Common.Models;
 using {{solution}}.Application.Common.Interfaces.Repositories;
-using {{solution}}.Core.Features.{{entities}};
+using {{solution}}.Core.Features.{{entities}}.Entities;
 using {{solution}}.Infrastructure.Persistence;
 
 namespace {{solution}}.Infrastructure.Persistence.Repositories;
@@ -149,7 +149,7 @@ public class {{entity}}Repository : I{{entity}}Repository
                 "using System.Collections.Generic;",
                 "using " + solution + ".Core.Common.Models;",
                 "using " + solution + ".Application.Common.Interfaces.Repositories;",
-                "using " + solution + ".Core.Features." + plural + ";",
+                "using " + solution + ".Core.Features." + plural + ".Entities;",
                 "using " + solution + ".Infrastructure.Persistence;"
             };
             foreach (var u in requiredUsings)

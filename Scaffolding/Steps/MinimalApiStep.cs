@@ -29,7 +29,7 @@ using {{solution}}.Application.Features.{{entities}}.Commands.Delete;
 using {{solution}}.Application.Features.{{entities}}.Queries.GetById;
 using {{solution}}.Application.Features.{{entities}}.Queries.GetAll;
 using {{solution}}.Application.Features.{{entities}}.Queries.GetList;
-using {{solution}}.Core.Features.{{entities}};
+using {{solution}}.Core.Features.{{entities}}.Entities;
 using {{solution}}.Core.Common.Models;
 
 namespace {{startupProject}}.Features.{{entities}};

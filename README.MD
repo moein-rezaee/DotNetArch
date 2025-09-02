@@ -68,7 +68,7 @@ After creating a solution you can scaffold a full CRUD vertical slice for an ent
 dotnet-arch new crud --entity=EntityName [--output=Path]
 ```
 
-`--output` points to the solution directory; if omitted, the last path saved by the tool is used (falling back to the current directory). If required arguments are missing the CLI prompts for them. The command reads `dotnet-arch.yml` to locate the solution name and scaffolds the entity slice. Depending on the selected style it creates either API controllers or minimal FastAPI endpoints along with domain models, repositories, unit of work, MediatR handlers and validators. The CLI installs `dotnet-ef` if needed and runs migrations for relational providers (SQL Server, SQLite, PostgreSQL) so schema changes are applied automatically. Each entity is placed under a `Features/<Entity>` folder in every layer and follows a CQRS-aware vertical slice:
+`--output` points to the solution directory; if omitted, the last path saved by the tool is used (falling back to the current directory). If required arguments are missing the CLI prompts for them. The command reads `dotnet-arch.yml` to locate the solution name and scaffolds the entity slice. Depending on the selected style it creates either API controllers or minimal FastAPI endpoints along with domain models, repositories, unit of work, MediatR handlers and validators. The CLI installs `dotnet-ef` if needed and runs migrations for relational providers (SQL Server, SQLite, PostgreSQL) so schema changes are applied automatically. Each feature is grouped under `Features/<Entity>` in every layer; domain entities live in `Core/Features/<Entity>/Entities` while handlers, repositories and other slices sit alongside them following a CQRS-aware vertical structure:
 
 ```
 Application/<Entity>/
@@ -213,7 +213,7 @@ We welcome contributions to DotNetArch! Here’s how you can contribute:
 - **Configurable startup project**: `dotnet-arch.yml` tracks which project is the startup target so controllers are added to the correct application entry point.
 - **Custom output path**: Commands remember the last solution path but accept an `--output` option so code can be generated in test directories or alternative locations.
 - **Development Swagger setup**: API projects automatically reference `Microsoft.AspNetCore.OpenApi` and `Swashbuckle.AspNetCore`, register Swagger services, and enable Swagger UI in development while removing default template files and sample endpoints.
-- **Feature-based folder structure**: Each layer organizes code under `Features/<Entity>` so all slices stay grouped.
+- **Feature-based folder structure**: Each layer organizes code under `Features/<Entity>`; domain entities live in an `Entities` subfolder so slices stay grouped and extensible.
   - **Automatic migrations**: `new crud`, `new action`, and `exec` verify `dotnet-ef` and attempt installation if needed. For relational providers (SQL Server, SQLite, PostgreSQL) migrations and database updates run automatically; for MongoDB the process skips migrations. Generated `Program.cs` calls `Database.Migrate()` on startup to apply any pending migrations so new tables are created automatically.
 
 ---

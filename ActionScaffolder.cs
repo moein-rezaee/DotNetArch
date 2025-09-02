@@ -97,7 +97,7 @@ static class ActionScaffolder
             var ifaceTemplate = """
 using System.Threading.Tasks;
 using {{solution}}.Core.Common.Models;
-using {{solution}}.Core.Features.{{entities}};
+using {{solution}}.Core.Features.{{entities}}.Entities;
 
 namespace {{solution}}.Application.Common.Interfaces.Repositories;
 
@@ -141,7 +141,7 @@ public interface I{{entity}}Repository
             var implTemplate = """
 using System.Threading.Tasks;
 using {{solution}}.Application.Common.Interfaces.Repositories;
-using {{solution}}.Core.Features.{{entities}};
+using {{solution}}.Core.Features.{{entities}}.Entities;
 using {{solution}}.Infrastructure.Persistence;
 
 namespace {{solution}}.Infrastructure.Persistence.Repositories;
@@ -209,7 +209,7 @@ public class {{entity}}Repository : I{{entity}}Repository
         {
             File.WriteAllText(Path.Combine(dir, $"{Upper(action)}{entity}Command.cs"), Fill("""
 using MediatR;
-using {{solution}}.Core.Features.{{entities}};
+using {{solution}}.Core.Features.{{entities}}.Entities;
 
 namespace {{solution}}.Application.Features.{{entities}}.Commands.{{action}};
 
@@ -220,7 +220,7 @@ using MediatR;
 using System.Threading;
 using System.Threading.Tasks;
 using {{solution}}.Application.Common.Interfaces;
-using {{solution}}.Core.Features.{{entities}};
+using {{solution}}.Core.Features.{{entities}}.Entities;
 
 namespace {{solution}}.Application.Features.{{entities}}.Commands.{{action}};
 
@@ -253,7 +253,7 @@ public class {{action}}{{entity}}Validator : AbstractValidator<{{action}}{{entit
         {
             File.WriteAllText(Path.Combine(dir, $"{Upper(action)}{entity}Query.cs"), Fill("""
 using MediatR;
-using {{solution}}.Core.Features.{{entities}};
+using {{solution}}.Core.Features.{{entities}}.Entities;
 
 namespace {{solution}}.Application.Features.{{entities}}.Queries.{{action}};
 
@@ -264,7 +264,7 @@ using MediatR;
 using System.Threading;
 using System.Threading.Tasks;
 using {{solution}}.Application.Common.Interfaces;
-using {{solution}}.Core.Features.{{entities}};
+using {{solution}}.Core.Features.{{entities}}.Entities;
 
 namespace {{solution}}.Application.Features.{{entities}}.Queries.{{action}};
 
@@ -307,7 +307,7 @@ public class {{action}}{{entity}}Validator : AbstractValidator<{{action}}{{entit
                 "using MediatR;",
                 "using Microsoft.AspNetCore.Builder;",
                 "using Microsoft.AspNetCore.Http;",
-                $"using {solution}.Core.Features.{plural};",
+                $"using {solution}.Core.Features.{plural}.Entities;",
                 "",
                 $"namespace {startupProject}.Features.{plural};",
                 "",
@@ -384,7 +384,7 @@ public class {{action}}{{entity}}Validator : AbstractValidator<{{action}}{{entit
             {
                 "using MediatR;",
                 "using Microsoft.AspNetCore.Mvc;",
-                $"using {solution}.Core.Features.{plural};",
+                $"using {solution}.Core.Features.{plural}.Entities;",
                 $"using {solution}.Application.Features.{plural}.{(isCommand ? "Commands" : "Queries")}.{Upper(action)};",
                 "",
                 $"namespace {config.StartupProject}.Features.{plural};",

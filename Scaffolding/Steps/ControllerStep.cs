@@ -28,7 +28,7 @@ using {{solution}}.Application.Features.{{entities}}.Queries.GetById;
 using {{solution}}.Application.Features.{{entities}}.Queries.GetAll;
 using {{solution}}.Application.Features.{{entities}}.Queries.GetList;
 using {{solution}}.Core.Common.Models;
-using {{solution}}.Core.Features.{{entities}};
+using {{solution}}.Core.Features.{{entities}}.Entities;
 
 namespace {{startupProject}}.Features.{{entities}};
 
@@ -118,7 +118,7 @@ public class {{entity}}Controller : ControllerBase
                 $"using {solution}.Application.Features.{plural}.Queries.GetAll;",
                 $"using {solution}.Application.Features.{plural}.Queries.GetList;",
                 $"using {solution}.Core.Common.Models;",
-                $"using {solution}.Core.Features.{plural};"
+                $"using {solution}.Core.Features.{plural}.Entities;"
             };
             foreach (var u in requiredUsings)
                 if (!text.Contains(u))
