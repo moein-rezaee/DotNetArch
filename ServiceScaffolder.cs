@@ -363,7 +363,7 @@ static class ServiceScaffolder
             "    public async Task SubscribeAsync(string queue, Func<byte[], Task> handler)",
             "    {",
             "        var consumer = new AsyncEventingBasicConsumer(_channel);",
-            "        consumer.ReceivedAsync += async (_, ea, _) => await handler(ea.Body.ToArray());",
+            "        consumer.ReceivedAsync += async (_, ea) => await handler(ea.Body.ToArray());",
             "        await _channel.BasicConsumeAsync(queue, true, consumer);",
             "    }",
             "    public void Dispose()",
