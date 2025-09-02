@@ -150,15 +150,8 @@ class Program
             foreach (var e in config.Entities.Keys)
                 new UnitOfWorkStep().Execute(config, e);
 
-            // re-sync project wiring once more so AddScoped<IUnitOfWork, UnitOfWork>() is present
-            // even if DependencyInjection files were regenerated in the previous step
-            new ProjectUpdateStep().Execute(config, string.Empty);
-
-            var checkMigrations = AskYesNo(
-                "Check for entity changes and apply migrations before running?",
-                false);
-            if (checkMigrations)
-                UpdateMigrations(config, basePath);
+            // ensure any pending migrations are applied before running
+            UpdateMigrations(config, basePath);
 
             var runProj = $"{config.StartupProject}/{config.StartupProject}.csproj";
             RunProject(runProj, basePath);
