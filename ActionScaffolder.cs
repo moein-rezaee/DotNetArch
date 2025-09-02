@@ -49,6 +49,10 @@ static class ActionScaffolder
         else
             AddControllerMethod(config, entity, action, isCommand);
 
+        // ensure newly added files still have required DI registration
+        new UnitOfWorkStep().Execute(config, entity);
+        new ProjectUpdateStep().Execute(config, entity);
+
         if (!provider.Equals("Mongo", StringComparison.OrdinalIgnoreCase))
         {
             var prev = Directory.GetCurrentDirectory();
