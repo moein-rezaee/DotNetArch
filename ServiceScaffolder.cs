@@ -571,7 +571,7 @@ static class ServiceScaffolder
 
     static void InstallPackage(SolutionConfig config, string package, string version)
     {
-        var infraProj = Path.Combine(config.SolutionPath, $"{config.SolutionName}.Infrastructure/{config.SolutionName}.Infrastructure.csproj");
+        var infraProj = Path.Combine(config.SolutionPath, $"{config.SolutionName}.Infrastructure", $"{config.SolutionName}.Infrastructure.csproj");
         if (!File.Exists(infraProj)) return;
         if (!Program.RunCommand($"dotnet add {infraProj} package {package}", config.SolutionPath, print: false))
         {

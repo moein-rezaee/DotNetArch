@@ -32,7 +32,7 @@ public class ProjectUpdateStep : IScaffoldStep
             var dataDir = Path.Combine(persistencePath, "Data");
             Directory.CreateDirectory(dataDir);
         }
-        Directory.CreateDirectory(Path.Combine(persistencePath, "Migrations"));
+        Directory.CreateDirectory(Path.Combine(persistencePath, PathConstants.Migrations));
         UpdateApplicationProject(solution, basePath);
         UpdateInfrastructureProject(solution, basePath, provider);
         UpdateApiProject(solution, provider, basePath, startupProject);

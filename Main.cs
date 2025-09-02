@@ -481,7 +481,7 @@ class Program
             var infraProj = $"{config.SolutionName}.Infrastructure/{config.SolutionName}.Infrastructure.csproj";
             var startProj = $"{config.StartupProject}/{config.StartupProject}.csproj";
             var migName = $"Auto_{DateTime.UtcNow:yyyyMMddHHmmss}";
-            var (success, output) = RunCommandCapture($"dotnet ef migrations add {migName} --project {infraProj} --startup-project {startProj} --output-dir Migrations", basePath);
+            var (success, output) = RunCommandCapture($"dotnet ef migrations add {migName} --project {infraProj} --startup-project {startProj} --output-dir {PathConstants.MigrationsRelativePath}", basePath);
             if (success)
             {
                 RunCommand($"dotnet ef database update --project {infraProj} --startup-project {startProj}", basePath);

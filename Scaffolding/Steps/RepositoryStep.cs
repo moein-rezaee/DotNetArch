@@ -13,15 +13,15 @@ public class RepositoryStep : IScaffoldStep
         var plural = Naming.Pluralize(entity);
 
         // ensure core models directory and PagedResult
-        var coreModelsDir = Path.Combine(basePath, $"{solution}.Core", "Models");
+        var coreModelsDir = Path.Combine(basePath, $"{solution}.Core", "Common", "Models");
         Directory.CreateDirectory(coreModelsDir);
         var pagedResultFile = Path.Combine(coreModelsDir, "PagedResult.cs");
         if (!File.Exists(pagedResultFile))
         {
-            var pagedContent = """
+        var pagedContent = """
 using System.Collections.Generic;
 
-namespace {{solution}}.Core.Models;
+namespace {{solution}}.Core.Common.Models;
 
 public record PagedResult<T>(List<T> Items, int TotalCount, int Page, int PageSize);
 """;
@@ -36,7 +36,7 @@ public record PagedResult<T>(List<T> Items, int TotalCount, int Page, int PageSi
         var ifaceTemplate = """
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using {{solution}}.Core.Models;
+using {{solution}}.Core.Common.Models;
 using {{solution}}.Core.Features.{{entities}};
 
 namespace {{solution}}.Application.Common.Interfaces.Repositories;
@@ -68,8 +68,8 @@ public interface I{{entity}}Repository
                 var idx = text.LastIndexOf("}");
                 text = text.Insert(idx, insert);
             }
-            if (!text.Contains("using " + solution + ".Core.Models;"))
-                text = "using " + solution + ".Core.Models;" + Environment.NewLine + text;
+            if (!text.Contains("using " + solution + ".Core.Common.Models;"))
+                text = "using " + solution + ".Core.Common.Models;" + Environment.NewLine + text;
             if (!text.Contains("using " + solution + ".Core.Features." + plural + ";"))
                 text = "using " + solution + ".Core.Features." + plural + ";" + Environment.NewLine + text;
             File.WriteAllText(ifaceFile, text);
@@ -84,7 +84,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
-using {{solution}}.Core.Models;
+using {{solution}}.Core.Common.Models;
 using {{solution}}.Application.Common.Interfaces.Repositories;
 using {{solution}}.Core.Features.{{entities}};
 using {{solution}}.Infrastructure.Persistence;
@@ -147,7 +147,7 @@ public class {{entity}}Repository : I{{entity}}Repository
                 "using System.Threading.Tasks;",
                 "using Microsoft.EntityFrameworkCore;",
                 "using System.Collections.Generic;",
-                "using " + solution + ".Core.Models;",
+                "using " + solution + ".Core.Common.Models;",
                 "using " + solution + ".Application.Common.Interfaces.Repositories;",
                 "using " + solution + ".Core.Features." + plural + ";",
                 "using " + solution + ".Infrastructure.Persistence;"
