@@ -139,6 +139,9 @@ class Program
                 return;
             }
 
+            // keep project wiring (e.g. IUnitOfWork registration) up to date before running
+            new ProjectUpdateStep().Execute(config, string.Empty);
+
             var checkMigrations = AskYesNo(
                 "Check for entity changes and apply migrations before running?",
                 false);
