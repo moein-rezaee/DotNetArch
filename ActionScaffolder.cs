@@ -35,9 +35,7 @@ static class ActionScaffolder
         {
             new ProjectUpdateStep(),
             new EntityStep(),
-            new DbContextStep(),
-            new RepositoryStep(),
-            new UnitOfWorkStep()
+            new DbContextStep()
         };
         foreach (var step in steps)
             step.Execute(config, entity);
@@ -100,7 +98,6 @@ static class ActionScaffolder
         {
             var ifaceTemplate = """
 using System.Threading.Tasks;
-using {{solution}}.Core.Common.Models;
 using {{solution}}.Core.Features.{{entities}}.Entities;
 
 namespace {{solution}}.Application.Common.Interfaces.Repositories;

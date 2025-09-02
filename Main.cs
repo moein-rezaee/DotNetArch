@@ -34,6 +34,8 @@ class Program
                 return;
             }
 
+            entity = SanitizeIdentifier(entity);
+
             if (string.IsNullOrWhiteSpace(outputPath))
                 outputPath = PathState.Load() ?? Directory.GetCurrentDirectory();
 
@@ -77,6 +79,9 @@ class Program
                 Error("Entity and action are required.");
                 return;
             }
+
+            entity = SanitizeIdentifier(entity);
+            action = SanitizeIdentifier(action);
 
             if (isCommand == null)
                 isCommand = AskYesNo("Is command?", true);
@@ -570,6 +575,9 @@ class Program
         else
             return "dotnet tool install --global dotnet-ef && export PATH=\"$PATH:$HOME/.dotnet/tools\"";
     }
+
+    static string SanitizeIdentifier(string value) =>
+        Regex.Replace(value ?? string.Empty, @"[^A-Za-z0-9_]", "");
 
     static void DeleteDefaultClass(string projectName)
     {

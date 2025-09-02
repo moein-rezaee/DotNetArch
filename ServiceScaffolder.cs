@@ -159,7 +159,7 @@ static class ServiceScaffolder
             "            var user = cfg[\"RABBITMQ_USER\"];",
             "            var pass = cfg[\"RABBITMQ_PASSWORD\"];",
             "            var factory = new ConnectionFactory { HostName = host, Port = port, UserName = user, Password = pass };",
-            "            return factory.CreateConnection();",
+            "            return factory.CreateConnectionAsync().GetAwaiter().GetResult();",
             "        });"
         });
         AddServiceToDi(config, "Infrastructure", iface, ifaceNs, cls, classNs, "AddSingleton", extra,
@@ -321,13 +321,14 @@ static class ServiceScaffolder
         var lines = new[]
         {
             "using System;",
+            "using System.Threading.Tasks;",
             "",
             $"namespace {ns};",
             "",
             $"public interface {iface} : IDisposable",
             "{",
-            "    void Publish(string exchange, string routingKey, byte[] body);",
-            "    void Subscribe(string queue, Action<byte[]> handler);",
+            "    Task PublishAsync(string exchange, string routingKey, byte[] body);",
+            "    Task SubscribeAsync(string queue, Func<byte[], Task> handler);",
             "}",
             "",
         };
@@ -339,6 +340,7 @@ static class ServiceScaffolder
         var lines = new[]
         {
             "using System;",
+            "using System.Threading.Tasks;",
             "using RabbitMQ.Client;",
             "using RabbitMQ.Client.Events;",
             $"using {ifaceNs};",
@@ -348,26 +350,26 @@ static class ServiceScaffolder
             $"public class {cls} : {iface}",
             "{",
             "    private readonly IConnection _connection;",
-            "    private readonly IModel _channel;",
+            "    private readonly IChannel _channel;",
             $"    public {cls}(IConnection connection)",
             "    {",
             "        _connection = connection;",
-            "        _channel = _connection.CreateModel();",
+            "        _channel = _connection.CreateChannelAsync().GetAwaiter().GetResult();",
             "    }",
-            "    public void Publish(string exchange, string routingKey, byte[] body)",
+            "    public async Task PublishAsync(string exchange, string routingKey, byte[] body)",
             "    {",
-            "        _channel.BasicPublish(exchange, routingKey, null, body);",
+            "        await _channel.BasicPublishAsync(exchange, routingKey, body);",
             "    }",
-            "    public void Subscribe(string queue, Action<byte[]> handler)",
+            "    public async Task SubscribeAsync(string queue, Func<byte[], Task> handler)",
             "    {",
-            "        var consumer = new EventingBasicConsumer(_channel);",
-            "        consumer.Received += (_, ea) => handler(ea.Body.ToArray());",
-            "        _channel.BasicConsume(queue, true, consumer);",
+            "        var consumer = new AsyncEventingBasicConsumer(_channel);",
+            "        consumer.ReceivedAsync += async (_, ea) => await handler(ea.Body.ToArray());",
+            "        await _channel.BasicConsumeAsync(queue, true, consumer);",
             "    }",
             "    public void Dispose()",
             "    {",
-            "        _channel.Dispose();",
-            "        _connection.Dispose();",
+            "        _channel.DisposeAsync().GetAwaiter().GetResult();",
+            "        _connection.DisposeAsync().GetAwaiter().GetResult();",
             "    }",
             "}",
             "",
@@ -573,7 +575,8 @@ static class ServiceScaffolder
     {
         var infraProj = Path.Combine(config.SolutionPath, $"{config.SolutionName}.Infrastructure", $"{config.SolutionName}.Infrastructure.csproj");
         if (!File.Exists(infraProj)) return;
-        if (!Program.RunCommand($"dotnet add {infraProj} package {package}", config.SolutionPath, print: false))
+        var addCmd = $"dotnet add \"{infraProj}\" package {package} --version {version}";
+        if (!Program.RunCommand(addCmd, config.SolutionPath, print: false))
         {
             var doc = XDocument.Load(infraProj);
             var ns = doc.Root!.Name.Namespace;
