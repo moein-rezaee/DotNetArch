@@ -138,15 +138,15 @@ static class ServiceScaffolder
     static void HandleMessageBroker(SolutionConfig config, string solution)
     {
         Program.AskOption("Select message broker", new[] { "RabbitMQ" });
-        var iface = "IRabbitMqService";
-        var cls = "RabbitMqService";
+        var iface = "IRabbitMQService";
+        var cls = "RabbitMQService";
         var ifaceNs = $"{solution}.Application.Common.Interfaces";
         var appIfaceDir = Path.Combine(config.SolutionPath, $"{solution}.Application", "Common", "Interfaces");
         Directory.CreateDirectory(appIfaceDir);
         WriteRabbitInterface(appIfaceDir, ifaceNs, iface);
-        var infraDir = Path.Combine(config.SolutionPath, $"{solution}.Infrastructure", "Services", "RabbitMq");
+        var infraDir = Path.Combine(config.SolutionPath, $"{solution}.Infrastructure", "Services", "RabbitMQ");
         Directory.CreateDirectory(infraDir);
-        var classNs = $"{solution}.Infrastructure.Services.RabbitMq";
+        var classNs = $"{solution}.Infrastructure.Services.RabbitMQ";
         WriteRabbitClass(infraDir, classNs, cls, iface, ifaceNs);
         InstallPackage(config, "RabbitMQ.Client", "7.1.2");
         var extra = string.Join(Environment.NewLine, new[]
@@ -154,8 +154,8 @@ static class ServiceScaffolder
             "        services.AddSingleton<IConnection>(sp =>",
             "        {",
             "            var cfg = sp.GetRequiredService<IConfiguration>();",
-            "            var host = cfg[\"RabbitMq:Host\"];",
-            "            var port = int.Parse(cfg[\"RabbitMq:Port\"] ?? \"5672\");",
+            "            var host = cfg[\"RabbitMQ:Host\"];",
+            "            var port = int.Parse(cfg[\"RabbitMQ:Port\"] ?? \"5672\");",
             "            var user = cfg[\"RABBITMQ_USER\"];",
             "            var pass = cfg[\"RABBITMQ_PASSWORD\"];",
             "            var factory = new ConnectionFactory { HostName = host, Port = port, UserName = user, Password = pass };",
@@ -166,8 +166,8 @@ static class ServiceScaffolder
             new[] { "RabbitMQ.Client", "Microsoft.Extensions.Configuration", "System" });
         EnsureProgramCalls(config, "Infrastructure");
         EnsureDotEnv(config);
-        EnsureEnvFiles(config, "RabbitMq");
-        EnsureAppSettingsFiles(config, "RabbitMq");
+        EnsureEnvFiles(config, "RabbitMQ");
+        EnsureAppSettingsFiles(config, "RabbitMQ");
         Program.Success("RabbitMQ service generated.");
     }
 
