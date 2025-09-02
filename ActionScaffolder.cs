@@ -36,6 +36,7 @@ static class ActionScaffolder
             new ProjectUpdateStep(),
             new EntityStep(),
             new DbContextStep(),
+            new RepositoryStep(),
             new UnitOfWorkStep()
         };
         foreach (var step in steps)
@@ -89,15 +90,16 @@ static class ActionScaffolder
         var solution = config.SolutionName;
         var plural = Naming.Pluralize(entity);
 
-        var iface = Path.Combine(config.SolutionPath, $"{solution}.Core", "Features", plural, $"I{entity}Repository.cs");
+        var iface = Path.Combine(config.SolutionPath, $"{solution}.Application", "Common", "Interfaces", "Repositories", $"I{entity}Repository.cs");
         Directory.CreateDirectory(Path.GetDirectoryName(iface)!);
         if (!File.Exists(iface))
         {
-            var iContent = """
+            var ifaceTemplate = """
 using System.Threading.Tasks;
+using {{solution}}.Core.Common.Models;
 using {{solution}}.Core.Features.{{entities}};
 
-namespace {{solution}}.Core.Features.{{entities}};
+namespace {{solution}}.Application.Common.Interfaces.Repositories;
 
 public interface I{{entity}}Repository
 {
@@ -107,7 +109,7 @@ public interface I{{entity}}Repository
             var sig = isCommand
                 ? $"Task {Upper(action)}Async({entity} entity);"
                 : $"Task<{entity}?> {Upper(action)}Async(int id);";
-            File.WriteAllText(iface, iContent
+            File.WriteAllText(iface, ifaceTemplate
                 .Replace("{{solution}}", solution)
                 .Replace("{{entity}}", entity)
                 .Replace("{{entities}}", plural)
@@ -127,40 +129,22 @@ public interface I{{entity}}Repository
             }
         }
 
-        var infraDir = Path.Combine(config.SolutionPath, $"{solution}.Infrastructure", "Features", plural);
-        var legacyInfraDir = Path.Combine(config.SolutionPath, $"{solution}.Infrastructure", plural);
-        var impl = Path.Combine(infraDir, $"{entity}Repository.cs");
-        var legacyRepo = Path.Combine(legacyInfraDir, $"{entity}Repository.cs");
-        if (File.Exists(legacyRepo) && !File.Exists(impl))
-        {
-            Directory.CreateDirectory(infraDir);
-            File.Move(legacyRepo, impl);
-            if (Directory.Exists(legacyInfraDir) && Directory.GetFileSystemEntries(legacyInfraDir).Length == 0)
-                Directory.Delete(legacyInfraDir, true);
-        }
-        else
-        {
-            Directory.CreateDirectory(infraDir);
-        }
+        var impl = Path.Combine(config.SolutionPath, $"{solution}.Infrastructure", "Persistence", "Repositories", $"{entity}Repository.cs");
+        Directory.CreateDirectory(Path.GetDirectoryName(impl)!);
+        var mReturn = isCommand ? "Task" : $"Task<{entity}?>";
+        var param = isCommand ? $"{entity} entity" : "int id";
         if (!File.Exists(impl))
         {
-            var mReturn = isCommand ? "Task" : $"Task<{entity}?>";
-            var param = isCommand ? $"{entity} entity" : "int id";
             var body = isCommand
-                ? """
-        // TODO: implement action
-        await Task.CompletedTask;
-"""
-                : $"""
-        // TODO: implement action
-        return await _context.Set<{entity}>().FindAsync(id);
-""";
-            var rContent = """
+                ? "        // TODO: implement action\n        await Task.CompletedTask;\n"
+                : $"        // TODO: implement action\n        return await _context.Set<{entity}>().FindAsync(id);\n";
+            var implTemplate = """
 using System.Threading.Tasks;
+using {{solution}}.Application.Common.Interfaces.Repositories;
 using {{solution}}.Core.Features.{{entities}};
 using {{solution}}.Infrastructure.Persistence;
 
-namespace {{solution}}.Infrastructure.Features.{{entities}};
+namespace {{solution}}.Infrastructure.Persistence.Repositories;
 
 public class {{entity}}Repository : I{{entity}}Repository
 {
@@ -172,7 +156,7 @@ public class {{entity}}Repository : I{{entity}}Repository
 {{body}}    }
 }
 """;
-            File.WriteAllText(impl, rContent
+            File.WriteAllText(impl, implTemplate
                 .Replace("{{solution}}", solution)
                 .Replace("{{entity}}", entity)
                 .Replace("{{entities}}", plural)
@@ -186,8 +170,7 @@ public class {{entity}}Repository : I{{entity}}Repository
             var lines = File.ReadAllLines(impl).ToList();
             if (!lines.Any(l => l.Contains($"{Upper(action)}Async(")))
             {
-                var idx = lines.FindLastIndex(l => l.Trim() == "}");
-                var method = isCommand
+                var insert = isCommand
                     ? new[]
                     {
                         $"    public async Task {Upper(action)}Async({entity} entity)",
@@ -204,7 +187,8 @@ public class {{entity}}Repository : I{{entity}}Repository
                         $"        return await _context.Set<{entity}>().FindAsync(id);",
                         "    }",
                     };
-                lines.InsertRange(idx, method);
+                var idx = lines.FindLastIndex(l => l.Trim() == "}");
+                lines.InsertRange(idx, insert);
                 File.WriteAllLines(impl, lines);
             }
         }
