@@ -36,7 +36,6 @@ static class ActionScaffolder
             new ProjectUpdateStep(),
             new EntityStep(),
             new DbContextStep(),
-            new RepositoryStep(),
             new UnitOfWorkStep()
         };
         foreach (var step in steps)
