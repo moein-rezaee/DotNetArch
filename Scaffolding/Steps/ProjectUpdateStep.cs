@@ -264,6 +264,24 @@ public static class DependencyInjection
         // ensure design-time factory for EF Core so migrations can run without full host
         var persistenceDir = Path.Combine(infraDir, "Persistence");
         Directory.CreateDirectory(persistenceDir);
+
+        // ensure a basic AppDbContext exists so the factory compiles even if no entities yet
+        var dbContextFile = Path.Combine(persistenceDir, "AppDbContext.cs");
+        if (!File.Exists(dbContextFile))
+        {
+            var dbContextContent = """
+using Microsoft.EntityFrameworkCore;
+
+namespace {{solution}}.Infrastructure.Persistence;
+
+public class AppDbContext : DbContext
+{
+    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+}
+""";
+            File.WriteAllText(dbContextFile, dbContextContent.Replace("{{solution}}", solution));
+        }
+
         var factoryFile = Path.Combine(persistenceDir, "AppDbContextFactory.cs");
         if (!File.Exists(factoryFile))
         {
