@@ -795,30 +795,27 @@ class Program
 
     static bool EnsureDocker()
     {
-        var fresh = false;
         if (!RunCommand("docker --version", print: false))
         {
             if (!AskYesNo("Docker is not installed. Install it?", false))
                 return false;
             if (!InstallDocker())
                 return false;
-            fresh = true;
-        }
-
-        if (!fresh && !RunCommand("docker ps", print: false))
-        {
-            Error("Docker is installed but the daemon is not running or the installation is corrupted.");
-            if (!AskYesNo("Reinstall Docker? Existing images and containers will be preserved.", false))
-                return false;
-            if (!UninstallDocker() || !InstallDocker())
-                return false;
         }
 
         if (RunCommand("docker ps", print: false))
             return true;
 
-        Error("Docker installed but the daemon is not reachable. Start Docker Desktop and try again.");
-        return false;
+        if (StartDockerDaemon())
+            return true;
+
+        Error("Docker is installed but the daemon is not running or the installation is corrupted.");
+        if (!AskYesNo("Reinstall Docker? Existing images and containers will be preserved.", false))
+            return false;
+        if (!UninstallDocker() || !InstallDocker())
+            return false;
+
+        return StartDockerDaemon();
     }
 
     static bool InstallDocker()
@@ -867,8 +864,34 @@ class Program
         return RunCommand(cmd);
     }
 
+    static bool StartDockerDaemon()
+    {
+        string cmd;
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            cmd = "powershell -Command \"Start-Process 'Docker Desktop'\"";
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            cmd = "open -g -a Docker";
+        else
+            cmd = "systemctl start docker";
+
+        RunCommand(cmd, print: false);
+
+        for (int i = 0; i < 30; i++)
+        {
+            if (RunCommand("docker ps", print: false))
+                return true;
+            Thread.Sleep(1000);
+        }
+
+        return false;
+    }
+
     static bool EnsureDockerCompose()
     {
+        if (RunCommand("docker compose version", print: false))
+            return true;
+
+        StartDockerDaemon();
         if (RunCommand("docker compose version", print: false))
             return true;
 
@@ -879,12 +902,12 @@ class Program
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
             if (RunCommand("choco --version", print: false))
-                cmd = "choco install docker-compose -y";
+                cmd = "choco upgrade docker-desktop -y";
             else if (RunCommand("winget --version", print: false))
-                cmd = "winget install -e --id Docker.DockerCompose --accept-package-agreements --accept-source-agreements --silent";
+                cmd = "winget install -e --id Docker.DockerDesktop --accept-package-agreements --accept-source-agreements --silent";
             else
             {
-                Error("No package manager found to install Docker Compose. Install it manually from https://docs.docker.com/compose/install/.");
+                Error("Please install Docker Desktop manually from https://www.docker.com/products/docker-desktop");
                 return false;
             }
         }
@@ -893,7 +916,11 @@ class Program
         else
             cmd = "apt-get update && apt-get install -y docker-compose";
 
-        return RunCommand(cmd);
+        if (!RunCommand(cmd))
+            return false;
+
+        StartDockerDaemon();
+        return RunCommand("docker compose version", print: false);
     }
 
     static string SanitizeIdentifier(string value) =>
