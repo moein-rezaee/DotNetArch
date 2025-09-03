@@ -187,6 +187,8 @@ static class ServiceScaffolder
         var classNs = $"{solution}.Infrastructure.Services.HttpRequest";
         WriteHttpRequestClass(infraDir, classNs, cls, iface, ifaceNs);
 
+        InstallPackage(config, "Microsoft.Extensions.Http", "8.0.0");
+
         AddServiceToDi(config, "Infrastructure", iface, ifaceNs, cls, classNs, "AddHttpClient");
         EnsureProgramCalls(config, "Infrastructure");
         Program.Success("HttpRequest service generated.");
