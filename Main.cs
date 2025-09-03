@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
+using System.Linq;
 using DotNetArch.Scaffolding;
 using DotNetArch.Scaffolding.Steps;
 
@@ -127,10 +128,13 @@ class Program
         if (args.Length >= 1 && args[0].ToLower() == "exec")
         {
             string? outputPath = null;
+            bool useDocker = false;
             for (int i = 1; i < args.Length; i++)
             {
                 if (args[i].StartsWith("--output="))
                     outputPath = args[i].Substring("--output=".Length);
+                else if (args[i] == "--docker")
+                    useDocker = true;
             }
 
             if (string.IsNullOrWhiteSpace(outputPath))
@@ -159,7 +163,10 @@ class Program
             UpdateMigrations(config, basePath);
 
             var runProj = $"{config.StartupProject}/{config.StartupProject}.csproj";
-            RunProject(runProj, basePath);
+            if (useDocker)
+                RunDocker(config, basePath);
+            else
+                RunProject(runProj, basePath);
             return;
         }
 
@@ -337,6 +344,9 @@ class Program
         if (!Directory.Exists(solutionDir))
             Directory.CreateDirectory(solutionDir);
 
+        EnsureDocker();
+        EnsureDockerCompose();
+
         Directory.SetCurrentDirectory(solutionDir);
 
         RunCommand($"dotnet new sln -n {solutionName} --force");
@@ -364,12 +374,31 @@ class Program
         var config = new SolutionConfig { SolutionName = solutionName, SolutionPath = solutionDir, StartupProject = startupProject, DatabaseProvider = provider, ApiStyle = apiStyle };
         ConfigManager.Save(solutionDir, config);
         PathState.Save(solutionDir);
+        CreateDockerArtifacts(config);
         new ApplicationStep().Execute(config, string.Empty);
         new ProjectUpdateStep().Execute(config, string.Empty);
 
         Console.WriteLine();
         Success("Solution created successfully!");
         Info($"Navigate to the '{solutionName}' directory and run 'dotnet build'.");
+    }
+
+    static void CreateDockerArtifacts(SolutionConfig config)
+    {
+        var dockerfile = Path.Combine(config.SolutionPath, "Dockerfile");
+        var compose = Path.Combine(config.SolutionPath, "docker-compose.yml");
+        var env = Path.Combine(config.SolutionPath, ".env");
+
+        var image = config.SolutionName.ToLower() + "-api";
+
+        var dockerContent = $"FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base\nWORKDIR /app\nEXPOSE 8080\n\nFROM mcr.microsoft.com/dotnet/sdk:9.0 AS build\nWORKDIR /src\nCOPY . .\nRUN dotnet publish {config.StartupProject}/{config.StartupProject}.csproj -c Release -o /app/publish\n\nFROM base AS final\nWORKDIR /app\nCOPY --from=build /app/publish .\nENTRYPOINT [\"dotnet\", \"{config.StartupProject}.dll\"]\n";
+        File.WriteAllText(dockerfile, dockerContent);
+
+        var composeContent = $"services:\n  api:\n    build:\n      context: .\n      dockerfile: Dockerfile\n    image: {image}\n    container_name: {image}\n    env_file:\n      - .env\n    ports:\n      - \"8080:8080\"\n";
+        File.WriteAllText(compose, composeContent);
+
+        if (!File.Exists(env))
+            File.WriteAllText(env, "ASPNETCORE_ENVIRONMENT=Development\n");
     }
     public static bool RunCommand(string command, string? workingDir = null, bool print = true)
     {
@@ -459,6 +488,65 @@ class Program
         bool success = process.ExitCode == 0;
         var output = string.IsNullOrWhiteSpace(stderr) ? stdout : stdout + stderr;
         return (success, output);
+    }
+
+    static void RunDocker(SolutionConfig config, string basePath)
+    {
+        if (!EnsureDocker() || !EnsureDockerCompose())
+            return;
+
+        CreateDockerArtifacts(config);
+
+        var composePath = Path.Combine(basePath, "docker-compose.yml");
+        if (!File.Exists(composePath))
+        {
+            Error("docker-compose.yml not found.");
+            return;
+        }
+
+        var env = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ??
+                  Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ??
+                  "Development";
+        var envFile = $".env.{env}";
+        var envPath = Path.Combine(basePath, envFile);
+        if (!File.Exists(envPath))
+            envPath = Path.Combine(basePath, ".env");
+
+        UpdateComposeEnvFile(composePath, envPath);
+
+        var name = $"{config.SolutionName.ToLower()}-api";
+        var state = DockerState.Load();
+        if (!string.IsNullOrWhiteSpace(state.LastContainer))
+            RunCommand($"docker rm -f {state.LastContainer}", basePath, print: false);
+        if (!string.IsNullOrWhiteSpace(state.LastImage))
+            RunCommand($"docker rmi {state.LastImage}", basePath, print: false);
+
+        RunCommand("docker compose down", basePath, print: false);
+
+        DockerState.Save(new DockerStateData { LastContainer = name, LastImage = name });
+
+        Console.CancelKeyPress += (_, e) =>
+        {
+            e.Cancel = true;
+            RunCommand("docker compose down", basePath, print: false);
+            RunCommand($"docker rmi {name}", basePath, print: false);
+            Environment.Exit(0);
+        };
+
+        RunCommand("docker compose up --build", basePath);
+        RunCommand("docker compose down", basePath, print: false);
+        RunCommand($"docker rmi {name}", basePath, print: false);
+    }
+
+    static void UpdateComposeEnvFile(string composePath, string envPath)
+    {
+        var lines = File.ReadAllLines(composePath).ToList();
+        var idx = lines.FindIndex(l => l.TrimStart().StartsWith("env_file"));
+        if (idx >= 0 && idx + 1 < lines.Count)
+        {
+            lines[idx + 1] = "      - " + Path.GetFileName(envPath);
+            File.WriteAllLines(composePath, lines);
+        }
     }
 
     public static void RunProject(string project, string basePath)
@@ -574,6 +662,44 @@ class Program
             return "dotnet tool install --global dotnet-ef && setx PATH \"%PATH%;%USERPROFILE%\\.dotnet\\tools\"";
         else
             return "dotnet tool install --global dotnet-ef && export PATH=\"$PATH:$HOME/.dotnet/tools\"";
+    }
+
+    static bool EnsureDocker()
+    {
+        if (RunCommand("docker --version", print: false))
+            return true;
+
+        if (!AskYesNo("Docker is not installed. Install it?", false))
+            return false;
+
+        string cmd;
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            cmd = "choco install docker-desktop";
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            cmd = "brew install --cask docker";
+        else
+            cmd = "curl -fsSL https://get.docker.com | sh";
+
+        return RunCommand(cmd);
+    }
+
+    static bool EnsureDockerCompose()
+    {
+        if (RunCommand("docker compose version", print: false))
+            return true;
+
+        if (!AskYesNo("Docker Compose is not installed. Install it?", false))
+            return false;
+
+        string cmd;
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            cmd = "choco install docker-compose";
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            cmd = "brew install docker-compose";
+        else
+            cmd = "apt-get update && apt-get install -y docker-compose";
+
+        return RunCommand(cmd);
     }
 
     static string SanitizeIdentifier(string value) =>

@@ -121,7 +121,7 @@ Selecting **Cache** or **Message Broker** scaffolds ready‑to‑use Redis or Ra
 After scaffolding, launch the API and optionally apply EF Core migrations:
 
 ```
-dotnet-arch exec [--output=Path]
+dotnet-arch exec [--output=Path] [--docker]
 ```
 
 When run, the command asks whether to check for model changes. Choosing **y** creates a migration if needed, applies pending migrations, and then runs the configured startup project. The optional `--output` overrides the last solution path stored by the tool.
@@ -207,7 +207,7 @@ We welcome contributions to DotNetArch! Here’s how you can contribute:
 - **Automatic package & service registration**: Required NuGet packages are added to project files and services like `DbContext`, `IMediator`, `IUnitOfWork`, and validators are registered in `Program.cs`.
 - **`new action` command**: Add custom commands or queries with handlers, validators, repository methods, and controller endpoints.
 - **Composable actions and slices**: Actions scaffolded before a full `new crud` run are preserved and the later CRUD generation augments the existing files instead of overwriting them.
-- **`exec` command**: Run the startup project with an optional migration check that generates missing migrations, applies any pending ones, and otherwise launches the project directly if no updates are required.
+ - **`exec` command**: Run the startup project with an optional migration check that generates missing migrations, applies any pending ones, and otherwise launches the project directly if no updates are required. Add `--docker` to build and run via Docker Compose.
 - **`remove migration` command**: Roll the database back and delete the most recent EF Core migration.
 - **Correct namespace wiring**: `Program.cs` updates include the necessary `using` directives and service registrations for each entity's repository without malformed entries.
 - **Configurable startup project**: `dotnet-arch.yml` tracks which project is the startup target so controllers are added to the correct application entry point.
