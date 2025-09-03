@@ -795,12 +795,34 @@ class Program
 
     static bool EnsureDocker()
     {
-        if (RunCommand("docker --version", print: false))
+        var fresh = false;
+        if (!RunCommand("docker --version", print: false))
+        {
+            if (!AskYesNo("Docker is not installed. Install it?", false))
+                return false;
+            if (!InstallDocker())
+                return false;
+            fresh = true;
+        }
+
+        if (!fresh && !RunCommand("docker ps", print: false))
+        {
+            Error("Docker is installed but the daemon is not running or the installation is corrupted.");
+            if (!AskYesNo("Reinstall Docker? Existing images and containers will be preserved.", false))
+                return false;
+            if (!UninstallDocker() || !InstallDocker())
+                return false;
+        }
+
+        if (RunCommand("docker ps", print: false))
             return true;
 
-        if (!AskYesNo("Docker is not installed. Install it?", false))
-            return false;
+        Error("Docker installed but the daemon is not reachable. Start Docker Desktop and try again.");
+        return false;
+    }
 
+    static bool InstallDocker()
+    {
         string cmd;
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
@@ -818,6 +840,29 @@ class Program
             cmd = "brew install --cask docker";
         else
             cmd = "curl -fsSL https://get.docker.com | sh";
+
+        return RunCommand(cmd);
+    }
+
+    static bool UninstallDocker()
+    {
+        string cmd;
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            if (RunCommand("choco --version", print: false))
+                cmd = "choco uninstall docker-desktop -y";
+            else if (RunCommand("winget --version", print: false))
+                cmd = "winget uninstall -e --id Docker.DockerDesktop --accept-source-agreements --silent";
+            else
+            {
+                Error("No package manager found to uninstall Docker. Remove it manually and rerun the command.");
+                return false;
+            }
+        }
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            cmd = "brew uninstall --cask docker";
+        else
+            cmd = "apt-get remove -y docker docker-engine docker.io containerd runc";
 
         return RunCommand(cmd);
     }
