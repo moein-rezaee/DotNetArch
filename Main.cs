@@ -350,8 +350,9 @@ class Program
 
         var initGit = AskYesNo("Initialize git repository?", true);
 
-        EnsureDocker();
-        EnsureDockerCompose();
+        var hasDocker = EnsureDocker();
+        if (hasDocker)
+            EnsureDockerCompose();
 
         Directory.SetCurrentDirectory(solutionDir);
 
@@ -801,6 +802,7 @@ class Program
                 return false;
             if (!InstallDocker())
                 return false;
+            StartDockerDaemon();
         }
 
         if (RunCommand("docker ps", print: false))
@@ -815,7 +817,8 @@ class Program
         if (!UninstallDocker() || !InstallDocker())
             return false;
 
-        return StartDockerDaemon();
+        StartDockerDaemon();
+        return RunCommand("docker ps", print: false);
     }
 
     static bool InstallDocker()
@@ -895,32 +898,18 @@ class Program
         if (RunCommand("docker compose version", print: false))
             return true;
 
-        if (!AskYesNo("Docker Compose is not installed. Install it?", false))
-            return false;
-
-        string cmd;
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
         {
-            if (RunCommand("choco --version", print: false))
-                cmd = "choco upgrade docker-desktop -y";
-            else if (RunCommand("winget --version", print: false))
-                cmd = "winget install -e --id Docker.DockerDesktop --accept-package-agreements --accept-source-agreements --silent";
-            else
-            {
-                Error("Please install Docker Desktop manually from https://www.docker.com/products/docker-desktop");
+            if (!AskYesNo("Docker Compose is not installed. Install it?", false))
                 return false;
-            }
+            if (!RunCommand("apt-get update && apt-get install -y docker-compose"))
+                return false;
+            StartDockerDaemon();
+            return RunCommand("docker compose version", print: false);
         }
-        else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            cmd = "brew install docker-compose";
-        else
-            cmd = "apt-get update && apt-get install -y docker-compose";
 
-        if (!RunCommand(cmd))
-            return false;
-
-        StartDockerDaemon();
-        return RunCommand("docker compose version", print: false);
+        Error("Docker Compose is bundled with Docker Desktop. Please reinstall Docker if Compose is missing.");
+        return false;
     }
 
     static string SanitizeIdentifier(string value) =>
