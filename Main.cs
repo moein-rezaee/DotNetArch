@@ -5,6 +5,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Linq;
+using System.Text.Json;
 using DotNetArch.Scaffolding;
 using DotNetArch.Scaffolding.Steps;
 
@@ -344,6 +345,8 @@ class Program
         if (!Directory.Exists(solutionDir))
             Directory.CreateDirectory(solutionDir);
 
+        var initGit = AskYesNo("Initialize git repository?", true);
+
         EnsureDocker();
         EnsureDockerCompose();
 
@@ -378,6 +381,12 @@ class Program
         new ApplicationStep().Execute(config, string.Empty);
         new ProjectUpdateStep().Execute(config, string.Empty);
 
+        if (initGit && EnsureGit())
+        {
+            RunCommand("git init", solutionDir);
+            RunCommand("dotnet new gitignore", solutionDir);
+        }
+
         Console.WriteLine();
         Success("Solution created successfully!");
         Info($"Navigate to the '{solutionName}' directory and run 'dotnet build'.");
@@ -390,11 +399,13 @@ class Program
         var env = Path.Combine(config.SolutionPath, ".env");
 
         var image = config.SolutionName.ToLower() + "-api";
+        var version = GetProjectVersion(config);
+        var port = GetApiPort(config);
 
-        var dockerContent = $"FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base\nWORKDIR /app\nEXPOSE 8080\n\nFROM mcr.microsoft.com/dotnet/sdk:9.0 AS build\nWORKDIR /src\nCOPY . .\nRUN dotnet publish {config.StartupProject}/{config.StartupProject}.csproj -c Release -o /app/publish\n\nFROM base AS final\nWORKDIR /app\nCOPY --from=build /app/publish .\nENTRYPOINT [\"dotnet\", \"{config.StartupProject}.dll\"]\n";
+        var dockerContent = $"FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base\nWORKDIR /app\nEXPOSE {port}\n\nFROM mcr.microsoft.com/dotnet/sdk:9.0 AS build\nWORKDIR /src\nCOPY . .\nRUN dotnet publish {config.StartupProject}/{config.StartupProject}.csproj -c Release -o /app/publish\n\nFROM base AS final\nWORKDIR /app\nCOPY --from=build /app/publish .\nENTRYPOINT [\\\"dotnet\\\", \\\"{config.StartupProject}.dll\\\"]\n";
         File.WriteAllText(dockerfile, dockerContent);
 
-        var composeContent = $"services:\n  api:\n    build:\n      context: .\n      dockerfile: Dockerfile\n    image: {image}\n    container_name: {image}\n    env_file:\n      - .env\n    ports:\n      - \"8080:8080\"\n";
+        var composeContent = $"services:\n  api:\n    build:\n      context: .\n      dockerfile: Dockerfile\n    image: {image}:{version}\n    container_name: {image}\n    env_file:\n      - .env\n    ports:\n      - \\\"{port}:{port}\\\"\n";
         File.WriteAllText(compose, composeContent);
 
         if (!File.Exists(env))
@@ -514,7 +525,9 @@ class Program
 
         UpdateComposeEnvFile(composePath, envPath);
 
-        var name = $"{config.SolutionName.ToLower()}-api";
+        var image = $"{config.SolutionName.ToLower()}-api";
+        var version = GetProjectVersion(config);
+        var imageWithTag = $"{image}:{version}";
         var state = DockerState.Load();
         if (!string.IsNullOrWhiteSpace(state.LastContainer))
             RunCommand($"docker rm -f {state.LastContainer}", basePath, print: false);
@@ -523,19 +536,62 @@ class Program
 
         RunCommand("docker compose down", basePath, print: false);
 
-        DockerState.Save(new DockerStateData { LastContainer = name, LastImage = name });
+        DockerState.Save(new DockerStateData { LastContainer = image, LastImage = imageWithTag });
 
         Console.CancelKeyPress += (_, e) =>
         {
             e.Cancel = true;
             RunCommand("docker compose down", basePath, print: false);
-            RunCommand($"docker rmi {name}", basePath, print: false);
+            RunCommand($"docker rmi {imageWithTag}", basePath, print: false);
             Environment.Exit(0);
         };
 
         RunCommand("docker compose up --build", basePath);
         RunCommand("docker compose down", basePath, print: false);
-        RunCommand($"docker rmi {name}", basePath, print: false);
+        RunCommand($"docker rmi {imageWithTag}", basePath, print: false);
+    }
+
+    static string GetProjectVersion(SolutionConfig config)
+    {
+        var csproj = Path.Combine(config.SolutionPath, $"{config.StartupProject}/{config.StartupProject}.csproj");
+        if (File.Exists(csproj))
+        {
+            var text = File.ReadAllText(csproj);
+            var match = Regex.Match(text, "<Version>(.*?)</Version>", RegexOptions.IgnoreCase);
+            if (match.Success)
+                return match.Groups[1].Value.Trim();
+        }
+        return "latest";
+    }
+
+    static string GetApiPort(SolutionConfig config)
+    {
+        var launchSettings = Path.Combine(config.SolutionPath, $"{config.StartupProject}/Properties/launchSettings.json");
+        if (File.Exists(launchSettings))
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(File.ReadAllText(launchSettings));
+                if (doc.RootElement.TryGetProperty("profiles", out var profiles))
+                {
+                    foreach (var profile in profiles.EnumerateObject())
+                    {
+                        if (profile.Value.TryGetProperty("applicationUrl", out var url))
+                        {
+                            var urls = url.GetString()?.Split(';') ?? Array.Empty<string>();
+                            foreach (var u in urls)
+                            {
+                                var m = Regex.Match(u, @":(\\d+)");
+                                if (m.Success)
+                                    return m.Groups[1].Value;
+                            }
+                        }
+                    }
+                }
+            }
+            catch { }
+        }
+        return "8080";
     }
 
     static void UpdateComposeEnvFile(string composePath, string envPath)
@@ -662,6 +718,35 @@ class Program
             return "dotnet tool install --global dotnet-ef && setx PATH \"%PATH%;%USERPROFILE%\\.dotnet\\tools\"";
         else
             return "dotnet tool install --global dotnet-ef && export PATH=\"$PATH:$HOME/.dotnet/tools\"";
+    }
+
+    static bool EnsureGit()
+    {
+        if (RunCommand("git --version", print: false))
+            return true;
+
+        if (!AskYesNo("Git is not installed. Install it?", false))
+            return false;
+
+        string cmd;
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            if (RunCommand("choco --version", print: false))
+                cmd = "choco install git -y";
+            else if (RunCommand("winget --version", print: false))
+                cmd = "winget install -e --id Git.Git";
+            else
+            {
+                Error("No package manager found to install Git. Please install Git manually.");
+                return false;
+            }
+        }
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            cmd = "brew install git";
+        else
+            cmd = "apt-get update && apt-get install -y git";
+
+        return RunCommand(cmd);
     }
 
     static bool EnsureDocker()

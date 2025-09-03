@@ -51,7 +51,7 @@ Once installed, you can use the tool to create a solution structure:
 dotnet-arch new solution <SolutionName> [--output=Path] [--startup=ProjectName] [--style=controller|fast]
 ```
 
-`--output` is optional and lets you specify where the solution is created (useful for tests). If omitted, the current directory is used. `--startup` lets you choose which project should act as the startup project (default is `<SolutionName>.API`). `--style` selects between classic **Controller** APIs or lightweight **Fast** minimal APIs (default `controller`). Missing parameters are prompted interactively with defaults shown in brackets; when selecting API style, simply enter **1** for Controller or **2** for Fast. During creation you'll be prompted for a database provider (SQL Server or SQLite; hitting enter selects SQLite). After scaffolding, a `dotnet-arch.yml` file records the solution name, path, startup project, API style, chosen provider, and the scaffolding state of each entity so later commands can skip work already done. Swagger and service registrations are configured at this stage so the API runs immediately.
+`--output` is optional and lets you specify where the solution is created (useful for tests). If omitted, the current directory is used. `--startup` lets you choose which project should act as the startup project (default is `<SolutionName>.API`). `--style` selects between classic **Controller** APIs or lightweight **Fast** minimal APIs (default `controller`). Missing parameters are prompted interactively with defaults shown in brackets; when selecting API style, simply enter **1** for Controller or **2** for Fast. During creation you'll be prompted for a database provider (SQL Server or SQLite; hitting enter selects SQLite). After scaffolding, a `dotnet-arch.yml` file records the solution name, path, startup project, API style, chosen provider, and the scaffolding state of each entity so later commands can skip work already done. Swagger and service registrations are configured at this stage so the API runs immediately. You'll also be asked whether to initialize a Git repository; if confirmed the tool ensures Git is installed, runs `git init`, and adds a .NET `.gitignore`.
 
 This command generates the following layers:
 
@@ -125,6 +125,7 @@ dotnet-arch exec [--output=Path] [--docker]
 ```
 
 When run, the command asks whether to check for model changes. Choosing **y** creates a migration if needed, applies pending migrations, and then runs the configured startup project. The optional `--output` overrides the last solution path stored by the tool.
+Adding `--docker` builds and runs the API with Docker Compose, exposing the port defined in the API project's launch settings and tagging the image with the project version.
 
 #### Manage Migrations
 
