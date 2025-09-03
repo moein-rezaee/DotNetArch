@@ -6,6 +6,8 @@ using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using DotNetArch.Scaffolding;
 using DotNetArch.Scaffolding.Steps;
 
@@ -409,7 +411,28 @@ class Program
         File.WriteAllText(compose, composeContent);
 
         if (!File.Exists(env))
-            File.WriteAllText(env, "ASPNETCORE_ENVIRONMENT=Development\n");
+        File.WriteAllText(env, "ASPNETCORE_ENVIRONMENT=Development\n");
+    }
+
+    static Action StartProgress(string message)
+    {
+        var spinner = new[] { '|', '/', '-', '\\' };
+        var index = 0;
+        var active = true;
+        var task = Task.Run(() =>
+        {
+            while (active)
+            {
+                Console.Write($"\r{spinner[index++ % spinner.Length]} {message}");
+                Thread.Sleep(100);
+            }
+        });
+        return () =>
+        {
+            active = false;
+            task.Wait();
+            Console.Write($"\r{new string(' ', message.Length + 2)}\r");
+        };
     }
     public static bool RunCommand(string command, string? workingDir = null, bool print = true)
     {
@@ -440,8 +463,14 @@ class Program
             }
         };
 
+        Action? stop = null;
+        if (print)
+            stop = StartProgress(command);
+
         process.Start();
         process.WaitForExit();
+
+        stop?.Invoke();
 
         var stdout = process.StandardOutput.ReadToEnd();
         var stderr = process.StandardError.ReadToEnd();
@@ -491,8 +520,10 @@ class Program
             }
         };
 
+        var stop = StartProgress(command);
         process.Start();
         process.WaitForExit();
+        stop();
 
         var stdout = process.StandardOutput.ReadToEnd();
         var stderr = process.StandardError.ReadToEnd();

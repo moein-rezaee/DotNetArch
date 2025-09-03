@@ -200,6 +200,7 @@ We welcome contributions to DotNetArch! Here’s how you can contribute:
 - **Cross-Platform**: Fully functional on Windows, macOS, and Linux.
 - **Domain-Driven Design Support**: Includes pre-configured layers for DDD.
 - **Ease of Use**: Intuitive and straightforward CLI commands.
+- **Command progress display**: Long-running operations render an animated spinner.
 - **`new crud` scaffolding**: Generates vertical-slice CQRS CRUD with MediatR, FluentValidation, EF Core repositories, and paginated results.
 - **Database Provider Selection**: Choose between SQL Server, SQLite, PostgreSQL or MongoDB (default SQLite); the selected provider is stored so future runs don't prompt again.
   - *Other providers are experimental and require more testing and development before a NuGet release.*
