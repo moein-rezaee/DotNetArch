@@ -674,7 +674,17 @@ class Program
 
         string cmd;
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            cmd = "choco install docker-desktop";
+        {
+            if (RunCommand("choco --version", print: false))
+                cmd = "choco install docker-desktop -y";
+            else if (RunCommand("winget --version", print: false))
+                cmd = "winget install -e --id Docker.DockerDesktop";
+            else
+            {
+                Error("No package manager found to install Docker. Please install Docker Desktop manually.");
+                return false;
+            }
+        }
         else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             cmd = "brew install --cask docker";
         else
@@ -693,7 +703,17 @@ class Program
 
         string cmd;
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            cmd = "choco install docker-compose";
+        {
+            if (RunCommand("choco --version", print: false))
+                cmd = "choco install docker-compose -y";
+            else if (RunCommand("winget --version", print: false))
+                cmd = "winget install -e --id Docker.DockerCompose";
+            else
+            {
+                Error("No package manager found to install Docker Compose. Install it manually from https://docs.docker.com/compose/install/.");
+                return false;
+            }
+        }
         else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             cmd = "brew install docker-compose";
         else
