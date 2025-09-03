@@ -15,14 +15,21 @@ static class ServiceScaffolder
         var type = Program.AskOption("Select service type", new[] { "Custom", "Cache", "Message Broker", "HttpRequest" });
         var solution = config.SolutionName;
 
-        if (type == "Custom")
-            HandleCustom(config, solution);
-        else if (type == "Cache")
-            HandleCache(config, solution);
-        else if (type == "Message Broker")
-            HandleMessageBroker(config, solution);
-        else
-            HandleHttpRequest(config, solution);
+        switch (type)
+        {
+            case "Custom":
+                HandleCustom(config, solution);
+                break;
+            case "Cache":
+                HandleCache(config, solution);
+                break;
+            case "Message Broker":
+                HandleMessageBroker(config, solution);
+                break;
+            case "HttpRequest":
+                HandleHttpRequest(config, solution);
+                break;
+        }
     }
 
     static void HandleCustom(SolutionConfig config, string solution)
