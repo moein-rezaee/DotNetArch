@@ -765,7 +765,7 @@ class Program
             if (RunCommand("choco --version", print: false))
                 cmd = "choco install git -y";
             else if (RunCommand("winget --version", print: false))
-                cmd = "winget install -e --id Git.Git";
+                cmd = "winget install -e --id Git.Git --accept-package-agreements --accept-source-agreements --silent";
             else
             {
                 Error("No package manager found to install Git. Please install Git manually.");
@@ -794,7 +794,7 @@ class Program
             if (RunCommand("choco --version", print: false))
                 cmd = "choco install docker-desktop -y";
             else if (RunCommand("winget --version", print: false))
-                cmd = "winget install -e --id Docker.DockerDesktop";
+                cmd = "winget install -e --id Docker.DockerDesktop --accept-package-agreements --accept-source-agreements --silent";
             else
             {
                 Error("No package manager found to install Docker. Please install Docker Desktop manually.");
@@ -823,7 +823,7 @@ class Program
             if (RunCommand("choco --version", print: false))
                 cmd = "choco install docker-compose -y";
             else if (RunCommand("winget --version", print: false))
-                cmd = "winget install -e --id Docker.DockerCompose";
+                cmd = "winget install -e --id Docker.DockerCompose --accept-package-agreements --accept-source-agreements --silent";
             else
             {
                 Error("No package manager found to install Docker Compose. Install it manually from https://docs.docker.com/compose/install/.");
