@@ -12,15 +12,17 @@ static class ServiceScaffolder
 {
     public static void Generate(SolutionConfig config)
     {
-        var type = Program.AskOption("Select service type", new[] { "Custom", "Cache", "Message Broker" });
+        var type = Program.AskOption("Select service type", new[] { "Custom", "Cache", "Message Broker", "HttpRequest" });
         var solution = config.SolutionName;
 
         if (type == "Custom")
             HandleCustom(config, solution);
         else if (type == "Cache")
             HandleCache(config, solution);
-        else
+        else if (type == "Message Broker")
             HandleMessageBroker(config, solution);
+        else
+            HandleHttpRequest(config, solution);
     }
 
     static void HandleCustom(SolutionConfig config, string solution)
@@ -169,6 +171,25 @@ static class ServiceScaffolder
         EnsureEnvFiles(config, "RabbitMq");
         EnsureAppSettingsFiles(config, "RabbitMq");
         Program.Success("RabbitMQ service generated.");
+    }
+
+    static void HandleHttpRequest(SolutionConfig config, string solution)
+    {
+        var iface = "IHttpRequestService";
+        var cls = "HttpRequestService";
+        var ifaceNs = $"{solution}.Application.Common.Interfaces";
+        var appIfaceDir = Path.Combine(config.SolutionPath, $"{solution}.Application", "Common", "Interfaces");
+        Directory.CreateDirectory(appIfaceDir);
+        WriteHttpRequestInterface(appIfaceDir, ifaceNs, iface);
+
+        var infraDir = Path.Combine(config.SolutionPath, $"{solution}.Infrastructure", "Services", "HttpRequest");
+        Directory.CreateDirectory(infraDir);
+        var classNs = $"{solution}.Infrastructure.Services.HttpRequest";
+        WriteHttpRequestClass(infraDir, classNs, cls, iface, ifaceNs);
+
+        AddServiceToDi(config, "Infrastructure", iface, ifaceNs, cls, classNs, "AddHttpClient");
+        EnsureProgramCalls(config, "Infrastructure");
+        Program.Success("HttpRequest service generated.");
     }
 
     static string NormalizeServiceName(string name)
@@ -370,6 +391,94 @@ static class ServiceScaffolder
             "    {",
             "        _channel.DisposeAsync().GetAwaiter().GetResult();",
             "        _connection.DisposeAsync().GetAwaiter().GetResult();",
+            "    }",
+            "}",
+            "",
+        };
+        File.WriteAllLines(Path.Combine(dir, $"{cls}.cs"), lines);
+    }
+
+    static void WriteHttpRequestInterface(string dir, string ns, string iface)
+    {
+        var lines = new[]
+        {
+            "using System.Collections.Generic;",
+            "using System.Net.Http;",
+            "using System.Threading.Tasks;",
+            "",
+            $"namespace {ns};",
+            "",
+            $"public interface {iface}",
+            "{",
+            "    Task<HttpResponseMessage> GetAsync(string url, IDictionary<string, string>? headers = null);",
+            "    Task<HttpResponseMessage> PostAsync<T>(string url, T data, IDictionary<string, string>? headers = null);",
+            "    Task<HttpResponseMessage> PutAsync<T>(string url, T data, IDictionary<string, string>? headers = null);",
+            "    Task<HttpResponseMessage> DeleteAsync(string url, IDictionary<string, string>? headers = null);",
+            "}",
+            "",
+        };
+        File.WriteAllLines(Path.Combine(dir, $"{iface}.cs"), lines);
+    }
+
+    static void WriteHttpRequestClass(string dir, string ns, string cls, string iface, string ifaceNs)
+    {
+        var lines = new[]
+        {
+            "using System.Collections.Generic;",
+            "using System.Net.Http;",
+            "using System.Text;",
+            "using System.Text.Json;",
+            "using System.Threading.Tasks;",
+            $"using {ifaceNs};",
+            "",
+            $"namespace {ns};",
+            "",
+            $"public class {cls} : {iface}",
+            "{",
+            "    private readonly HttpClient _client;",
+            $"    public {cls}(HttpClient client) => _client = client;",
+            "",
+            "    public async Task<HttpResponseMessage> GetAsync(string url, IDictionary<string, string>? headers = null)",
+            "    {",
+            "        using var request = new HttpRequestMessage(HttpMethod.Get, url);",
+            "        AddHeaders(request, headers);",
+            "        return await _client.SendAsync(request);",
+            "    }",
+            "",
+            "    public async Task<HttpResponseMessage> PostAsync<T>(string url, T data, IDictionary<string, string>? headers = null)",
+            "    {",
+            "        using var request = new HttpRequestMessage(HttpMethod.Post, url)",
+            "        {",
+            "            Content = new StringContent(JsonSerializer.Serialize(data), Encoding.UTF8, \"application/json\")",
+            "        };",
+            "        AddHeaders(request, headers);",
+            "        return await _client.SendAsync(request);",
+            "    }",
+            "",
+            "    public async Task<HttpResponseMessage> PutAsync<T>(string url, T data, IDictionary<string, string>? headers = null)",
+            "    {",
+            "        using var request = new HttpRequestMessage(HttpMethod.Put, url)",
+            "        {",
+            "            Content = new StringContent(JsonSerializer.Serialize(data), Encoding.UTF8, \"application/json\")",
+            "        };",
+            "        AddHeaders(request, headers);",
+            "        return await _client.SendAsync(request);",
+            "    }",
+            "",
+            "    public async Task<HttpResponseMessage> DeleteAsync(string url, IDictionary<string, string>? headers = null)",
+            "    {",
+            "        using var request = new HttpRequestMessage(HttpMethod.Delete, url);",
+            "        AddHeaders(request, headers);",
+            "        return await _client.SendAsync(request);",
+            "    }",
+            "",
+            "    private static void AddHeaders(HttpRequestMessage request, IDictionary<string, string>? headers)",
+            "    {",
+            "        if (headers == null) return;",
+            "        foreach (var header in headers)",
+            "        {",
+            "            request.Headers.TryAddWithoutValidation(header.Key, header.Value);",
+            "        }",
             "    }",
             "}",
             "",
