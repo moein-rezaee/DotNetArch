@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Linq;
 using System.Text.Json;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using DotNetArch.Scaffolding;
@@ -449,6 +450,9 @@ class Program
             shellArgs = $"-c \"{command}\"";
         }
 
+        var stdout = new StringBuilder();
+        var stderr = new StringBuilder();
+
         var process = new Process
         {
             StartInfo = new ProcessStartInfo
@@ -463,24 +467,27 @@ class Program
             }
         };
 
+        process.OutputDataReceived += (_, e) => { if (e.Data != null) stdout.AppendLine(e.Data); };
+        process.ErrorDataReceived += (_, e) => { if (e.Data != null) stderr.AppendLine(e.Data); };
+
         Action? stop = null;
         if (print)
             stop = StartProgress(command);
 
         process.Start();
+        process.BeginOutputReadLine();
+        process.BeginErrorReadLine();
         process.WaitForExit();
 
         stop?.Invoke();
 
-        var stdout = process.StandardOutput.ReadToEnd();
-        var stderr = process.StandardError.ReadToEnd();
         bool success = process.ExitCode == 0;
 
         if (print)
         {
             if (!success)
             {
-                var msg = string.IsNullOrWhiteSpace(stderr) ? stdout : stderr;
+                var msg = stderr.Length == 0 ? stdout.ToString() : stderr.ToString();
                 Error(string.IsNullOrWhiteSpace(msg) ? "Command failed" : msg.Trim());
             }
             else
@@ -506,6 +513,9 @@ class Program
             shellArgs = $"-c \"{command}\"";
         }
 
+        var stdout = new StringBuilder();
+        var stderr = new StringBuilder();
+
         var process = new Process
         {
             StartInfo = new ProcessStartInfo
@@ -520,15 +530,18 @@ class Program
             }
         };
 
+        process.OutputDataReceived += (_, e) => { if (e.Data != null) stdout.AppendLine(e.Data); };
+        process.ErrorDataReceived += (_, e) => { if (e.Data != null) stderr.AppendLine(e.Data); };
+
         var stop = StartProgress(command);
         process.Start();
+        process.BeginOutputReadLine();
+        process.BeginErrorReadLine();
         process.WaitForExit();
         stop();
 
-        var stdout = process.StandardOutput.ReadToEnd();
-        var stderr = process.StandardError.ReadToEnd();
         bool success = process.ExitCode == 0;
-        var output = string.IsNullOrWhiteSpace(stderr) ? stdout : stdout + stderr;
+        var output = stderr.Length == 0 ? stdout.ToString() : stdout.Append(stderr).ToString();
         return (success, output);
     }
 
