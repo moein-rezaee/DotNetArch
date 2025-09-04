@@ -813,7 +813,8 @@ class Program
             Thread.Sleep(120);
         }
         Console.ForegroundColor = color;
-        Console.WriteLine();
+        var width = Console.WindowWidth;
+        Console.Write("\r" + new string(' ', width) + "\r");
     }
 
     public static void RunProject(string project, string basePath)

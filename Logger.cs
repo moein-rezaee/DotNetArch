@@ -1,12 +1,17 @@
 using System;
 public static class Logger
 {
+    static bool _firstLine = true;
     private static void Write(string prefix, string title, string? description = null, bool indent = false)
     {
         var padding = indent ? "   " : string.Empty;
-        Console.WriteLine($"{padding}{prefix} {title}");
+        if (!indent && !_firstLine)
+            Console.WriteLine();
+        Console.WriteLine($"{padding}{prefix}  {title}");
         if (!string.IsNullOrWhiteSpace(description))
             Console.WriteLine($"{padding}   {description}");
+        if (!indent)
+            _firstLine = false;
     }
 
     public static void Section(string emoji, string title, string? description = null)
