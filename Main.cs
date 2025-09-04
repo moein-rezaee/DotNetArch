@@ -9,6 +9,8 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 using DotNetArch.Scaffolding;
 using DotNetArch.Scaffolding.Steps;
 
@@ -153,14 +155,6 @@ class Program
             }
 
             var solutionPath = config.SolutionPath;
-            if (AskYesNo("Initialize git repository?", true))
-            {
-                EnsureDotnetGitIgnore(solutionPath);
-                if (IsGitInstalled())
-                    RunCommand("git init", solutionPath);
-                else
-                    Error("Git is not installed.");
-            }
 
             // ensure unit of work and repositories exist before syncing project wiring
             foreach (var e in config.Entities.Keys)
@@ -607,7 +601,11 @@ class Program
         };
 
         process.Start();
+        Task? spinner = null;
+        if (print)
+            spinner = Task.Run(() => ShowSpinner(process));
         process.WaitForExit();
+        spinner?.Wait();
 
         var stdout = process.StandardOutput.ReadToEnd();
         var stderr = process.StandardError.ReadToEnd();
@@ -658,13 +656,27 @@ class Program
         };
 
         process.Start();
+        var spinner = Task.Run(() => ShowSpinner(process));
         process.WaitForExit();
+        spinner.Wait();
 
         var stdout = process.StandardOutput.ReadToEnd();
         var stderr = process.StandardError.ReadToEnd();
         bool success = process.ExitCode == 0;
         var output = string.IsNullOrWhiteSpace(stderr) ? stdout : stdout + stderr;
         return (success, output);
+    }
+
+    static void ShowSpinner(Process process)
+    {
+        var seq = new[] { '|', '/', '-', '\\' };
+        var idx = 0;
+        while (!process.HasExited)
+        {
+            Console.Write($"\r{seq[idx++ % seq.Length]}");
+            Thread.Sleep(100);
+        }
+        Console.Write("\r ");
     }
 
     public static void RunProject(string project, string basePath)
