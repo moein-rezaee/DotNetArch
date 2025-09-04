@@ -252,7 +252,8 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddDbContext<AppDbContext>(o => o.UseSqlServer("Server=.;Database=AppDb;Trusted_Connection=True;"));
+        services.AddDbContext<AppDbContext>(o =>
+            o.UseSqlServer("Server=.;Database=AppDb;Trusted_Connection=True;TrustServerCertificate=True;"));
         return services;
     }
 }
@@ -322,7 +323,7 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
     public AppDbContext CreateDbContext(string[] args)
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseSqlServer("Server=.;Database=AppDb;Trusted_Connection=True;")
+            .UseSqlServer("Server=.;Database=AppDb;Trusted_Connection=True;TrustServerCertificate=True;")
             .Options;
         return new AppDbContext(options);
     }

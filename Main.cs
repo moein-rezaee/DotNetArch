@@ -405,13 +405,31 @@ class Program
     {
         Logger.Blank();
         Console.WriteLine(message);
-        for (int i = 0; i < options.Length; i++)
-            Console.WriteLine($"{i + 1} - {options[i]}");
-        Console.Write($"Your choice [{defaultIndex + 1}]: ");
-        var input = Console.ReadLine();
-        return int.TryParse(input, out var idx) && idx >= 1 && idx <= options.Length
-            ? options[idx - 1]
-            : options[defaultIndex];
+        var index = Math.Clamp(defaultIndex, 0, options.Length - 1);
+        Console.CursorVisible = false;
+        while (true)
+        {
+            for (int i = 0; i < options.Length; i++)
+            {
+                var prefix = i == index ? "➤" : "  ";
+                Console.WriteLine($"{prefix} {options[i]}");
+            }
+
+            var key = Console.ReadKey(true).Key;
+            if (key == ConsoleKey.UpArrow)
+                index = index == 0 ? options.Length - 1 : index - 1;
+            else if (key == ConsoleKey.DownArrow)
+                index = index == options.Length - 1 ? 0 : index + 1;
+            else if (key == ConsoleKey.Enter)
+            {
+                Console.CursorVisible = true;
+                // move cursor to end
+                Console.SetCursorPosition(0, Console.CursorTop);
+                return options[index];
+            }
+
+            Console.SetCursorPosition(0, Console.CursorTop - options.Length);
+        }
     }
 
     public static void Info(string title, string? description = null) => Logger.Info(title, description);
