@@ -480,7 +480,7 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
             var start = lines.FindIndex(l => l.Contains("var summaries"));
             if (start >= 0)
             {
-                var end = lines.FindIndex(start, l => l.Contains("GetWeatherForecast"));
+                var end = lines.FindIndex(start, l => l.Contains(".WithOpenApi()"));
                 if (end >= start)
                     lines.RemoveRange(start, end - start + 1);
             }
