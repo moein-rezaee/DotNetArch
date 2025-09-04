@@ -349,6 +349,15 @@ class Program
 
         Directory.SetCurrentDirectory(solutionDir);
 
+        EnsureDotnetGitIgnore(solutionDir);
+        if (AskYesNo("Initialize git repository?", true))
+        {
+            if (IsGitInstalled())
+                RunCommand("git init", solutionDir);
+            else
+                Error("Git is not installed.");
+        }
+
         RunCommand($"dotnet new sln -n {solutionName} --force");
         RunCommand($"dotnet new classlib -n {solutionName}.Core --force");
         RunCommand($"dotnet new classlib -n {solutionName}.Application --force");
