@@ -477,20 +477,34 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
         if (File.Exists(program))
         {
             var lines = File.ReadAllLines(program).ToList();
-            var start = lines.FindIndex(l => l.Contains("var summaries"));
-            if (start >= 0)
+
+            // remove sample weather forecast data array
+            var summariesStart = lines.FindIndex(l => l.Contains("var summaries"));
+            if (summariesStart >= 0)
             {
-                var end = lines.FindIndex(start, l => l.Contains(".WithOpenApi()"));
-                if (end >= start)
-                    lines.RemoveRange(start, end - start + 1);
+                var summariesEnd = lines.FindIndex(summariesStart, l => l.Contains("};"));
+                if (summariesEnd >= summariesStart)
+                    lines.RemoveRange(summariesStart, summariesEnd - summariesStart + 1);
             }
+
+            // remove sample endpoint
+            var mapStart = lines.FindIndex(l => l.Contains("app.MapGet") && l.Contains("/weatherforecast"));
+            if (mapStart >= 0)
+            {
+                var mapEnd = lines.FindIndex(mapStart, l => l.Trim().EndsWith(");"));
+                if (mapEnd >= mapStart)
+                    lines.RemoveRange(mapStart, mapEnd - mapStart + 1);
+            }
+
+            // remove sample record definition
             var recordIndex = lines.FindIndex(l => l.Contains("record WeatherForecast"));
             if (recordIndex >= 0)
             {
-                var closeIndex = lines.FindIndex(recordIndex, l => l.Trim() == "}");
+                var closeIndex = lines.FindIndex(recordIndex + 1, l => l.Trim() == "}");
                 if (closeIndex >= recordIndex)
                     lines.RemoveRange(recordIndex, closeIndex - recordIndex + 1);
             }
+
             File.WriteAllLines(program, lines);
         }
     }
