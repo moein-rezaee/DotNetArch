@@ -144,6 +144,16 @@ class Program
                 return;
             }
 
+            var solutionPath = config.SolutionPath;
+            if (AskYesNo("Initialize git repository?", true))
+            {
+                EnsureDotnetGitIgnore(solutionPath);
+                if (IsGitInstalled())
+                    RunCommand("git init", solutionPath);
+                else
+                    Error("Git is not installed.");
+            }
+
             // ensure unit of work and repositories exist before syncing project wiring
             foreach (var e in config.Entities.Keys)
                 new UnitOfWorkStep().Execute(config, e);
@@ -156,10 +166,10 @@ class Program
                 new UnitOfWorkStep().Execute(config, e);
 
             // ensure any pending migrations are applied before running
-            UpdateMigrations(config, basePath);
+            UpdateMigrations(config, solutionPath);
 
             var runProj = $"{config.StartupProject}/{config.StartupProject}.csproj";
-            RunProject(runProj, basePath);
+            RunProject(runProj, solutionPath);
             return;
         }
 
@@ -339,6 +349,26 @@ class Program
 
         Directory.SetCurrentDirectory(solutionDir);
 
+        var gitInstalled = IsGitInstalled();
+        var gitInitialized = false;
+        if (AskYesNo("Initialize git repository?", true))
+        {
+            EnsureDotnetGitIgnore(solutionDir);
+            if (gitInstalled)
+            {
+                gitInitialized = RunCommand("git init", solutionDir);
+                if (gitInitialized)
+                    RunCommand("git branch -M main", solutionDir);
+            }
+            else
+            {
+                Error("Git is not installed.");
+            }
+        }
+
+        if (AskYesNo("Create README.md?", true))
+            EnsureReadmeTemplate(solutionDir, solutionName);
+
         RunCommand($"dotnet new sln -n {solutionName} --force");
         RunCommand($"dotnet new classlib -n {solutionName}.Core --force");
         RunCommand($"dotnet new classlib -n {solutionName}.Application --force");
@@ -366,6 +396,12 @@ class Program
         PathState.Save(solutionDir);
         new ApplicationStep().Execute(config, string.Empty);
         new ProjectUpdateStep().Execute(config, string.Empty);
+
+        if (gitInstalled && gitInitialized)
+        {
+            RunCommand("git add .", solutionDir);
+            RunCommand("git commit -m \"init\"", solutionDir);
+        }
 
         Console.WriteLine();
         Success("Solution created successfully!");
@@ -543,6 +579,75 @@ class Program
             list.Add(trimmed);
         }
         return list.ToArray();
+    }
+
+    static bool IsGitInstalled() => RunCommand("git --version", print: false);
+
+    static void EnsureDotnetGitIgnore(string basePath)
+    {
+        var gitignorePath = Path.Combine(basePath, ".gitignore");
+        if (!File.Exists(gitignorePath))
+        {
+            if (!RunCommand("dotnet new gitignore", basePath))
+            {
+                var lines = new[]
+                {
+                    "# Build Folders",
+                    "bin/",
+                    "obj/",
+                    "publish/",
+                    "",
+                    "# User-specific files",
+                    "*.rsuser",
+                    "*.suo",
+                    "*.user",
+                    "*.userosscache",
+                    "*.sln.docstates",
+                    "",
+                    "# Visual Studio",
+                    ".vs/"
+                };
+                File.WriteAllLines(gitignorePath, lines);
+            }
+            Success(".gitignore file added.");
+        }
+    }
+
+    static void EnsureReadmeTemplate(string basePath, string solutionName)
+    {
+        var readmePath = Path.Combine(basePath, "README.md");
+        if (File.Exists(readmePath))
+            return;
+
+        var content =
+            $"# {solutionName}\n\n" +
+            "A brief description of your project.\n\n" +
+            "## Table of Contents\n\n" +
+            "- [Features](#features)\n" +
+            "- [Getting Started](#getting-started)\n" +
+            "  - [Prerequisites](#prerequisites)\n" +
+            "  - [Installation](#installation)\n" +
+            "  - [Usage](#usage)\n" +
+            "- [Contributing](#contributing)\n" +
+            "- [License](#license)\n" +
+            "- [Acknowledgements](#acknowledgements)\n\n" +
+            "## Features\n\n" +
+            "- Describe the features of your project.\n\n" +
+            "## Getting Started\n\n" +
+            "### Prerequisites\n\n" +
+            "- List prerequisites here.\n\n" +
+            "### Installation\n\n" +
+            "```bash\n# Installation steps\n```\n\n" +
+            "### Usage\n\n" +
+            "```bash\n# Usage example\n```\n\n" +
+            "## Contributing\n\n" +
+            "Describe how to contribute.\n\n" +
+            "## License\n\n" +
+            "Specify the license.\n\n" +
+            "## Acknowledgements\n\n" +
+            "- List acknowledgements.\n";
+        File.WriteAllText(readmePath, content);
+        Success("README.md file added.");
     }
 
     public static bool EnsureEfTool(string? workingDir = null)
