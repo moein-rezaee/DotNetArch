@@ -377,6 +377,7 @@ class Program
 
     public static string Ask(string message, string? defaultValue = null)
     {
+        Logger.Blank();
         Console.Write($"{message}{(defaultValue != null ? $" [{defaultValue}]" : "")}: ");
         var input = Console.ReadLine();
         return string.IsNullOrWhiteSpace(input) ? (defaultValue ?? string.Empty) : input;
@@ -384,6 +385,7 @@ class Program
 
     public static bool AskYesNo(string message, bool defaultYes)
     {
+        Logger.Blank();
         var def = defaultYes ? "y" : "n";
         while (true)
         {
@@ -401,6 +403,7 @@ class Program
 
     public static string AskOption(string message, string[] options, int defaultIndex = 0)
     {
+        Logger.Blank();
         Console.WriteLine(message);
         for (int i = 0; i < options.Length; i++)
             Console.WriteLine($"{i + 1} - {options[i]}");
@@ -417,7 +420,11 @@ class Program
 
     public static void Error(string title, string? description = null) => Logger.Error(title, description);
 
-    public static void Step(string title, string? description = null) => Logger.Section("🔹", title, description);
+    public static void Step(string title, string? description = null)
+    {
+        Logger.Blank();
+        Logger.Section("🔹", title, description);
+    }
 
     public static void SubStep(bool success, string message) => Logger.SubStep(success, message);
 
@@ -773,19 +780,22 @@ class Program
 
     static void ShowSpinner(Process process, ConcurrentQueue<string> lines)
     {
-        var seq = new[] { '|', '/', '-', '\\' };
+        var frames = new[] { '⣾', '⣽', '⣻', '⢿', '⡿', '⣟', '⣯', '⣷' };
         var idx = 0;
         var last = string.Empty;
+        var color = Console.ForegroundColor;
+        Console.ForegroundColor = ConsoleColor.Cyan;
         while (!process.HasExited || !lines.IsEmpty)
         {
             while (lines.TryDequeue(out var line))
                 last = line;
             if (last.Length > Console.WindowWidth - 2)
                 last = last.Substring(0, Console.WindowWidth - 2);
-            Console.Write($"\r{seq[idx++ % seq.Length]} {last}");
-            Thread.Sleep(100);
+            Console.Write($"\r{frames[idx++ % frames.Length]} {last}");
+            Thread.Sleep(120);
         }
-        Console.Write("\r");
+        Console.ForegroundColor = color;
+        Console.WriteLine();
     }
 
     public static void RunProject(string project, string basePath)
@@ -847,7 +857,7 @@ class Program
         }
         else
         {
-            Console.WriteLine("❌ Build failed; skipping migrations.");
+            Error("Build failed; skipping migrations.");
         }
     }
 
@@ -946,12 +956,12 @@ class Program
         if (RunCommand("dotnet ef --version", workingDir, print: false))
             return true;
 
-        Console.WriteLine("ℹ️ dotnet-ef not found. Attempting installation...");
+        Info("dotnet-ef not found. Attempting installation...");
         var cmd = GetEfToolInstallMessage();
         if (RunCommand(cmd, workingDir))
             return RunCommand("dotnet ef --version", workingDir, print: false);
 
-        Console.WriteLine($"❌ Failed to install dotnet-ef. Install manually with: {cmd}");
+        Error($"Failed to install dotnet-ef. Install manually with: {cmd}");
         return false;
     }
 
@@ -960,7 +970,7 @@ class Program
         if (RunCommand("dotnet --version", print: false))
             return true;
 
-        Console.WriteLine("❌ .NET SDK not found. Install from https://dotnet.microsoft.com/download");
+        Error(".NET SDK not found. Install from https://dotnet.microsoft.com/download");
         return false;
     }
 
@@ -982,7 +992,7 @@ class Program
         if (File.Exists(filePath))
         {
             File.Delete(filePath);
-            Console.WriteLine($"🗑️ Deleted default class: {filePath}");
+            Info("Deleted default class", filePath);
         }
     }
 }

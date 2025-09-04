@@ -11,7 +11,7 @@ static class ActionScaffolder
     {
         if (string.IsNullOrWhiteSpace(config.SolutionName) || string.IsNullOrWhiteSpace(entity) || string.IsNullOrWhiteSpace(action))
         {
-            Console.WriteLine("Solution, entity and action names are required.");
+            Program.Error("Solution, entity and action names are required.");
             return;
         }
 
@@ -27,7 +27,7 @@ static class ActionScaffolder
         {
             if (!Program.EnsureEfTool(config.SolutionPath))
             {
-                Console.WriteLine("❌ dotnet-ef installation failed; action generation canceled.");
+                Program.Error("dotnet-ef installation failed; action generation canceled.");
                 return;
             }
         }
@@ -69,7 +69,7 @@ static class ActionScaffolder
                 }
                 else
                 {
-                    Console.WriteLine("❌ Build failed; skipping migrations.");
+                    Program.Error("Build failed; skipping migrations.");
                 }
             }
             finally
@@ -84,7 +84,7 @@ static class ActionScaffolder
         config.Entities[entity] = state;
         ConfigManager.Save(config.SolutionPath, config);
 
-        Console.WriteLine($"Action {action} for {entity} generated.");
+        Program.Success($"Action {action} for {entity} generated.");
     }
 
     static void AddRepositoryMethod(SolutionConfig config, string entity, string action, bool isCommand)

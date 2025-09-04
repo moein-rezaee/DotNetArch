@@ -9,13 +9,13 @@ static class CrudScaffolder
     {
         if (string.IsNullOrWhiteSpace(config.SolutionName) || string.IsNullOrWhiteSpace(entityName))
         {
-            Console.WriteLine("Solution and entity names are required.");
+            Program.Error("Solution and entity names are required.");
             return;
         }
 
         if (config.Entities.TryGetValue(entityName, out var existing) && existing.HasCrud)
         {
-            Console.WriteLine($"CRUD for {entityName} already exists.");
+            Program.Error($"CRUD for {entityName} already exists.");
             return;
         }
 
@@ -31,7 +31,7 @@ static class CrudScaffolder
         {
             if (!Program.EnsureEfTool(config.SolutionPath))
             {
-                Console.WriteLine("❌ dotnet-ef installation failed; CRUD generation canceled.");
+                Program.Error("dotnet-ef installation failed; CRUD generation canceled.");
                 return;
             }
         }
@@ -71,7 +71,7 @@ static class CrudScaffolder
                 }
                 else
                 {
-                    Console.WriteLine("❌ Build failed; skipping migrations.");
+                    Program.Error("Build failed; skipping migrations.");
                 }
             }
             finally
@@ -86,6 +86,6 @@ static class CrudScaffolder
         config.Entities[entityName] = state;
         ConfigManager.Save(config.SolutionPath, config);
 
-        Console.WriteLine($"CRUD for {entityName} generated using {provider} provider.");
+        Program.Success($"CRUD for {entityName} generated using {provider} provider.");
     }
 }
