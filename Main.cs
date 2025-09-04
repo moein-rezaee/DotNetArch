@@ -182,7 +182,7 @@ class Program
                 }
                 RefreshDockerCompose(solutionPath, config.SolutionName, config.StartupProject, config.ApiPort, env);
                 var image = string.IsNullOrWhiteSpace(config.DockerImage) ? $"{config.SolutionName.ToLower()}.api" : config.DockerImage;
-                var tag = $"{image}:latest";
+                var tag = $"{image}:0.0.0";
                 var container = string.IsNullOrWhiteSpace(config.DockerContainer) ? $"{config.SolutionName.ToLower()}-api" : config.DockerContainer;
                 if (ContainerExists(container) || ImageExists(tag))
                 {
@@ -521,7 +521,7 @@ class Program
             "    build:" + nl +
             "      context: ." + nl +
             "      dockerfile: Dockerfile" + nl +
-            $"    image: {image}:latest{nl}" +
+            $"    image: {image}:0.0.0{nl}" +
             $"    container_name: {container}{nl}" +
             "    ports:" + nl +
             $"      - \"{port}:{port}\"{nl}" +
