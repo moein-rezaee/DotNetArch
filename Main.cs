@@ -350,13 +350,24 @@ class Program
         Directory.SetCurrentDirectory(solutionDir);
 
         EnsureDotnetGitIgnore(solutionDir);
+        var gitInstalled = IsGitInstalled();
+        var gitInitialized = false;
         if (AskYesNo("Initialize git repository?", true))
         {
-            if (IsGitInstalled())
-                RunCommand("git init", solutionDir);
+            if (gitInstalled)
+            {
+                gitInitialized = RunCommand("git init", solutionDir);
+                if (gitInitialized)
+                    RunCommand("git branch -M main", solutionDir);
+            }
             else
+            {
                 Error("Git is not installed.");
+            }
         }
+
+        if (AskYesNo("Create README.md?", true))
+            EnsureReadmeTemplate(solutionDir, solutionName);
 
         RunCommand($"dotnet new sln -n {solutionName} --force");
         RunCommand($"dotnet new classlib -n {solutionName}.Core --force");
@@ -385,6 +396,12 @@ class Program
         PathState.Save(solutionDir);
         new ApplicationStep().Execute(config, string.Empty);
         new ProjectUpdateStep().Execute(config, string.Empty);
+
+        if (gitInstalled && gitInitialized)
+        {
+            RunCommand("git add .", solutionDir);
+            RunCommand("git commit -m \"init\"", solutionDir);
+        }
 
         Console.WriteLine();
         Success("Solution created successfully!");
@@ -594,6 +611,43 @@ class Program
             }
             Success(".gitignore file added.");
         }
+    }
+
+    static void EnsureReadmeTemplate(string basePath, string solutionName)
+    {
+        var readmePath = Path.Combine(basePath, "README.md");
+        if (File.Exists(readmePath))
+            return;
+
+        var content =
+            $"# {solutionName}\n\n" +
+            "A brief description of your project.\n\n" +
+            "## Table of Contents\n\n" +
+            "- [Features](#features)\n" +
+            "- [Getting Started](#getting-started)\n" +
+            "  - [Prerequisites](#prerequisites)\n" +
+            "  - [Installation](#installation)\n" +
+            "  - [Usage](#usage)\n" +
+            "- [Contributing](#contributing)\n" +
+            "- [License](#license)\n" +
+            "- [Acknowledgements](#acknowledgements)\n\n" +
+            "## Features\n\n" +
+            "- Describe the features of your project.\n\n" +
+            "## Getting Started\n\n" +
+            "### Prerequisites\n\n" +
+            "- List prerequisites here.\n\n" +
+            "### Installation\n\n" +
+            "```bash\n# Installation steps\n```\n\n" +
+            "### Usage\n\n" +
+            "```bash\n# Usage example\n```\n\n" +
+            "## Contributing\n\n" +
+            "Describe how to contribute.\n\n" +
+            "## License\n\n" +
+            "Specify the license.\n\n" +
+            "## Acknowledgements\n\n" +
+            "- List acknowledgements.\n";
+        File.WriteAllText(readmePath, content);
+        Success("README.md file added.");
     }
 
     public static bool EnsureEfTool(string? workingDir = null)
