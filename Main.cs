@@ -188,10 +188,11 @@ class Program
                 var tag = $"{image}:0.0.0";
                 var container = string.IsNullOrWhiteSpace(config.DockerContainer) ? $"{config.SolutionName.ToLower()}-api" : config.DockerContainer;
 
+                bool runCleanup = false;
                 bool cleaned = false;
                 void Cleanup()
                 {
-                    if (cleaned) return;
+                    if (cleaned || !runCleanup) return;
                     cleaned = true;
                     Info("Stopping Docker container...");
                     RunCommand("docker compose down", solutionPath);
@@ -240,6 +241,7 @@ class Program
                     config.DockerImage = image;
                     config.DockerContainer = container;
                     ConfigManager.Save(solutionPath, config);
+                    runCleanup = true;
                     Info("Building Docker image...");
                     if (!RunCommand($"ASPNETCORE_ENVIRONMENT={env} docker compose build", solutionPath))
                         return;
@@ -252,6 +254,11 @@ class Program
                     if (!RunCommand($"ASPNETCORE_ENVIRONMENT={env} docker compose start", solutionPath))
                         return;
                     Success($"Docker container started: {container}");
+                    var baseUrl = $"http://localhost:{port}";
+                    Success($"Application running at {baseUrl}");
+                    if (env.Equals("development", StringComparison.OrdinalIgnoreCase) ||
+                        env.Equals("test", StringComparison.OrdinalIgnoreCase))
+                        Success($"Swagger UI available at {baseUrl}/swagger/index.html");
                     RunCommand("docker compose logs -f", solutionPath);
                 }
                 finally
