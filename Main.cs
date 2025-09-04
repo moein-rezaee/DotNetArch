@@ -898,10 +898,11 @@ class Program
 
     public static string GetEfToolInstallMessage()
     {
+        const string version = "8.*";
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            return "dotnet tool install --global dotnet-ef && setx PATH \"%PATH%;%USERPROFILE%\\.dotnet\\tools\"";
+            return $"dotnet tool install --global dotnet-ef --version {version} && setx PATH \"%PATH%;%USERPROFILE%\\.dotnet\\tools\"";
         else
-            return "dotnet tool install --global dotnet-ef && export PATH=\"$PATH:$HOME/.dotnet/tools\"";
+            return $"dotnet tool install --global dotnet-ef --version {version} && export PATH=\"$PATH:$HOME/.dotnet/tools\"";
     }
 
     static string SanitizeIdentifier(string value) =>
