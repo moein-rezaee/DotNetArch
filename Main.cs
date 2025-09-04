@@ -137,13 +137,6 @@ class Program
                 outputPath = PathState.Load() ?? Directory.GetCurrentDirectory();
 
             var basePath = outputPath!;
-            var config = ConfigManager.Load(basePath);
-            if (config == null)
-            {
-                Error("Solution configuration not found. Run 'new solution' first.");
-                return;
-            }
-
             EnsureDotnetGitIgnore(basePath);
             if (AskYesNo("Initialize git repository?", true))
             {
@@ -151,6 +144,13 @@ class Program
                     RunCommand("git init", basePath);
                 else
                     Error("Git is not installed.");
+            }
+
+            var config = ConfigManager.Load(basePath);
+            if (config == null)
+            {
+                Error("Solution configuration not found. Run 'new solution' first.");
+                return;
             }
 
             // ensure unit of work and repositories exist before syncing project wiring
@@ -561,24 +561,27 @@ class Program
         var gitignorePath = Path.Combine(basePath, ".gitignore");
         if (!File.Exists(gitignorePath))
         {
-            var lines = new[]
+            if (!RunCommand("dotnet new gitignore", basePath))
             {
-                "# Build Folders",
-                "bin/",
-                "obj/",
-                "publish/",
-                "",
-                "# User-specific files",
-                "*.rsuser",
-                "*.suo",
-                "*.user",
-                "*.userosscache",
-                "*.sln.docstates",
-                "",
-                "# Visual Studio",
-                ".vs/"
-            };
-            File.WriteAllLines(gitignorePath, lines);
+                var lines = new[]
+                {
+                    "# Build Folders",
+                    "bin/",
+                    "obj/",
+                    "publish/",
+                    "",
+                    "# User-specific files",
+                    "*.rsuser",
+                    "*.suo",
+                    "*.user",
+                    "*.userosscache",
+                    "*.sln.docstates",
+                    "",
+                    "# Visual Studio",
+                    ".vs/"
+                };
+                File.WriteAllLines(gitignorePath, lines);
+            }
             Success(".gitignore file added.");
         }
     }
