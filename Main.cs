@@ -418,12 +418,13 @@ class Program
             {
                 bool isDisabled = disabled.Contains(i);
                 bool isSelected = i == index;
-                var prefix = isSelected ? "➤" : "  ";
+                var prefix = isSelected ? "➤" : " ";
                 if (isDisabled)
                     Console.ForegroundColor = ConsoleColor.DarkGray;
                 else if (isSelected)
                     Console.ForegroundColor = ConsoleColor.Cyan;
 
+                // keep lines the same length to avoid leftover characters when toggling selection
                 Console.WriteLine($"{prefix} {options[i]}");
                 Console.ResetColor();
             }
