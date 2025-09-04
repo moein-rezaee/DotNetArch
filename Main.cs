@@ -188,8 +188,18 @@ class Program
                 {
                     if (AskYesNo("Existing Docker resources found. Kill and recreate?", true))
                     {
-                        if (ContainerExists(container)) RunCommand($"docker rm -f {container}");
-                        if (ImageExists(tag)) RunCommand($"docker rmi {tag}");
+                        if (ContainerExists(container))
+                        {
+                            Info($"Removing existing container {container}...");
+                            RunCommand($"docker rm -f {container}");
+                            Success($"Docker container removed: {container}");
+                        }
+                        if (ImageExists(tag))
+                        {
+                            Info($"Removing existing image {tag}...");
+                            RunCommand($"docker rmi {tag}");
+                            Success($"Docker image removed: {tag}");
+                        }
                     }
                     else
                     {
@@ -200,9 +210,28 @@ class Program
                 config.DockerImage = image;
                 config.DockerContainer = container;
                 ConfigManager.Save(solutionPath, config);
-                RunCommand($"ASPNETCORE_ENVIRONMENT={env} docker compose up --build", solutionPath);
+                Info("Building Docker image...");
+                if (!RunCommand($"ASPNETCORE_ENVIRONMENT={env} docker compose build", solutionPath))
+                    return;
+                Success($"Docker image built: {tag}");
+                Info("Creating Docker container...");
+                if (!RunCommand($"ASPNETCORE_ENVIRONMENT={env} docker compose create", solutionPath))
+                    return;
+                Success($"Docker container created: {container}");
+                Info("Starting Docker container...");
+                if (!RunCommand($"ASPNETCORE_ENVIRONMENT={env} docker compose start", solutionPath))
+                    return;
+                Success($"Docker container started: {container}");
+                RunCommand("docker compose logs -f", solutionPath);
+                Info("Stopping Docker container...");
                 RunCommand("docker compose down", solutionPath);
-                if (ImageExists(tag)) RunCommand($"docker rmi {tag}", solutionPath);
+                Success($"Docker container stopped: {container}");
+                Success($"Docker container removed: {container}");
+                if (ImageExists(tag))
+                {
+                    RunCommand($"docker rmi {tag}", solutionPath);
+                    Success($"Docker image removed: {tag}");
+                }
             }
             else
             {
