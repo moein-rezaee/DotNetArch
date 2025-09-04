@@ -211,7 +211,6 @@ class Program
                     e.Cancel = true;
                     _cancelRequested = true;
                     try { _currentProcess?.Kill(true); } catch { }
-                    Cleanup();
                 };
                 Console.CancelKeyPress += handler;
                 try
