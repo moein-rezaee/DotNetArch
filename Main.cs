@@ -62,6 +62,118 @@ class Program
             return;
         }
 
+        if (args.Length >= 2 && args[0].ToLower() == "new" && args[1].ToLower() == "event")
+        {
+            string? entity = null;
+            string? eventName = null;
+            string? outputPath = null;
+            for (int i = 2; i < args.Length; i++)
+            {
+                if (args[i].StartsWith("--entity="))
+                    entity = args[i].Substring("--entity=".Length);
+                else if (args[i].StartsWith("--name="))
+                    eventName = args[i].Substring("--name=".Length);
+                else if (args[i].StartsWith("--output="))
+                    outputPath = args[i].Substring("--output=".Length);
+            }
+
+            if (string.IsNullOrWhiteSpace(outputPath))
+                outputPath = PathState.Load() ?? Directory.GetCurrentDirectory();
+            var basePath = outputPath!;
+            var config = ConfigManager.Load(basePath);
+            if (config == null)
+            {
+                Error("Solution configuration not found. Run 'new solution' first.");
+                return;
+            }
+
+            while (true)
+            {
+                if (string.IsNullOrWhiteSpace(entity))
+                    entity = Ask("Enter entity name");
+                if (string.IsNullOrWhiteSpace(entity))
+                {
+                    Error("Entity name is required.");
+                    return;
+                }
+                entity = SanitizeIdentifier(entity);
+
+                var events = EventScaffolder.ListEvents(config, entity);
+                if (events.Length == 0 && string.IsNullOrWhiteSpace(eventName))
+                    eventName = Ask("Enter event name");
+
+                if (string.IsNullOrWhiteSpace(eventName))
+                {
+                    var action = AskOption($"Entity '{entity}' has existing events. Select action", new[] { "Create new event", "Add subscriber to existing events" });
+                    if (action == "Create new event")
+                    {
+                        eventName = Ask("Enter event name");
+                        if (string.IsNullOrWhiteSpace(eventName))
+                        {
+                            Error("Event name is required.");
+                            return;
+                        }
+                        eventName = SanitizeIdentifier(eventName);
+                        if (!EventScaffolder.GenerateEvent(config, entity, eventName))
+                        {
+                            Error($"Entity '{entity}' does not exist.");
+                            entity = null;
+                            eventName = null;
+                            continue;
+                        }
+                        Success($"Event {eventName} for {entity} generated.");
+                        events = events.Append(eventName).ToArray();
+                    }
+                    else
+                    {
+                        eventName = AskOption("Select event", events);
+                    }
+                }
+                else
+                {
+                    eventName = SanitizeIdentifier(eventName);
+                    if (!EventScaffolder.GenerateEvent(config, entity, eventName))
+                    {
+                        Error($"Entity '{entity}' does not exist.");
+                        entity = null;
+                        eventName = null;
+                        continue;
+                    }
+                    Success($"Event {eventName} for {entity} generated.");
+                    events = events.Append(eventName).ToArray();
+                }
+
+                var currentEvent = eventName;
+                while (true)
+                {
+                    string choice;
+                    if (events.Length > 1)
+                        choice = Ask("1) Add subscriber  2) Add subscriber for other events  3) Finish");
+                    else
+                        choice = Ask("1) Add subscriber  2) Finish");
+                    if (choice == "1")
+                    {
+                        var sub = Ask("Enter subscriber entity");
+                        sub = SanitizeIdentifier(sub);
+                        if (!EventScaffolder.AddSubscriber(config, entity, currentEvent!, sub))
+                        {
+                            Error("Subscriber entity not found.");
+                            continue;
+                        }
+                        Success($"Subscriber {sub} added.");
+                    }
+                    else if (choice == "2" && events.Length > 1)
+                    {
+                        currentEvent = AskOption("Select event", events);
+                    }
+                    else
+                        break;
+                }
+                break;
+            }
+            return;
+        }
+
         if (args.Length >= 2 && args[0].ToLower() == "new" && args[1].ToLower() == "action")
         {
             string? entity = null;
