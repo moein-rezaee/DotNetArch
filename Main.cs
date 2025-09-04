@@ -145,9 +145,9 @@ class Program
             }
 
             var solutionPath = config.SolutionPath;
-            EnsureDotnetGitIgnore(solutionPath);
             if (AskYesNo("Initialize git repository?", true))
             {
+                EnsureDotnetGitIgnore(solutionPath);
                 if (IsGitInstalled())
                     RunCommand("git init", solutionPath);
                 else
@@ -349,11 +349,11 @@ class Program
 
         Directory.SetCurrentDirectory(solutionDir);
 
-        EnsureDotnetGitIgnore(solutionDir);
         var gitInstalled = IsGitInstalled();
         var gitInitialized = false;
         if (AskYesNo("Initialize git repository?", true))
         {
+            EnsureDotnetGitIgnore(solutionDir);
             if (gitInstalled)
             {
                 gitInitialized = RunCommand("git init", solutionDir);
