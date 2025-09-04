@@ -28,6 +28,12 @@ public static class ConfigManager
                 config.DatabaseProvider = value;
             else if (key.Equals("style", StringComparison.OrdinalIgnoreCase))
                 config.ApiStyle = value;
+            else if (key.Equals("port", StringComparison.OrdinalIgnoreCase))
+                config.ApiPort = value;
+            else if (key.Equals("docker.image", StringComparison.OrdinalIgnoreCase))
+                config.DockerImage = value;
+            else if (key.Equals("docker.container", StringComparison.OrdinalIgnoreCase))
+                config.DockerContainer = value;
             else if (key.StartsWith("entity.", StringComparison.OrdinalIgnoreCase))
             {
                 var name = key.Substring("entity.".Length);
@@ -54,9 +60,14 @@ public static class ConfigManager
             $"solution: {config.SolutionName}{nl}" +
             $"path: {config.SolutionPath}{nl}" +
             $"startup: {config.StartupProject}{nl}" +
-            $"style: {config.ApiStyle}{nl}";
+            $"style: {config.ApiStyle}{nl}" +
+            $"port: {config.ApiPort}{nl}";
         if (!string.IsNullOrWhiteSpace(config.DatabaseProvider))
             content += $"database: {config.DatabaseProvider}{nl}";
+        if (!string.IsNullOrWhiteSpace(config.DockerImage))
+            content += $"docker.image: {config.DockerImage}{nl}";
+        if (!string.IsNullOrWhiteSpace(config.DockerContainer))
+            content += $"docker.container: {config.DockerContainer}{nl}";
         foreach (var kv in config.Entities)
         {
             var status = kv.Value.HasCrud && kv.Value.HasAction ? "both" : kv.Value.HasCrud ? "crud" : "action";
