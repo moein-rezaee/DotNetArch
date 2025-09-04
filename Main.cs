@@ -2,7 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
+using System.Net.Sockets;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using DotNetArch.Scaffolding;
 using DotNetArch.Scaffolding.Steps;
@@ -127,10 +132,13 @@ class Program
         if (args.Length >= 1 && args[0].ToLower() == "exec")
         {
             string? outputPath = null;
+            bool useDocker = false;
             for (int i = 1; i < args.Length; i++)
             {
                 if (args[i].StartsWith("--output="))
                     outputPath = args[i].Substring("--output=".Length);
+                else if (args[i] == "--docker")
+                    useDocker = true;
             }
 
             if (string.IsNullOrWhiteSpace(outputPath))
@@ -168,8 +176,43 @@ class Program
             // ensure any pending migrations are applied before running
             UpdateMigrations(config, solutionPath);
 
-            var runProj = $"{config.StartupProject}/{config.StartupProject}.csproj";
-            RunProject(runProj, solutionPath);
+            if (useDocker)
+            {
+                var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "development";
+                if (!int.TryParse(config.ApiPort, out var port)) port = 5000;
+                if (IsPortInUse(port))
+                {
+                    Error($"Port {port} is already in use.");
+                    return;
+                }
+                RefreshDockerCompose(solutionPath, config.SolutionName, config.StartupProject, config.ApiPort, env);
+                var image = string.IsNullOrWhiteSpace(config.DockerImage) ? $"{config.SolutionName.ToLower()}.api:latest" : config.DockerImage;
+                var container = string.IsNullOrWhiteSpace(config.DockerContainer) ? $"{config.SolutionName.ToLower()}-api" : config.DockerContainer;
+                if (ContainerExists(container) || ImageExists(image))
+                {
+                    if (AskYesNo("Existing Docker resources found. Kill and recreate?", true))
+                    {
+                        if (ContainerExists(container)) RunCommand($"docker rm -f {container}");
+                        if (ImageExists(image)) RunCommand($"docker rmi {image}");
+                    }
+                    else
+                    {
+                        Error("Docker run aborted.");
+                        return;
+                    }
+                }
+                config.DockerImage = image;
+                config.DockerContainer = container;
+                ConfigManager.Save(solutionPath, config);
+                RunCommand($"ASPNETCORE_ENVIRONMENT={env} docker compose up --build", solutionPath);
+                RunCommand("docker compose down", solutionPath);
+                if (ImageExists(image)) RunCommand($"docker rmi {image}", solutionPath);
+            }
+            else
+            {
+                var runProj = $"{config.StartupProject}/{config.StartupProject}.csproj";
+                RunProject(runProj, solutionPath);
+            }
             return;
         }
 
@@ -391,11 +434,15 @@ class Program
         RunCommand($"dotnet add {solutionName}.API/{solutionName}.API.csproj reference {solutionName}.Infrastructure/{solutionName}.Infrastructure.csproj");
 
         var provider = DatabaseProviderSelector.Choose();
-        var config = new SolutionConfig { SolutionName = solutionName, SolutionPath = solutionDir, StartupProject = startupProject, DatabaseProvider = provider, ApiStyle = apiStyle };
+        var port = ReadApiPort(solutionDir, startupProject);
+        var config = new SolutionConfig { SolutionName = solutionName, SolutionPath = solutionDir, StartupProject = startupProject, DatabaseProvider = provider, ApiStyle = apiStyle, ApiPort = port };
         ConfigManager.Save(solutionDir, config);
         PathState.Save(solutionDir);
         new ApplicationStep().Execute(config, string.Empty);
         new ProjectUpdateStep().Execute(config, string.Empty);
+
+        if (AskYesNo("Add Docker support?", true))
+            CreateDockerArtifacts(solutionDir, solutionName, startupProject, port);
 
         if (gitInstalled && gitInitialized)
         {
@@ -407,6 +454,129 @@ class Program
         Success("Solution created successfully!");
         Info($"Navigate to the '{solutionName}' directory and run 'dotnet build'.");
     }
+
+    static string ReadApiPort(string basePath, string startupProject)
+    {
+        var lsPath = Path.Combine(basePath, startupProject, "Properties", "launchSettings.json");
+        if (!File.Exists(lsPath))
+            return "5000";
+        try
+        {
+            using var doc = JsonDocument.Parse(File.ReadAllText(lsPath));
+            var profiles = doc.RootElement.GetProperty("profiles");
+            foreach (var prof in profiles.EnumerateObject())
+            {
+                if (prof.Value.TryGetProperty("applicationUrl", out var urlEl))
+                {
+                    var url = urlEl.GetString() ?? string.Empty;
+                    var http = url.Split(';').FirstOrDefault(u => u.StartsWith("http://", StringComparison.OrdinalIgnoreCase));
+                    if (http != null && Uri.TryCreate(http, UriKind.Absolute, out var uri))
+                        return uri.Port.ToString();
+                }
+            }
+        }
+        catch { }
+        return "5000";
+    }
+
+    static void CreateDockerArtifacts(string basePath, string solutionName, string startupProject, string port)
+    {
+        WriteDockerfile(basePath, solutionName, startupProject, port);
+        RefreshDockerCompose(basePath, solutionName, startupProject, port, "development");
+    }
+
+    static void WriteDockerfile(string basePath, string solutionName, string startupProject, string port)
+    {
+        var dockerfilePath = Path.Combine(basePath, "Dockerfile");
+        if (File.Exists(dockerfilePath)) return;
+        var nl = Environment.NewLine;
+        var content =
+            $"FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base{nl}" +
+            "WORKDIR /app" + nl +
+            $"EXPOSE {port}" + nl +
+            nl +
+            "FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build" + nl +
+            "WORKDIR /src" + nl +
+            $"COPY [\"{startupProject}/{startupProject}.csproj\", \"{startupProject}/\"]" + nl +
+            $"RUN dotnet restore \"{startupProject}/{startupProject}.csproj\"" + nl +
+            "COPY . ." + nl +
+            $"WORKDIR /src/{startupProject}" + nl +
+            $"RUN dotnet publish \"{startupProject}.csproj\" -c Release -o /app/publish /p:UseAppHost=false" + nl +
+            nl +
+            "FROM base AS final" + nl +
+            "WORKDIR /app" + nl +
+            "COPY --from=build /app/publish ." + nl +
+            $"ENTRYPOINT [\"dotnet\", \"{startupProject}.dll\"]" + nl;
+        File.WriteAllText(dockerfilePath, content);
+        Success("Dockerfile created.");
+    }
+
+    static void RefreshDockerCompose(string basePath, string solutionName, string startupProject, string port, string env)
+    {
+        var composePath = Path.Combine(basePath, "docker-compose.yml");
+        var envPath = Path.Combine(basePath, startupProject, "config", "env", $".env.{env}");
+        var envHash = File.Exists(envPath) ? ComputeHash(File.ReadAllText(envPath)) : string.Empty;
+        var image = $"{solutionName.ToLower()}.api";
+        var container = $"{solutionName.ToLower()}-api";
+        var nl = Environment.NewLine;
+        var content =
+            $"# env-hash:{envHash}{nl}" +
+            "version: '3.9'" + nl +
+            "services:" + nl +
+            "  api:" + nl +
+            "    build:" + nl +
+            "      context: ." + nl +
+            "      dockerfile: Dockerfile" + nl +
+            $"    image: {image}:latest{nl}" +
+            $"    container_name: {container}{nl}" +
+            "    ports:" + nl +
+            $"      - \"{port}:{port}\"{nl}" +
+            "    environment:" + nl +
+            $"      - ASPNETCORE_URLS=http://+:{port}{nl}" +
+            $"      - ASPNETCORE_ENVIRONMENT=${{ASPNETCORE_ENVIRONMENT:-{env}}}{nl}" +
+            "    env_file:" + nl +
+            $"      - {startupProject}/config/env/.env.${{ASPNETCORE_ENVIRONMENT:-{env}}}{nl}";
+        if (!File.Exists(composePath) || File.ReadAllText(composePath) != content)
+        {
+            File.WriteAllText(composePath, content);
+            Success("docker-compose.yml updated.");
+        }
+    }
+
+    static string ComputeHash(string content)
+    {
+        using var sha = SHA256.Create();
+        var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(content));
+        return Convert.ToHexString(bytes);
+    }
+
+    static bool IsPortInUse(int port)
+    {
+        try
+        {
+            var listener = new TcpListener(System.Net.IPAddress.Loopback, port);
+            listener.Start();
+            listener.Stop();
+            return false;
+        }
+        catch (SocketException)
+        {
+            return true;
+        }
+    }
+
+    static bool ContainerExists(string name)
+    {
+        var (_, output) = RunCommandCapture($"docker ps -a --filter name={name} --format \"{{{{.Names}}}}\"");
+        return !string.IsNullOrWhiteSpace(output.Trim());
+    }
+
+    static bool ImageExists(string name)
+    {
+        var (_, output) = RunCommandCapture($"docker images -q {name}");
+        return !string.IsNullOrWhiteSpace(output.Trim());
+    }
+
     public static bool RunCommand(string command, string? workingDir = null, bool print = true)
     {
         string shell, shellArgs;
