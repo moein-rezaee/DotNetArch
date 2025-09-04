@@ -137,20 +137,21 @@ class Program
                 outputPath = PathState.Load() ?? Directory.GetCurrentDirectory();
 
             var basePath = outputPath!;
-            EnsureDotnetGitIgnore(basePath);
-            if (AskYesNo("Initialize git repository?", true))
-            {
-                if (IsGitInstalled())
-                    RunCommand("git init", basePath);
-                else
-                    Error("Git is not installed.");
-            }
-
             var config = ConfigManager.Load(basePath);
             if (config == null)
             {
                 Error("Solution configuration not found. Run 'new solution' first.");
                 return;
+            }
+
+            var solutionPath = config.SolutionPath;
+            EnsureDotnetGitIgnore(solutionPath);
+            if (AskYesNo("Initialize git repository?", true))
+            {
+                if (IsGitInstalled())
+                    RunCommand("git init", solutionPath);
+                else
+                    Error("Git is not installed.");
             }
 
             // ensure unit of work and repositories exist before syncing project wiring
@@ -165,10 +166,10 @@ class Program
                 new UnitOfWorkStep().Execute(config, e);
 
             // ensure any pending migrations are applied before running
-            UpdateMigrations(config, basePath);
+            UpdateMigrations(config, solutionPath);
 
             var runProj = $"{config.StartupProject}/{config.StartupProject}.csproj";
-            RunProject(runProj, basePath);
+            RunProject(runProj, solutionPath);
             return;
         }
 
