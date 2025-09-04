@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -492,9 +493,8 @@ class Program
             nl +
             "FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build" + nl +
             "WORKDIR /src" + nl +
-            $"COPY [\"{startupProject}/{startupProject}.csproj\", \"{startupProject}/\"]" + nl +
-            $"RUN dotnet restore \"{startupProject}/{startupProject}.csproj\"" + nl +
             "COPY . ." + nl +
+            $"RUN dotnet restore \"{startupProject}/{startupProject}.csproj\"" + nl +
             $"WORKDIR /src/{startupProject}" + nl +
             $"RUN dotnet publish \"{startupProject}.csproj\" -c Release -o /app/publish /p:UseAppHost=false" + nl +
             nl +
@@ -600,28 +600,44 @@ class Program
             }
         };
 
+        var lines = new ConcurrentQueue<string>();
+        var outputBuilder = new StringBuilder();
+
+        process.OutputDataReceived += (_, e) =>
+        {
+            if (e.Data != null)
+            {
+                lines.Enqueue(e.Data);
+                outputBuilder.AppendLine(e.Data);
+            }
+        };
+        process.ErrorDataReceived += (_, e) =>
+        {
+            if (e.Data != null)
+            {
+                lines.Enqueue(e.Data);
+                outputBuilder.AppendLine(e.Data);
+            }
+        };
+
         process.Start();
+        process.BeginOutputReadLine();
+        process.BeginErrorReadLine();
         Task? spinner = null;
         if (print)
-            spinner = Task.Run(() => ShowSpinner(process));
+            spinner = Task.Run(() => ShowSpinner(process, lines));
         process.WaitForExit();
         spinner?.Wait();
 
-        var stdout = process.StandardOutput.ReadToEnd();
-        var stderr = process.StandardError.ReadToEnd();
+        var output = outputBuilder.ToString();
         bool success = process.ExitCode == 0;
 
         if (print)
         {
             if (!success)
-            {
-                var msg = string.IsNullOrWhiteSpace(stderr) ? stdout : stderr;
-                Error(string.IsNullOrWhiteSpace(msg) ? "Command failed" : msg.Trim());
-            }
+                Error(string.IsNullOrWhiteSpace(output) ? "Command failed" : output.Trim());
             else
-            {
                 Success(command);
-            }
         }
 
         return success;
@@ -655,28 +671,53 @@ class Program
             }
         };
 
+        var lines = new ConcurrentQueue<string>();
+        var outputBuilder = new StringBuilder();
+
+        process.OutputDataReceived += (_, e) =>
+        {
+            if (e.Data != null)
+            {
+                lines.Enqueue(e.Data);
+                outputBuilder.AppendLine(e.Data);
+            }
+        };
+        process.ErrorDataReceived += (_, e) =>
+        {
+            if (e.Data != null)
+            {
+                lines.Enqueue(e.Data);
+                outputBuilder.AppendLine(e.Data);
+            }
+        };
+
         process.Start();
-        var spinner = Task.Run(() => ShowSpinner(process));
+        process.BeginOutputReadLine();
+        process.BeginErrorReadLine();
+        var spinner = Task.Run(() => ShowSpinner(process, lines));
         process.WaitForExit();
         spinner.Wait();
 
-        var stdout = process.StandardOutput.ReadToEnd();
-        var stderr = process.StandardError.ReadToEnd();
+        var output = outputBuilder.ToString();
         bool success = process.ExitCode == 0;
-        var output = string.IsNullOrWhiteSpace(stderr) ? stdout : stdout + stderr;
         return (success, output);
     }
 
-    static void ShowSpinner(Process process)
+    static void ShowSpinner(Process process, ConcurrentQueue<string> lines)
     {
         var seq = new[] { '|', '/', '-', '\\' };
         var idx = 0;
-        while (!process.HasExited)
+        var last = string.Empty;
+        while (!process.HasExited || !lines.IsEmpty)
         {
-            Console.Write($"\r{seq[idx++ % seq.Length]}");
+            while (lines.TryDequeue(out var line))
+                last = line;
+            if (last.Length > Console.WindowWidth - 2)
+                last = last.Substring(0, Console.WindowWidth - 2);
+            Console.Write($"\r{seq[idx++ % seq.Length]} {last}");
             Thread.Sleep(100);
         }
-        Console.Write("\r ");
+        Console.Write("\r");
     }
 
     public static void RunProject(string project, string basePath)
