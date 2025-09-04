@@ -12,7 +12,7 @@ DotNetArch is a .NET global tool designed to help developers quickly set up solu
 
 Before using DotNetArch, ensure your system meets the following requirements:  
 
-1. **.NET SDK**: Version 6.0 or higher (recommended: .NET 9.0).  
+1. **.NET SDK**: Version 6.0 or higher (recommended: .NET 8.0).
    - Install it from the official [.NET Downloads page](https://dotnet.microsoft.com/download).  
 2. **Operating System**:  
    - **Windows**: Windows 10 or higher.  

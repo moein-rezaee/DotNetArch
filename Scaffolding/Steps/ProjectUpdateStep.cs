@@ -12,10 +12,10 @@ public class ProjectUpdateStep : IScaffoldStep
 {
     private const string MediatRVersion = "12.1.1";
     private const string FluentValidationVersion = "11.9.0";
-    // EF Core 9 is required to match the dotnet-ef tool installed by the scaffolded project
-    private const string EfCoreVersion = "9.0.0";
+    // Use EF Core 8 to match the dotnet-ef 8.x tool installed by the scaffolded project
+    private const string EfCoreVersion = "8.0.0";
     private const string SqlClientVersion = "5.2.1";
-    private const string OpenApiVersion = "9.0.0";
+    private const string OpenApiVersion = "8.0.0";
     private const string SwaggerVersion = "6.5.0";
 
     public void Execute(SolutionConfig config, string entity)
@@ -252,7 +252,8 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddDbContext<AppDbContext>(o => o.UseSqlServer("Server=.;Database=AppDb;Trusted_Connection=True;"));
+        services.AddDbContext<AppDbContext>(o =>
+            o.UseSqlServer("Server=.;Database=AppDb;Trusted_Connection=True;TrustServerCertificate=True;"));
         return services;
     }
 }
@@ -322,7 +323,7 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
     public AppDbContext CreateDbContext(string[] args)
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseSqlServer("Server=.;Database=AppDb;Trusted_Connection=True;")
+            .UseSqlServer("Server=.;Database=AppDb;Trusted_Connection=True;TrustServerCertificate=True;")
             .Options;
         return new AppDbContext(options);
     }
@@ -477,20 +478,43 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
         if (File.Exists(program))
         {
             var lines = File.ReadAllLines(program).ToList();
-            var start = lines.FindIndex(l => l.Contains("var summaries"));
-            if (start >= 0)
+
+            // remove sample weather forecast data array
+            var summariesStart = lines.FindIndex(l => l.Contains("var summaries"));
+            if (summariesStart >= 0)
             {
-                var end = lines.FindIndex(start, l => l.Contains("GetWeatherForecast"));
-                if (end >= start)
-                    lines.RemoveRange(start, end - start + 1);
+                var summariesEnd = lines.FindIndex(summariesStart, l => l.Contains("};"));
+                if (summariesEnd >= summariesStart)
+                    lines.RemoveRange(summariesStart, summariesEnd - summariesStart + 1);
             }
+
+            // remove sample endpoint
+            var mapStart = lines.FindIndex(l => l.Contains("app.MapGet") && l.Contains("/weatherforecast"));
+            if (mapStart >= 0)
+            {
+                // The sample endpoint chains configuration calls like
+                // .WithName(...).WithOpenApi();. A naive search for the
+                // first line ending with ");" can stop early on lines such
+                // as ".ToArray();", leaving trailing endpoint fragments that
+                // cause compilation errors. Instead, look specifically for
+                // the terminating ".WithOpenApi()" line and fall back to the
+                // previous behaviour only if it is missing.
+                var mapEnd = lines.FindIndex(mapStart, l => l.Contains(".WithOpenApi()"));
+                if (mapEnd < 0)
+                    mapEnd = lines.FindIndex(mapStart, l => l.Trim().EndsWith(");"));
+                if (mapEnd >= mapStart)
+                    lines.RemoveRange(mapStart, mapEnd - mapStart + 1);
+            }
+
+            // remove sample record definition
             var recordIndex = lines.FindIndex(l => l.Contains("record WeatherForecast"));
             if (recordIndex >= 0)
             {
-                var closeIndex = lines.FindIndex(recordIndex, l => l.Trim() == "}");
+                var closeIndex = lines.FindIndex(recordIndex + 1, l => l.Trim() == "}");
                 if (closeIndex >= recordIndex)
                     lines.RemoveRange(recordIndex, closeIndex - recordIndex + 1);
             }
+
             File.WriteAllLines(program, lines);
         }
     }

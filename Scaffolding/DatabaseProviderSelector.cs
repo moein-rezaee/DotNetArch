@@ -6,19 +6,17 @@ public static class DatabaseProviderSelector
 {
     public static string Choose()
     {
-        Console.WriteLine("Select database provider (default SQLite):");
-        Console.WriteLine("1 - SQL Server");
-        Console.WriteLine("2 - SQLite");
-        Console.WriteLine("3 - PostgreSQL");
-        Console.WriteLine("4 - MongoDB");
-        Console.Write("Your choice: ");
-        var choice = Console.ReadLine();
-        return choice switch
+        var option = Program.AskOption(
+            "Select database provider",
+            new[] { "SQL Server", "SQLite", "PostgreSQL", "MongoDB" },
+            1,
+            new[] { 0, 2, 3 });
+        return option switch
         {
-            "1" => "SqlServer",
-            "3" => "Postgres",
-            "4" => "Mongo",
-            _   => "SQLite"
+            "SQL Server"  => "SqlServer",
+            "PostgreSQL"  => "Postgres",
+            "MongoDB"     => "Mongo",
+            _              => "SQLite"
         };
     }
 }
