@@ -491,7 +491,16 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
             var mapStart = lines.FindIndex(l => l.Contains("app.MapGet") && l.Contains("/weatherforecast"));
             if (mapStart >= 0)
             {
-                var mapEnd = lines.FindIndex(mapStart, l => l.Trim().EndsWith(");"));
+                // The sample endpoint chains configuration calls like
+                // .WithName(...).WithOpenApi();. A naive search for the
+                // first line ending with ");" can stop early on lines such
+                // as ".ToArray();", leaving trailing endpoint fragments that
+                // cause compilation errors. Instead, look specifically for
+                // the terminating ".WithOpenApi()" line and fall back to the
+                // previous behaviour only if it is missing.
+                var mapEnd = lines.FindIndex(mapStart, l => l.Contains(".WithOpenApi()"));
+                if (mapEnd < 0)
+                    mapEnd = lines.FindIndex(mapStart, l => l.Trim().EndsWith(");"));
                 if (mapEnd >= mapStart)
                     lines.RemoveRange(mapStart, mapEnd - mapStart + 1);
             }
