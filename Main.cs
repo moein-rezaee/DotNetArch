@@ -401,29 +401,51 @@ class Program
         }
     }
 
-    public static string AskOption(string message, string[] options, int defaultIndex = 0)
+    public static string AskOption(string message, string[] options, int defaultIndex = 0, int[]? disabledIndices = null)
     {
         Logger.Blank();
         Console.WriteLine(message);
+        var disabled = disabledIndices != null ? new HashSet<int>(disabledIndices) : new HashSet<int>();
+
         var index = Math.Clamp(defaultIndex, 0, options.Length - 1);
+        if (disabled.Contains(index))
+            index = Enumerable.Range(0, options.Length).First(i => !disabled.Contains(i));
+
         Console.CursorVisible = false;
         while (true)
         {
             for (int i = 0; i < options.Length; i++)
             {
-                var prefix = i == index ? "➤" : "  ";
+                bool isDisabled = disabled.Contains(i);
+                bool isSelected = i == index;
+                var prefix = isSelected ? "➤" : "  ";
+                if (isDisabled)
+                    Console.ForegroundColor = ConsoleColor.DarkGray;
+                else if (isSelected)
+                    Console.ForegroundColor = ConsoleColor.Cyan;
+
                 Console.WriteLine($"{prefix} {options[i]}");
+                Console.ResetColor();
             }
 
             var key = Console.ReadKey(true).Key;
             if (key == ConsoleKey.UpArrow)
-                index = index == 0 ? options.Length - 1 : index - 1;
+            {
+                do
+                {
+                    index = index == 0 ? options.Length - 1 : index - 1;
+                } while (disabled.Contains(index));
+            }
             else if (key == ConsoleKey.DownArrow)
-                index = index == options.Length - 1 ? 0 : index + 1;
+            {
+                do
+                {
+                    index = index == options.Length - 1 ? 0 : index + 1;
+                } while (disabled.Contains(index));
+            }
             else if (key == ConsoleKey.Enter)
             {
                 Console.CursorVisible = true;
-                // move cursor to end
                 Console.SetCursorPosition(0, Console.CursorTop);
                 return options[index];
             }

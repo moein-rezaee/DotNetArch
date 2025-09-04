@@ -8,7 +8,9 @@ public static class DatabaseProviderSelector
     {
         var option = Program.AskOption(
             "Select database provider",
-            new[] { "SQL Server", "SQLite", "PostgreSQL", "MongoDB" });
+            new[] { "SQL Server", "SQLite", "PostgreSQL", "MongoDB" },
+            1,
+            new[] { 0, 2, 3 });
         return option switch
         {
             "SQL Server"  => "SqlServer",
