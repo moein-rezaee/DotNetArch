@@ -180,14 +180,15 @@ class Program
                     return;
                 }
                 RefreshDockerCompose(solutionPath, config.SolutionName, config.StartupProject, config.ApiPort, env);
-                var image = string.IsNullOrWhiteSpace(config.DockerImage) ? $"{config.SolutionName.ToLower()}.api:latest" : config.DockerImage;
+                var image = string.IsNullOrWhiteSpace(config.DockerImage) ? $"{config.SolutionName.ToLower()}.api" : config.DockerImage;
+                var tag = $"{image}:latest";
                 var container = string.IsNullOrWhiteSpace(config.DockerContainer) ? $"{config.SolutionName.ToLower()}-api" : config.DockerContainer;
-                if (ContainerExists(container) || ImageExists(image))
+                if (ContainerExists(container) || ImageExists(tag))
                 {
                     if (AskYesNo("Existing Docker resources found. Kill and recreate?", true))
                     {
                         if (ContainerExists(container)) RunCommand($"docker rm -f {container}");
-                        if (ImageExists(image)) RunCommand($"docker rmi {image}");
+                        if (ImageExists(tag)) RunCommand($"docker rmi {tag}");
                     }
                     else
                     {
@@ -200,7 +201,7 @@ class Program
                 ConfigManager.Save(solutionPath, config);
                 RunCommand($"ASPNETCORE_ENVIRONMENT={env} docker compose up --build", solutionPath);
                 RunCommand("docker compose down", solutionPath);
-                if (ImageExists(image)) RunCommand($"docker rmi {image}", solutionPath);
+                if (ImageExists(tag)) RunCommand($"docker rmi {tag}", solutionPath);
             }
             else
             {
@@ -515,7 +516,6 @@ class Program
         var nl = Environment.NewLine;
         var content =
             $"# env-hash:{envHash}{nl}" +
-            "version: '3.9'" + nl +
             "services:" + nl +
             "  api:" + nl +
             "    build:" + nl +
