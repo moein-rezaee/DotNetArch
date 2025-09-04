@@ -194,15 +194,16 @@ class Program
                 {
                     if (cleaned || !runCleanup) return;
                     cleaned = true;
-                    Info("Stopping Docker container...");
-                    RunCommand("docker compose down", solutionPath);
-                    Success($"Docker container stopped: {container}");
-                    Success($"Docker container removed: {container}");
+                    Step("Docker Cleanup", "Tearing down containers and images");
+                    var down = RunCommand("docker compose down", solutionPath);
+                    SubStep(down, $"Container stopped: {container}");
+                    SubStep(down, $"Container removed: {container}");
                     if (ImageExists(tag))
                     {
-                        RunCommand($"docker rmi {tag}", solutionPath);
-                        Success($"Docker image removed: {tag}");
+                        var rm = RunCommand($"docker rmi {tag}", solutionPath);
+                        SubStep(rm, $"Image removed: {tag}");
                     }
+                    Logger.Blank();
                 }
 
                 ConsoleCancelEventHandler handler = (_, e) =>
@@ -219,18 +220,18 @@ class Program
                     {
                         if (AskYesNo("Existing Docker resources found. Kill and recreate?", true))
                         {
+                            Step("Docker Cleanup", "Removing existing resources");
                             if (ContainerExists(container))
                             {
-                                Info($"Removing existing container {container}...");
-                                RunCommand($"docker rm -f {container}");
-                                Success($"Docker container removed: {container}");
+                                var rc = RunCommand($"docker rm -f {container}");
+                                SubStep(rc, $"Removed container: {container}");
                             }
                             if (ImageExists(tag))
                             {
-                                Info($"Removing existing image {tag}...");
-                                RunCommand($"docker rmi {tag}");
-                                Success($"Docker image removed: {tag}");
+                                var ri = RunCommand($"docker rmi {tag}");
+                                SubStep(ri, $"Removed image: {tag}");
                             }
+                            Logger.Blank();
                         }
                         else
                         {
@@ -242,23 +243,26 @@ class Program
                     config.DockerContainer = container;
                     ConfigManager.Save(solutionPath, config);
                     runCleanup = true;
-                    Info("Building Docker image...");
-                    if (!RunCommand($"ASPNETCORE_ENVIRONMENT={env} docker compose build", solutionPath))
-                        return;
-                    Success($"Docker image built: {tag}");
-                    Info("Creating Docker container...");
-                    if (!RunCommand($"ASPNETCORE_ENVIRONMENT={env} docker compose create", solutionPath))
-                        return;
-                    Success($"Docker container created: {container}");
-                    Info("Starting Docker container...");
-                    if (!RunCommand($"ASPNETCORE_ENVIRONMENT={env} docker compose start", solutionPath))
-                        return;
-                    Success($"Docker container started: {container}");
-                    var baseUrl = $"http://localhost:{port}";
-                    Success($"Application running at {baseUrl}");
-                    if (env.Equals("development", StringComparison.OrdinalIgnoreCase) ||
-                        env.Equals("test", StringComparison.OrdinalIgnoreCase))
-                        Success($"Swagger UI available at {baseUrl}/swagger/index.html");
+                    Step("Docker Build", $"Building image {tag}");
+                    var buildOk = RunCommand($"ASPNETCORE_ENVIRONMENT={env} docker compose build", solutionPath);
+                    SubStep(buildOk, $"Image built: {tag}");
+                    Logger.Blank();
+
+                    Step("Docker Run", $"Starting container {container}");
+                    var createOk = RunCommand($"ASPNETCORE_ENVIRONMENT={env} docker compose create", solutionPath);
+                    SubStep(createOk, $"Container created: {container}");
+                    var startOk = createOk && RunCommand($"ASPNETCORE_ENVIRONMENT={env} docker compose start", solutionPath);
+                    SubStep(startOk, $"Container started: {container}");
+                    if (startOk)
+                    {
+                        var baseUrl = $"http://localhost:{port}";
+                        SubStep(true, $"Application running at {baseUrl}");
+                        if (env.Equals("development", StringComparison.OrdinalIgnoreCase) ||
+                            env.Equals("test", StringComparison.OrdinalIgnoreCase))
+                            SubStep(true, $"Swagger UI available at {baseUrl}/swagger/index.html");
+                    }
+                    Logger.Blank();
+
                     RunCommand("docker compose logs -f", solutionPath);
                 }
                 finally
@@ -408,23 +412,15 @@ class Program
             : options[defaultIndex];
     }
 
-    public static void Info(string msg)
-    {
-        Console.WriteLine($"ℹ️ {msg}");
-        Console.WriteLine();
-    }
+    public static void Info(string title, string? description = null) => Logger.Info(title, description);
 
-    public static void Success(string msg)
-    {
-        Console.WriteLine($"✅ {msg}");
-        Console.WriteLine();
-    }
+    public static void Success(string title, string? description = null) => Logger.Success(title, description);
 
-    public static void Error(string msg)
-    {
-        Console.WriteLine($"❌ {msg}");
-        Console.WriteLine();
-    }
+    public static void Error(string title, string? description = null) => Logger.Error(title, description);
+
+    public static void Step(string title, string? description = null) => Logger.Section("🔹", title, description);
+
+    public static void SubStep(bool success, string message) => Logger.SubStep(success, message);
 
     static void GenerateSolutionInteractive()
     {
