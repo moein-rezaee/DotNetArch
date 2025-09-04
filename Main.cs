@@ -409,10 +409,10 @@ class Program
             EnsureReadmeTemplate(solutionDir, solutionName);
 
         RunCommand($"dotnet new sln -n {solutionName} --force");
-        RunCommand($"dotnet new classlib -n {solutionName}.Core --force");
-        RunCommand($"dotnet new classlib -n {solutionName}.Application --force");
-        RunCommand($"dotnet new classlib -n {solutionName}.Infrastructure --force");
-        RunCommand($"dotnet new webapi -n {solutionName}.API --force");
+        RunCommand($"dotnet new classlib -n {solutionName}.Core --force --framework net8.0");
+        RunCommand($"dotnet new classlib -n {solutionName}.Application --force --framework net8.0");
+        RunCommand($"dotnet new classlib -n {solutionName}.Infrastructure --force --framework net8.0");
+        RunCommand($"dotnet new webapi -n {solutionName}.API --force --framework net8.0");
         
 
         DeleteDefaultClass($"{solutionName}.Core");
