@@ -144,6 +144,15 @@ class Program
                 return;
             }
 
+            EnsureDotnetGitIgnore(basePath);
+            if (AskYesNo("Initialize git repository?", true))
+            {
+                if (IsGitInstalled())
+                    RunCommand("git init", basePath);
+                else
+                    Error("Git is not installed.");
+            }
+
             // ensure unit of work and repositories exist before syncing project wiring
             foreach (var e in config.Entities.Keys)
                 new UnitOfWorkStep().Execute(config, e);
@@ -543,6 +552,35 @@ class Program
             list.Add(trimmed);
         }
         return list.ToArray();
+    }
+
+    static bool IsGitInstalled() => RunCommand("git --version", print: false);
+
+    static void EnsureDotnetGitIgnore(string basePath)
+    {
+        var gitignorePath = Path.Combine(basePath, ".gitignore");
+        if (!File.Exists(gitignorePath))
+        {
+            var lines = new[]
+            {
+                "# Build Folders",
+                "bin/",
+                "obj/",
+                "publish/",
+                "",
+                "# User-specific files",
+                "*.rsuser",
+                "*.suo",
+                "*.user",
+                "*.userosscache",
+                "*.sln.docstates",
+                "",
+                "# Visual Studio",
+                ".vs/"
+            };
+            File.WriteAllLines(gitignorePath, lines);
+            Success(".gitignore file added.");
+        }
     }
 
     public static bool EnsureEfTool(string? workingDir = null)
