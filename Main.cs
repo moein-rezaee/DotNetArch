@@ -317,8 +317,8 @@ class Program
         {
             string? entity = null;
             string? action = null;
+            string? method = null;
             string? outputPath = null;
-            bool? isCommand = null;
 
             for (int i = 2; i < args.Length; i++)
             {
@@ -326,27 +326,49 @@ class Program
                     entity = args[i].Substring("--entity=".Length);
                 else if (args[i].StartsWith("--action="))
                     action = args[i].Substring("--action=".Length);
-                else if (args[i].StartsWith("--is-command="))
-                    isCommand = bool.Parse(args[i].Substring("--is-command=".Length));
+                else if (args[i].StartsWith("--method="))
+                    method = args[i].Substring("--method=".Length);
                 else if (args[i].StartsWith("--output="))
                     outputPath = args[i].Substring("--output=".Length);
             }
 
             if (string.IsNullOrWhiteSpace(entity))
                 entity = Ask("Enter entity name");
-            if (string.IsNullOrWhiteSpace(action))
-                action = Ask("Enter action name");
-            if (string.IsNullOrWhiteSpace(entity) || string.IsNullOrWhiteSpace(action))
+            if (string.IsNullOrWhiteSpace(method))
+                method = Ask("Enter HTTP method");
+            if (string.IsNullOrWhiteSpace(entity) || string.IsNullOrWhiteSpace(method))
             {
-                Error("Entity and action are required.");
+                Error("Entity and method are required.");
                 return;
+            }
+
+                        var allowedMethods = new[] { "GET", "POST", "PUT", "DELETE", "PATCH" };
+            if (!allowedMethods.Contains(method, StringComparer.OrdinalIgnoreCase))
+            {
+                Error($"Invalid HTTP method. Allowed methods: {string.Join(", ", allowedMethods)}.");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(action))
+                action = Ask("Enter action name (leave empty to infer from method)");
+
+            bool autoAction = string.IsNullOrWhiteSpace(action);
+            if (autoAction)
+            {
+                action = method.ToUpperInvariant() switch
+                {
+                    "GET" => "GetById",
+                    "POST" => "Create",
+                    "PUT" => "Update",
+                    "DELETE" => "Delete",
+                    "PATCH" => "Patch",
+                    _ => "",
+                };
             }
 
             entity = SanitizeIdentifier(entity);
             action = SanitizeIdentifier(action);
 
-            if (isCommand == null)
-                isCommand = AskYesNo("Is command?", true);
             if (string.IsNullOrWhiteSpace(outputPath))
                 outputPath = PathState.Load() ?? Directory.GetCurrentDirectory();
 
@@ -358,7 +380,7 @@ class Program
                 return;
             }
 
-            ActionScaffolder.Generate(config, entity, action, isCommand.Value);
+            ActionScaffolder.Generate(config, entity, action, method.ToUpperInvariant(), autoAction);
             return;
         }
 
