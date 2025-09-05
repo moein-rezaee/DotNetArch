@@ -342,12 +342,15 @@ class Program
                 return;
             }
 
-            var allowedMethods = new[] { "GET", "POST", "PUT", "DELETE", "PATCH" };
+                        var allowedMethods = new[] { "GET", "POST", "PUT", "DELETE", "PATCH" };
             if (!allowedMethods.Contains(method, StringComparer.OrdinalIgnoreCase))
             {
                 Error($"Invalid HTTP method. Allowed methods: {string.Join(", ", allowedMethods)}.");
                 return;
             }
+
+            if (string.IsNullOrWhiteSpace(action))
+                action = Ask("Enter action name (leave empty to infer from method)");
 
             bool autoAction = string.IsNullOrWhiteSpace(action);
             if (autoAction)
@@ -359,14 +362,15 @@ class Program
                     "PUT" => "Update",
                     "DELETE" => "Delete",
                     "PATCH" => "Patch",
-                    _ => ""
+                    _ => "",
                 };
             }
 
             entity = SanitizeIdentifier(entity);
             action = SanitizeIdentifier(action);
 
-            bool isCommand = !method.Equals("GET", StringComparison.OrdinalIgnoreCase);
+            var cq = AskOption("Is this a Command or Query?", new[] { "Command", "Query" });
+            bool isCommand = cq.Equals("Command", StringComparison.OrdinalIgnoreCase);
 
             if (string.IsNullOrWhiteSpace(outputPath))
                 outputPath = PathState.Load() ?? Directory.GetCurrentDirectory();

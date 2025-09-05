@@ -434,8 +434,8 @@ public class {{className}}Validator : AbstractValidator<{{className}}Query>
                     {
                         $"        routes.MapPost(\"/Api/{entity}\", async (IMediator mediator, {entity} entity) =>",
                         "        {",
-                        $"            var created = await mediator.Send(new {className}Command(entity));",
-                        $"            return Results.Created($\"/Api/{entity}/{{created.Id}}\", created);",
+                        $"            await mediator.Send(new {className}Command(entity));",
+                        "            return Results.Ok();",
                         $"        }}).WithTags(\"{entity}\");"
                     };
                     break;
@@ -537,8 +537,10 @@ public class {{className}}Validator : AbstractValidator<{{className}}Query>
                     method = new[]
                     {
                         "    [HttpPost]",
-                        $"    public async Task<{entity}> Create([FromBody] {entity} entity) =>",
+                        $"    public async Task Create([FromBody] {entity} entity)",
+                        "    {",
                         $"        await _mediator.Send(new {className}Command(entity));",
+                        "    }",
                         "",
                     };
                     break;
