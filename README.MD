@@ -56,7 +56,8 @@ This layout exposes all the moving parts up front—application layers, environm
 ## Features
 - **One-command solution scaffolding** with Core, Application, Infrastructure, and API layers—choose **controller** or **fast** minimal APIs.
 - **Git & docs bootstrap**: initializes a repository, adds a `.gitignore`, and drops in a README template.
-- **Docker-friendly**: generates Dockerfile and `docker-compose.yml`; `exec --docker` builds images, starts containers, streams logs, and cleans everything up safely on exit. Use `exec --docker-detach` to keep the container running in the background with the same helpful logging, and `exec --docker-stop` to tear it down later.
+- **Docker-friendly**: generates Dockerfile and `docker-compose.yml`; `exec --docker` builds images, starts containers, streams logs, and cleans everything up safely on exit.
+- **Detached Docker lifecycle**: `exec --docker-detach` runs containers in the background with step-by-step logging, and `exec --docker-stop` safely stops and removes them when you're done.
 - **Environment-specific configuration**: prepopulated `.env` and `appsettings` files for development, test, and production under `API/Config`.
 - **Vertical-slice CRUD generation** using MediatR, FluentValidation, and Unit-of-Work based EF Core repositories with pagination helpers.
 - **Unit-of-Work repositories** are created automatically so your data layer is production-ready from the start.
@@ -115,10 +116,10 @@ dotnet-arch exec --docker
 # builds an image, starts a container, auto-applies migrations, and cleans it up on exit
 
 dotnet-arch exec --docker-detach
-# builds an image, starts a container in the background, and leaves it running
+# builds an image, starts a container in the background, logs setup steps, and leaves it running
 
 dotnet-arch exec --docker-stop
-# stops and removes the detached container and image
+# safely stops and removes the detached container and image
 ```
 Missing options are prompted with sane defaults, keeping the experience smooth for newcomers.
 
@@ -169,7 +170,7 @@ Interfaces and implementations are placed in the appropriate layer and registere
 ```bash
 dotnet-arch exec [--output=Path] [--docker] [--docker-detach] [--docker-stop]
 ```
-Launches the startup project. Detects entity property changes, creates and applies migrations automatically, and then runs the API. With `--docker`, builds the image, starts the container, streams logs, and tears everything down safely on exit. With `--docker-detach`, performs the same setup but leaves the container running in the background without streaming logs or cleaning up. With `--docker-stop`, safely stops and removes the container and image from a detached run.
+Launches the startup project. Detects entity property changes, creates and applies migrations automatically, and then runs the API. With `--docker`, builds the image, starts the container, streams logs, and tears everything down safely on exit. With `--docker-detach`, performs the same setup with step-by-step logging but leaves the container running in the background without streaming logs or cleaning up. With `--docker-stop`, safely stops and removes the container and image from a detached run.
 
 ### remove migration
 ```bash
