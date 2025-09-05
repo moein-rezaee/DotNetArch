@@ -210,17 +210,6 @@ class Program
                 else if (args[i].StartsWith("--output="))
                     outputPath = args[i].Substring("--output=".Length);
             }
-            if (string.IsNullOrWhiteSpace(entity))
-                entity = Ask("Enter entity name");
-            if (string.IsNullOrWhiteSpace(enumName))
-                enumName = Ask("Enter enum name");
-            if (string.IsNullOrWhiteSpace(entity) || string.IsNullOrWhiteSpace(enumName))
-            {
-                Error("Entity and enum names are required.");
-                return;
-            }
-            entity = SanitizeIdentifier(entity);
-            enumName = SanitizeIdentifier(enumName);
             if (string.IsNullOrWhiteSpace(outputPath))
                 outputPath = PathState.Load() ?? Directory.GetCurrentDirectory();
             var basePath = outputPath!;
@@ -230,6 +219,34 @@ class Program
                 Error("Solution configuration not found. Run 'new solution' first.");
                 return;
             }
+
+            while (true)
+            {
+                if (string.IsNullOrWhiteSpace(entity))
+                    entity = Ask("Enter entity name");
+                if (string.IsNullOrWhiteSpace(entity))
+                {
+                    Error("Entity name is required.");
+                    return;
+                }
+                entity = SanitizeIdentifier(entity);
+                if (!EnumScaffolder.EntityExists(config, entity))
+                {
+                    Error($"Entity '{entity}' does not exist.");
+                    entity = null;
+                    continue;
+                }
+                break;
+            }
+
+            if (string.IsNullOrWhiteSpace(enumName))
+                enumName = Ask("Enter enum name");
+            if (string.IsNullOrWhiteSpace(enumName))
+            {
+                Error("Enum name is required.");
+                return;
+            }
+            enumName = SanitizeIdentifier(enumName);
             if (EnumScaffolder.Generate(config, entity, enumName))
                 Success($"Enum {enumName} for {entity} generated.");
             return;

@@ -142,7 +142,7 @@ Creates a domain event for an entity and interactively adds subscribers from oth
 ```bash
 dotnet-arch new enum --entity=EntityName --enum=EnumName [--output=Path]
 ```
-Creates an enum for an existing entity under `Core/Features/<Entity>/Enums`.
+Creates an enum for an existing entity under `Core/Features/<Entity>/Enums`. The command validates the entity exists and re-prompts if not found.
 
 ### new service
 ```bash

@@ -4,6 +4,14 @@ using DotNetArch.Scaffolding;
 
 static class EnumScaffolder
 {
+    public static bool EntityExists(SolutionConfig config, string entity)
+    {
+        var solution = config.SolutionName;
+        var plural = Naming.Pluralize(entity);
+        var featureDir = Path.Combine(config.SolutionPath, $"{solution}.Core", "Features", plural);
+        return Directory.Exists(featureDir);
+    }
+
     public static bool Generate(SolutionConfig config, string entity, string enumName)
     {
         if (string.IsNullOrWhiteSpace(config.SolutionName) ||
@@ -14,16 +22,16 @@ static class EnumScaffolder
             return false;
         }
 
-        var solution = config.SolutionName;
-        var plural = Naming.Pluralize(entity);
-        var coreDir = Path.Combine(config.SolutionPath, $"{solution}.Core");
-        var featureDir = Path.Combine(coreDir, "Features", plural);
-        if (!Directory.Exists(featureDir))
+        if (!EntityExists(config, entity))
         {
             Program.Error($"Entity '{entity}' does not exist.");
             return false;
         }
 
+        var solution = config.SolutionName;
+        var plural = Naming.Pluralize(entity);
+        var coreDir = Path.Combine(config.SolutionPath, $"{solution}.Core");
+        var featureDir = Path.Combine(coreDir, "Features", plural);
         var enumsDir = Path.Combine(featureDir, "Enums");
         Directory.CreateDirectory(enumsDir);
 
