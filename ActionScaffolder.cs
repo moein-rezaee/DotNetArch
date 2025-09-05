@@ -334,6 +334,7 @@ public class {{action}}{{entity}}Validator : AbstractValidator<{{action}}{{entit
             "POST" => "MapPost",
             "PUT" => "MapPut",
             "DELETE" => "MapDelete",
+            "PATCH" => "MapPatch",
             _ => "MapGet"
         };
 
@@ -376,6 +377,7 @@ public class {{action}}{{entity}}Validator : AbstractValidator<{{action}}{{entit
             "POST" => "HttpPost",
             "PUT" => "HttpPut",
             "DELETE" => "HttpDelete",
+            "PATCH" => "HttpPatch",
             _ => "HttpGet"
         };
         var method = isCommand

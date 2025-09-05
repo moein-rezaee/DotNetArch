@@ -347,7 +347,7 @@ class Program
             entity = SanitizeIdentifier(entity);
             action = SanitizeIdentifier(action);
 
-            var allowedMethods = new[] { "GET", "POST", "PUT", "DELETE" };
+            var allowedMethods = new[] { "GET", "POST", "PUT", "DELETE", "PATCH" };
             if (!allowedMethods.Contains(method, StringComparer.OrdinalIgnoreCase))
             {
                 Error($"Invalid HTTP method. Allowed methods: {string.Join(", ", allowedMethods)}.");
