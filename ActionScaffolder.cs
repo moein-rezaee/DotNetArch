@@ -177,6 +177,10 @@ static class ActionScaffolder
 
         var iface = Path.Combine(config.SolutionPath, $"{solution}.Application", "Common", "Interfaces", "Repositories", $"I{entity}Repository.cs");
         Directory.CreateDirectory(Path.GetDirectoryName(iface)!);
+
+        var actionUpper = Upper(action);
+        var cmdUsesEntity = isCommand && !actionUpper.Equals("Delete", StringComparison.OrdinalIgnoreCase);
+
         if (!File.Exists(iface))
         {
             var ifaceTemplate = """
@@ -191,8 +195,10 @@ public interface I{{entity}}Repository
 }
 """;
             var sig = isCommand
-                ? $"Task {Upper(action)}Async({entity} entity);"
-                : $"Task<{entity}?> {Upper(action)}Async(int id);";
+                ? cmdUsesEntity
+                    ? $"Task {actionUpper}Async({entity} entity);"
+                    : $"Task {actionUpper}Async(int id);"
+                : $"Task<{entity}?> {actionUpper}Async(int id);";
             File.WriteAllText(iface, ifaceTemplate
                 .Replace("{{solution}}", solution)
                 .Replace("{{entity}}", entity)
@@ -202,12 +208,14 @@ public interface I{{entity}}Repository
         else
         {
             var lines = File.ReadAllLines(iface).ToList();
-            if (!lines.Any(l => l.Contains($"{Upper(action)}Async")))
+            if (!lines.Any(l => l.Contains($"{actionUpper}Async")))
             {
                 var idx = lines.FindLastIndex(l => l.Trim() == "}");
                 var sig = isCommand
-                    ? $"    Task {Upper(action)}Async({entity} entity);"
-                    : $"    Task<{entity}?> {Upper(action)}Async(int id);";
+                    ? cmdUsesEntity
+                        ? $"    Task {actionUpper}Async({entity} entity);"
+                        : $"    Task {actionUpper}Async(int id);"
+                    : $"    Task<{entity}?> {actionUpper}Async(int id);";
                 lines.Insert(idx, sig);
                 File.WriteAllLines(iface, lines);
             }
@@ -216,11 +224,15 @@ public interface I{{entity}}Repository
         var impl = Path.Combine(config.SolutionPath, $"{solution}.Infrastructure", "Persistence", "Repositories", $"{entity}Repository.cs");
         Directory.CreateDirectory(Path.GetDirectoryName(impl)!);
         var mReturn = isCommand ? "Task" : $"Task<{entity}?>";
-        var param = isCommand ? $"{entity} entity" : "int id";
+        var param = isCommand
+            ? cmdUsesEntity ? $"{entity} entity" : "int id"
+            : "int id";
         if (!File.Exists(impl))
         {
             var body = isCommand
-                ? "        // TODO: implement action\n        await Task.CompletedTask;\n"
+                ? cmdUsesEntity
+                    ? "        // TODO: implement action\n        await Task.CompletedTask;\n"
+                    : $"        // TODO: implement action\n        var entity = await _context.Set<{entity}>().FindAsync(id);\n        if (entity != null) _context.Set<{entity}>().Remove(entity);\n        await Task.CompletedTask;\n"
                 : $"        // TODO: implement action\n        return await _context.Set<{entity}>().FindAsync(id);\n";
             var implTemplate = """
 using System.Threading.Tasks;
@@ -252,25 +264,42 @@ public class {{entity}}Repository : I{{entity}}Repository
         else
         {
             var lines = File.ReadAllLines(impl).ToList();
-            if (!lines.Any(l => l.Contains($"{Upper(action)}Async(")))
+            if (!lines.Any(l => l.Contains($"{actionUpper}Async(")))
             {
-                var insert = isCommand
-                    ? new[]
+                string[] insert;
+                if (isCommand)
+                {
+                    insert = cmdUsesEntity
+                        ? new[]
+                        {
+                            $"    public async Task {actionUpper}Async({entity} entity)",
+                            "    {",
+                            "        // TODO: implement action",
+                            "        await Task.CompletedTask;",
+                            "    }",
+                        }
+                        : new[]
+                        {
+                            $"    public async Task {actionUpper}Async(int id)",
+                            "    {",
+                            $"        // TODO: implement action",
+                            $"        var entity = await _context.Set<{entity}>().FindAsync(id);",
+                            $"        if (entity != null) _context.Set<{entity}>().Remove(entity);",
+                            "        await Task.CompletedTask;",
+                            "    }",
+                        };
+                }
+                else
+                {
+                    insert = new[]
                     {
-                        $"    public async Task {Upper(action)}Async({entity} entity)",
-                        "    {",
-                        "        // TODO: implement action",
-                        "        await Task.CompletedTask;",
-                        "    }",
-                    }
-                    : new[]
-                    {
-                        $"    public async Task<{entity}?> {Upper(action)}Async(int id)",
+                        $"    public async Task<{entity}?> {actionUpper}Async(int id)",
                         "    {",
                         "        // TODO: implement action",
                         $"        return await _context.Set<{entity}>().FindAsync(id);",
                         "    }",
                     };
+                }
                 var idx = lines.FindLastIndex(l => l.Trim() == "}");
                 lines.InsertRange(idx, insert);
                 File.WriteAllLines(impl, lines);
@@ -294,7 +323,51 @@ public class {{entity}}Repository : I{{entity}}Repository
                                   .Replace("{{className}}", className);
         if (isCommand)
         {
-            File.WriteAllText(Path.Combine(dir, $"{className}Command.cs"), Fill("""
+            if (crudStyle && actionName == "Delete")
+            {
+                File.WriteAllText(Path.Combine(dir, $"{className}Command.cs"), Fill("""
+using MediatR;
+
+namespace {{solution}}.Application.Features.{{entities}}.Commands.{{action}};
+
+public record {{className}}Command(int Id) : IRequest;
+"""));
+                File.WriteAllText(Path.Combine(dir, $"{className}Handler.cs"), Fill("""
+using MediatR;
+using System.Threading;
+using System.Threading.Tasks;
+using {{solution}}.Application.Common.Interfaces;
+
+namespace {{solution}}.Application.Features.{{entities}}.Commands.{{action}};
+
+public class {{className}}Handler : IRequestHandler<{{className}}Command>
+{
+    private readonly IUnitOfWork _uow;
+    public {{className}}Handler(IUnitOfWork uow) => _uow = uow;
+    public async Task Handle({{className}}Command request, CancellationToken ct)
+    {
+        await _uow.{{entity}}Repository.{{action}}Async(request.Id);
+        await _uow.SaveChangesAsync();
+    }
+}
+"""));
+                File.WriteAllText(Path.Combine(dir, $"{className}Validator.cs"), Fill("""
+using FluentValidation;
+
+namespace {{solution}}.Application.Features.{{entities}}.Commands.{{action}};
+
+public class {{className}}Validator : AbstractValidator<{{className}}Command>
+{
+    public {{className}}Validator()
+    {
+        RuleFor(x => x.Id).GreaterThan(0);
+    }
+}
+"""));
+            }
+            else
+            {
+                File.WriteAllText(Path.Combine(dir, $"{className}Command.cs"), Fill("""
 using MediatR;
 using {{solution}}.Core.Features.{{entities}}.Entities;
 
@@ -302,7 +375,7 @@ namespace {{solution}}.Application.Features.{{entities}}.Commands.{{action}};
 
 public record {{className}}Command({{entity}} Entity) : IRequest;
 """));
-            File.WriteAllText(Path.Combine(dir, $"{className}Handler.cs"), Fill("""
+                File.WriteAllText(Path.Combine(dir, $"{className}Handler.cs"), Fill("""
 using MediatR;
 using System.Threading;
 using System.Threading.Tasks;
@@ -322,7 +395,7 @@ public class {{className}}Handler : IRequestHandler<{{className}}Command>
     }
 }
 """));
-            File.WriteAllText(Path.Combine(dir, $"{className}Validator.cs"), Fill("""
+                File.WriteAllText(Path.Combine(dir, $"{className}Validator.cs"), Fill("""
 using FluentValidation;
 
 namespace {{solution}}.Application.Features.{{entities}}.Commands.{{action}};
@@ -335,6 +408,7 @@ public class {{className}}Validator : AbstractValidator<{{className}}Command>
     }
 }
 """));
+            }
         }
         else
         {
