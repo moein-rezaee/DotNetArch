@@ -7,7 +7,7 @@ using DotNetArch.Scaffolding.Steps;
 
 static class ActionScaffolder
 {
-    public static void Generate(SolutionConfig config, string entity, string action, bool isCommand)
+    public static void Generate(SolutionConfig config, string entity, string action, bool isCommand, string httpMethod)
     {
         if (string.IsNullOrWhiteSpace(config.SolutionName) || string.IsNullOrWhiteSpace(entity) || string.IsNullOrWhiteSpace(action))
         {
@@ -43,9 +43,9 @@ static class ActionScaffolder
         AddRepositoryMethod(config, entity, action, isCommand);
         AddApplicationFiles(config, entity, action, isCommand);
         if (config.ApiStyle.Equals("fast", StringComparison.OrdinalIgnoreCase))
-            AddEndpointMethod(config, entity, action, isCommand);
+            AddEndpointMethod(config, entity, action, isCommand, httpMethod);
         else
-            AddControllerMethod(config, entity, action, isCommand);
+            AddControllerMethod(config, entity, action, isCommand, httpMethod);
 
         // ensure newly added files still have required DI registration
         new UnitOfWorkStep().Execute(config, entity);
@@ -293,7 +293,7 @@ public class {{action}}{{entity}}Validator : AbstractValidator<{{action}}{{entit
         }
     }
 
-    static void AddEndpointMethod(SolutionConfig config, string entity, string action, bool isCommand)
+    static void AddEndpointMethod(SolutionConfig config, string entity, string action, bool isCommand, string httpMethod)
     {
         var solution = config.SolutionName;
         var startupProject = config.StartupProject;
@@ -328,43 +328,60 @@ public class {{action}}{{entity}}Validator : AbstractValidator<{{action}}{{entit
         var classClose = lines.FindLastIndex(l => l.Trim() == "}");
         var methodClose = lines.FindLastIndex(classClose - 1, l => l.Trim() == "}");
         var insertIndex = methodClose < 0 ? classClose : methodClose;
+        var mapCall = httpMethod.ToUpper() switch
+        {
+            "GET" => "MapGet",
+            "POST" => "MapPost",
+            "PUT" => "MapPut",
+            "DELETE" => "MapDelete",
+            _ => "MapGet"
+        };
+
         if (isCommand)
         {
-            var method = new[]
+            var methodLines = new[]
             {
-                $"        routes.MapPost(\"/Api/{entity}/{Upper(action)}\", async (IMediator mediator, {entity} entity) =>",
+                $"        routes.{mapCall}(\"/Api/{entity}/{Upper(action)}\", async (IMediator mediator, {entity} entity) =>",
                 "        {",
                 $"            await mediator.Send(new {Upper(action)}{entity}Command(entity));",
                 "            return Results.Ok();",
                 $"        }}).WithTags(\"{entity}\");",
             };
-            lines.InsertRange(insertIndex, method);
+            lines.InsertRange(insertIndex, methodLines);
         }
         else
         {
-            var method = new[]
+            var methodLines = new[]
             {
-                $"        routes.MapGet(\"/Api/{entity}/{Upper(action)}/{{id}}\", async (IMediator mediator, int id) =>",
+                $"        routes.{mapCall}(\"/Api/{entity}/{Upper(action)}/{{id}}\", async (IMediator mediator, int id) =>",
                 $"            await mediator.Send(new {Upper(action)}{entity}Query(id)) is {entity} result ? Results.Ok(result) : Results.NotFound())",
                 $"            .WithTags(\"{entity}\");",
             };
-            lines.InsertRange(insertIndex, method);
+            lines.InsertRange(insertIndex, methodLines);
         }
 
         File.WriteAllLines(file, lines);
     }
 
-    static void AddControllerMethod(SolutionConfig config, string entity, string action, bool isCommand)
+    static void AddControllerMethod(SolutionConfig config, string entity, string action, bool isCommand, string httpMethod)
     {
         var solution = config.SolutionName;
         var plural = Naming.Pluralize(entity);
         var apiDir = Path.Combine(config.SolutionPath, config.StartupProject, "Features", plural);
         Directory.CreateDirectory(apiDir);
         var file = Path.Combine(apiDir, $"{entity}Controller.cs");
+        var httpAttr = httpMethod.ToUpper() switch
+        {
+            "GET" => "HttpGet",
+            "POST" => "HttpPost",
+            "PUT" => "HttpPut",
+            "DELETE" => "HttpDelete",
+            _ => "HttpGet"
+        };
         var method = isCommand
             ? new[]
             {
-                $"    [HttpPost(\"{Upper(action)}\")]",
+                $"    [{httpAttr}(\"{Upper(action)}\")]",
                 $"    public async Task<IActionResult> {Upper(action)}([FromBody] {entity} entity)",
                 "    {",
                 $"        await _mediator.Send(new {Upper(action)}{entity}Command(entity));",
@@ -374,7 +391,7 @@ public class {{action}}{{entity}}Validator : AbstractValidator<{{action}}{{entit
             }
             : new[]
             {
-                $"    [HttpGet(\"{Upper(action)}/{{id}}\")]",
+                $"    [{httpAttr}(\"{Upper(action)}/{{id}}\")]",
                 $"    public async Task<{entity}?> {Upper(action)}(int id)",
                 "        => await _mediator.Send(new " + Upper(action) + entity + "Query(id));",
                 ""
