@@ -36,21 +36,34 @@ MyApp/
 │   ├── MyApp.Application/
 │   ├── MyApp.Infrastructure/
 │   └── MyApp.API/
-└── tests/
-    └── MyApp.IntegrationTests/
+├── tests/
+│   └── MyApp.IntegrationTests/
+├── config/
+│   ├── env/
+│   │   ├── .env.development
+│   │   ├── .env.test
+│   │   └── .env.production
+│   └── settings/
+│       ├── appsettings.development.json
+│       ├── appsettings.test.json
+│       └── appsettings.production.json
+├── Dockerfile
+├── docker-compose.yml
+├── dotnet-arch.yml
+└── README.md
 ```
-This tree keeps boundaries clear and highlights where each layer lives from the very start.
+This layout exposes all the moving parts up front—source and test projects, environment configs, and Docker assets.
 
 ## Features
 - **One-command solution scaffolding** with Core, Application, Infrastructure, and API layers—choose **controller** or **fast** minimal APIs.
 - **Git & docs bootstrap**: initializes a repository, adds a `.gitignore`, and drops in a README template.
 - **Docker-ready**: generates Dockerfile and `docker-compose.yml`; `exec --docker` builds images, runs containers, streams logs, and tears everything down safely.
+- **Environment-specific configuration**: prepopulated `.env` and `appsettings` files for development, test, and production.
 - **Vertical-slice CRUD generation** using MediatR, FluentValidation, and Unit-of-Work based EF Core repositories with pagination helpers.
 - **Unit-of-Work repositories** are created automatically so your data layer is production-ready from the start.
 - **Custom action scaffolding** for additional commands or queries without breaking existing slices.
 - **Event scaffolding** to create domain events and wire subscribers across features.
-- **Service scaffolder** for custom services, Redis caches, RabbitMQ message brokers, or HTTP clients complete with environment configuration.
-- **HttpRequest service wrapper** centralizes outbound API calls with resilient typed clients and automatic DI registration.
+- **Service scaffolder** for custom services, Redis caches, RabbitMQ message brokers, or outbound HTTP clients with resilient typed wrappers and automatic DI registration.
 - **Database provider selection** (SQL Server, SQLite, PostgreSQL, or MongoDB) stored for reuse across commands.
 - **Idempotent updates**: running commands again augments existing files instead of duplicating them.
 - **Automatic NuGet package and service registration**, including Swagger and startup configuration.
@@ -81,6 +94,7 @@ Generate a new solution, scaffold an entity, and run the API:
 dotnet-arch new solution MyApp
 cd MyApp
 # optional: choose API style, startup project, and database provider interactively
+# env and appsettings for dev/test/prod are under ./config
 
 dotnet-arch new crud --entity Product
 # creates controllers/endpoints, unit-of-work repository, handlers, validators, and migrations
@@ -101,7 +115,7 @@ Missing options are prompted with sane defaults, keeping the experience smooth f
 ```bash
 dotnet-arch new solution <SolutionName> [--output=Path] [--startup=ProjectName] [--style=controller|fast]
 ```
-Creates a clean, feature-based solution. Initializes Git, writes a README template, optionally adds Docker assets, and records choices in `dotnet-arch.yml` for later commands.
+Creates a clean, feature-based solution. Initializes Git, writes a README template, scaffolds `.env` and `appsettings` files for development, test, and production, optionally adds Docker assets, and records choices in `dotnet-arch.yml` for later commands.
 
 ### new crud
 ```bash
