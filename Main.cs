@@ -331,12 +331,24 @@ class Program
         {
             string? outputPath = null;
             bool useDocker = false;
+            bool detach = false;
+            bool dockerStop = false;
             for (int i = 1; i < args.Length; i++)
             {
                 if (args[i].StartsWith("--output="))
                     outputPath = args[i].Substring("--output=".Length);
                 else if (args[i] == "--docker")
                     useDocker = true;
+                else if (args[i] == "--docker-detach")
+                {
+                    useDocker = true;
+                    detach = true;
+                }
+                else if (args[i] == "--docker-stop")
+                {
+                    useDocker = true;
+                    dockerStop = true;
+                }
             }
 
             if (string.IsNullOrWhiteSpace(outputPath))
@@ -351,6 +363,25 @@ class Program
             }
 
             var solutionPath = config.SolutionPath;
+
+            if (dockerStop)
+            {
+                var image = string.IsNullOrWhiteSpace(config.DockerImage) ? $"{config.SolutionName.ToLower()}.api" : config.DockerImage;
+                var tag = $"{image}:0.0.0";
+                var container = string.IsNullOrWhiteSpace(config.DockerContainer) ? $"{config.SolutionName.ToLower()}-api" : config.DockerContainer;
+
+                Step("Docker Cleanup", "Tearing down containers and images");
+                var down = RunCommand("docker compose down", solutionPath);
+                SubStep(down, $"Container stopped: {container}");
+                SubStep(down, $"Container removed: {container}");
+                if (ImageExists(tag))
+                {
+                    var rm = RunCommand($"docker rmi {tag}", solutionPath);
+                    SubStep(rm, $"Image removed: {tag}");
+                }
+                Logger.Blank();
+                return;
+            }
 
             // ensure unit of work and repositories exist before syncing project wiring
             foreach (var e in config.Entities.Keys)
@@ -398,13 +429,17 @@ class Program
                     Logger.Blank();
                 }
 
-                ConsoleCancelEventHandler handler = (_, e) =>
+                ConsoleCancelEventHandler? handler = null;
+                if (!detach)
                 {
-                    e.Cancel = true;
-                    _cancelRequested = true;
-                    try { _currentProcess?.Kill(true); } catch { }
-                };
-                Console.CancelKeyPress += handler;
+                    handler = (_, e) =>
+                    {
+                        e.Cancel = true;
+                        _cancelRequested = true;
+                        try { _currentProcess?.Kill(true); } catch { }
+                    };
+                    Console.CancelKeyPress += handler;
+                }
                 try
                 {
                     if (ContainerExists(container) || ImageExists(tag))
@@ -433,7 +468,7 @@ class Program
                     config.DockerImage = image;
                     config.DockerContainer = container;
                     ConfigManager.Save(solutionPath, config);
-                    runCleanup = true;
+                    runCleanup = !detach;
                     Step("Docker Build", $"Building image {tag}");
                     var buildOk = RunCommand($"ASPNETCORE_ENVIRONMENT={env} docker compose build", solutionPath);
                     SubStep(buildOk, $"Image built: {tag}");
@@ -454,13 +489,18 @@ class Program
                     }
                     Logger.Blank();
 
-                    RunCommand("docker compose logs -f", solutionPath);
+                    if (!detach)
+                        RunCommand("docker compose logs -f", solutionPath);
                 }
                 finally
                 {
-                    Cleanup();
-                    Console.CancelKeyPress -= handler;
-                    _cancelRequested = false;
+                    if (!detach)
+                    {
+                        Cleanup();
+                        if (handler != null)
+                            Console.CancelKeyPress -= handler;
+                        _cancelRequested = false;
+                    }
                 }
             }
             else
