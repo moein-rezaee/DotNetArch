@@ -334,18 +334,13 @@ class Program
 
             if (string.IsNullOrWhiteSpace(entity))
                 entity = Ask("Enter entity name");
-            if (string.IsNullOrWhiteSpace(action))
-                action = Ask("Enter action name");
             if (string.IsNullOrWhiteSpace(method))
                 method = Ask("Enter HTTP method");
-            if (string.IsNullOrWhiteSpace(entity) || string.IsNullOrWhiteSpace(action) || string.IsNullOrWhiteSpace(method))
+            if (string.IsNullOrWhiteSpace(entity) || string.IsNullOrWhiteSpace(method))
             {
-                Error("Entity, action and method are required.");
+                Error("Entity and method are required.");
                 return;
             }
-
-            entity = SanitizeIdentifier(entity);
-            action = SanitizeIdentifier(action);
 
             var allowedMethods = new[] { "GET", "POST", "PUT", "DELETE", "PATCH" };
             if (!allowedMethods.Contains(method, StringComparer.OrdinalIgnoreCase))
@@ -353,6 +348,23 @@ class Program
                 Error($"Invalid HTTP method. Allowed methods: {string.Join(", ", allowedMethods)}.");
                 return;
             }
+
+            bool autoAction = string.IsNullOrWhiteSpace(action);
+            if (autoAction)
+            {
+                action = method.ToUpperInvariant() switch
+                {
+                    "GET" => "GetById",
+                    "POST" => "Create",
+                    "PUT" => "Update",
+                    "DELETE" => "Delete",
+                    "PATCH" => "Patch",
+                    _ => ""
+                };
+            }
+
+            entity = SanitizeIdentifier(entity);
+            action = SanitizeIdentifier(action);
 
             bool isCommand = !method.Equals("GET", StringComparison.OrdinalIgnoreCase);
 
@@ -367,7 +379,7 @@ class Program
                 return;
             }
 
-            ActionScaffolder.Generate(config, entity, action, isCommand, method.ToUpperInvariant());
+            ActionScaffolder.Generate(config, entity, action, isCommand, method.ToUpperInvariant(), autoAction);
             return;
         }
 

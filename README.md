@@ -145,9 +145,9 @@ Generates a full vertical slice for an entity with CQRS handlers, validators, Un
 
 ### new action
 ```bash
-dotnet-arch new action --entity=EntityName --action=ActionName [--is-command=false] [--output=Path]
+dotnet-arch new action --entity=EntityName [--action=ActionName] --method=METHOD [--output=Path]
 ```
-Adds a custom command or query to an existing slice. If the slice is missing, a minimal repository and controller are created.
+Adds a custom command or query to an existing slice. If `--action` is omitted, a CRUD-style action name is inferred from the HTTP method. If the slice is missing, a minimal repository and controller are created.
 
 ### new event
 ```bash
