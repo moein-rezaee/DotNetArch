@@ -47,9 +47,13 @@ static class EventScaffolder
         Directory.CreateDirectory(eventsDir);
         var eventClass = $"{entity}{eventName}Event";
         var file = Path.Combine(eventsDir, eventClass + ".cs");
-        if (!File.Exists(file))
+        if (File.Exists(file))
         {
-            var content = $@"using MediatR;
+            Program.Error($"Event '{eventName}' already exists for entity '{entity}'.");
+            return false;
+        }
+
+        var content = $@"using MediatR;
 using {solution}.Core.Features.{plural}.Entities;
 
 namespace {solution}.Application.Features.{plural}.Events;
@@ -59,8 +63,7 @@ public class {eventClass} : INotification
     public {entity} {entity} {{ get; }}
     public {eventClass}({entity} {LowerFirst(entity)}) => {entity} = {LowerFirst(entity)};
 }}";
-            File.WriteAllText(file, content);
-        }
+        File.WriteAllText(file, content);
         return true;
     }
 
@@ -70,13 +73,32 @@ public class {eventClass} : INotification
         var subscriberPlural = Naming.Pluralize(subscriberEntity);
         var subFeatureDir = Path.Combine(config.SolutionPath, $"{solution}.Application", "Features", subscriberPlural);
         if (!Directory.Exists(subFeatureDir))
+        {
+            Program.Error($"Subscriber entity '{subscriberEntity}' does not exist.");
             return false;
+        }
+
         var handlersDir = Path.Combine(subFeatureDir, "EventHandlers");
         Directory.CreateDirectory(handlersDir);
         eventName = Upper(eventName);
         var handlerClass = $"{eventEntity}{eventName}EventHandler";
         var file = Path.Combine(handlersDir, handlerClass + ".cs");
+
         var eventPlural = Naming.Pluralize(eventEntity);
+        var eventsDir = Path.Combine(config.SolutionPath, $"{solution}.Application", "Features", eventPlural, "Events");
+        var eventFile = Path.Combine(eventsDir, $"{eventEntity}{eventName}Event.cs");
+        if (!File.Exists(eventFile))
+        {
+            Program.Error($"Event '{eventName}' for entity '{eventEntity}' does not exist.");
+            return false;
+        }
+
+        if (File.Exists(file))
+        {
+            Program.Error($"Subscriber '{subscriberEntity}' already exists for {eventEntity}{eventName}Event.");
+            return false;
+        }
+
         var content = $@"using System.Threading;
 using System.Threading.Tasks;
 using MediatR;

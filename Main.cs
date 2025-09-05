@@ -128,8 +128,6 @@ class Program
                         eventName = SanitizeIdentifier(eventName);
                         if (!EventScaffolder.GenerateEvent(config, entity, eventName))
                         {
-                            Error($"Entity '{entity}' does not exist.");
-                            entity = null;
                             eventName = null;
                             continue;
                         }
@@ -155,8 +153,6 @@ class Program
                     eventName = SanitizeIdentifier(eventName);
                     if (!EventScaffolder.GenerateEvent(config, entity, eventName))
                     {
-                        Error($"Entity '{entity}' does not exist.");
-                        entity = null;
                         eventName = null;
                         continue;
                     }
@@ -176,10 +172,8 @@ class Program
                         var sub = Ask("Enter subscriber entity");
                         sub = SanitizeIdentifier(sub);
                         if (!EventScaffolder.AddSubscriber(config, entity, currentEvent!, sub))
-                        {
-                            Error("Subscriber entity not found.");
                             continue;
-                        }
+        
                         Success($"Subscriber {sub} added.");
                     }
                     else if (choice == "Add subscriber for other events")
