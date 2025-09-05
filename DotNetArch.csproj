@@ -4,12 +4,12 @@
     <OutputType>Exe</OutputType>
     <PackAsTool>true</PackAsTool> <!-- Convert To Global Tool -->
     <ToolCommandName>dotnet-arch</ToolCommandName> <!-- For Execute CLI -->
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <Authors>Moein Rezaee</Authors>
     <Description>A CLI tool for creating Clean Architecture solutions.</Description>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageId>DotNetArch</PackageId>
-    <Version>1.0.1</Version>
+    <Version>1.1.0</Version>
     <PackageTags>dotnet;cli;clean-architecture;scaffold;dotnetarch</PackageTags> 
     <RepositoryUrl>https://github.com/moein-rezaee/DotNetArch.git</RepositoryUrl> 
     <PackageIcon>assets/icon.png</PackageIcon>
