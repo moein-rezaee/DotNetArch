@@ -254,6 +254,65 @@ class Program
             return;
         }
 
+        if (args.Length >= 2 && args[0].ToLower() == "new" && args[1].ToLower() == "constant")
+        {
+            string? entity = null;
+            string? constantName = null;
+            string? outputPath = null;
+            for (int i = 2; i < args.Length; i++)
+            {
+                if (args[i].StartsWith("--entity="))
+                    entity = args[i].Substring("--entity=".Length);
+                else if (args[i].StartsWith("--constant="))
+                    constantName = args[i].Substring("--constant=".Length);
+                else if (args[i].StartsWith("--output="))
+                    outputPath = args[i].Substring("--output=".Length);
+            }
+
+            if (string.IsNullOrWhiteSpace(outputPath))
+                outputPath = PathState.Load() ?? Directory.GetCurrentDirectory();
+            var basePath = outputPath!;
+            var config = ConfigManager.Load(basePath);
+            if (config == null)
+            {
+                Error("Solution configuration not found. Run 'new solution' first.");
+                return;
+            }
+
+            while (true)
+            {
+                if (string.IsNullOrWhiteSpace(entity))
+                    entity = Ask("Enter entity name (leave blank for common)");
+                if (string.IsNullOrWhiteSpace(entity))
+                    break;
+                entity = SanitizeIdentifier(entity);
+                if (!ConstantScaffolder.EntityExists(config, entity))
+                {
+                    Error($"Entity '{entity}' does not exist.");
+                    entity = null;
+                    continue;
+                }
+                break;
+            }
+
+            if (string.IsNullOrWhiteSpace(constantName))
+                constantName = Ask("Enter constant name");
+            if (string.IsNullOrWhiteSpace(constantName))
+            {
+                Error("Constant name is required.");
+                return;
+            }
+            constantName = SanitizeIdentifier(constantName);
+            if (ConstantScaffolder.Generate(config, entity, constantName))
+            {
+                var msg = string.IsNullOrWhiteSpace(entity)
+                    ? $"Constant {constantName} generated under Common."
+                    : $"Constant {constantName} for {entity} generated.";
+                Success(msg);
+            }
+            return;
+        }
+
         if (args.Length >= 2 && args[0].ToLower() == "new" && args[1].ToLower() == "action")
         {
             string? entity = null;

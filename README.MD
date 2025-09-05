@@ -19,6 +19,7 @@ A cross-platform .NET global tool that bootstraps opinionated Clean Architecture
   - [new action](#new-action)
   - [new event](#new-event)
   - [new enum](#new-enum)
+  - [new constant](#new-constant)
   - [new service](#new-service)
   - [exec](#exec)
   - [remove migration](#remove-migration)
@@ -109,6 +110,12 @@ dotnet-arch new enum --entity Product --enum Status
 dotnet-arch new enum --enum Priority
 # creates Priority enum under Core/Common/Enums
 
+dotnet-arch new constant --entity Product --constant Fields
+# creates Fields class under Core/Features/Products/Constants
+
+dotnet-arch new constant --constant AppSettings
+# creates AppSettings class under Core/Common/Constants
+
 dotnet-arch new service
 # choose "HttpRequest" to generate a typed HTTP client wrapper
 
@@ -153,6 +160,12 @@ Creates a domain event for an entity and interactively adds subscribers from oth
 dotnet-arch new enum [--entity=EntityName] --enum=EnumName [--output=Path]
 ```
 Creates an enum for an existing entity under `Core/Features/<Entity>/Enums`. If no entity is supplied, the enum is placed in `Core/Common/Enums`.
+
+### new constant
+```bash
+dotnet-arch new constant [--entity=EntityName] --constant=ConstantName [--output=Path]
+```
+Creates a constants class for an existing entity under `Core/Features/<Entity>/Constants`. If no entity is supplied, the class is placed in `Core/Common/Constants`.
 
 ### new service
 ```bash
