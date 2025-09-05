@@ -28,10 +28,13 @@ A cross-platform .NET global tool that bootstraps opinionated Clean Architecture
 DotNetArch removes the friction of setting up a well-structured .NET application. The tool generates a fully wired solution with clearly separated layers, ready-made infrastructure, and sensible defaults so you can focus on your domain from day one.
 
 ## Features
-- **One-command solution scaffolding** with Core, Application, Infrastructure, and API layers.
+- **One-command solution scaffolding** with Core, Application, Infrastructure, and API layers—choose **controller** or **fast** minimal APIs.
+- **Git & docs bootstrap**: initializes a repository, adds a `.gitignore`, and drops in a README template.
+- **Docker-ready**: generates Dockerfile and `docker-compose.yml`; `exec --docker` builds images, runs containers, streams logs, and tears everything down safely.
 - **Vertical-slice CRUD generation** using MediatR, FluentValidation, EF Core repositories, and pagination helpers.
 - **Custom action scaffolding** for additional commands or queries without breaking existing slices.
-- **Service scaffolder** for custom services, Redis caches, or RabbitMQ message brokers complete with environment configuration.
+- **Event scaffolding** to create domain events and wire subscribers across features.
+- **Service scaffolder** for custom services, Redis caches, RabbitMQ message brokers, or HTTP clients complete with environment configuration.
 - **Database provider selection** (SQL Server, SQLite, PostgreSQL, or MongoDB) stored for reuse across commands.
 - **Idempotent updates**: running commands again augments existing files instead of duplicating them.
 - **Automatic NuGet package and service registration**, including Swagger and startup configuration.
@@ -66,8 +69,11 @@ cd MyApp
 dotnet-arch new crud --entity Product
 # creates controllers/endpoints, repositories, handlers, validators, and migrations
 
-dotnet-arch exec
-# checks migrations and launches the configured startup project
+dotnet-arch new event --entity Product --event Created
+# scaffolds ProductCreatedEvent and lets you add subscribers
+
+dotnet-arch exec --docker
+# builds an image, starts a container, and cleans it up on exit
 ```
 Missing options are prompted with sane defaults, keeping the experience smooth for newcomers.
 
@@ -76,7 +82,7 @@ Missing options are prompted with sane defaults, keeping the experience smooth f
 ```bash
 dotnet-arch new solution <SolutionName> [--output=Path] [--startup=ProjectName] [--style=controller|fast]
 ```
-Creates a clean, feature-based solution. The tool records choices in `dotnet-arch.yml` for later commands.
+Creates a clean, feature-based solution. Initializes Git, writes a README template, optionally adds Docker assets, and records choices in `dotnet-arch.yml` for later commands.
 
 ### new crud
 ```bash
@@ -89,6 +95,12 @@ Generates a full vertical slice for an entity with CQRS handlers, validators, re
 dotnet-arch new action --entity=EntityName --action=ActionName [--is-command=false] [--output=Path]
 ```
 Adds a custom command or query to an existing slice. If the slice is missing, a minimal repository and controller are created.
+
+### new event
+```bash
+dotnet-arch new event --entity=EntityName [--event=EventName] [--output=Path]
+```
+Creates a domain event for an entity and interactively adds subscribers from other slices.
 
 ### new service
 ```bash
@@ -103,9 +115,9 @@ Interfaces and implementations are placed in the appropriate layer and registere
 
 ### exec
 ```bash
-dotnet-arch exec [--output=Path]
+dotnet-arch exec [--output=Path] [--docker]
 ```
-Launches the startup project. Optionally checks for model changes, creates missing migrations, applies pending ones, and then runs the API.
+Launches the startup project. Checks for model changes, creates missing migrations, applies pending ones, and then runs the API. With `--docker`, builds the image, starts the container, streams logs, and tears everything down safely on exit.
 
 ### remove migration
 ```bash
