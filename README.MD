@@ -9,6 +9,7 @@ A cross-platform .NET global tool that bootstraps opinionated Clean Architecture
 ## Table of Contents
 - [Introduction](#introduction)
 - [Features](#features)
+- [Solution Structure](#solution-structure)
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
@@ -27,18 +28,33 @@ A cross-platform .NET global tool that bootstraps opinionated Clean Architecture
 ## Introduction
 DotNetArch removes the friction of setting up a well-structured .NET application. The tool generates a fully wired solution with clearly separated layers, ready-made infrastructure, and sensible defaults so you can focus on your domain from day one.
 
+## Solution Structure
+```text
+MyApp/
+├── src/
+│   ├── MyApp.Core/
+│   ├── MyApp.Application/
+│   ├── MyApp.Infrastructure/
+│   └── MyApp.API/
+└── tests/
+    └── MyApp.IntegrationTests/
+```
+This tree keeps boundaries clear and highlights where each layer lives from the very start.
+
 ## Features
 - **One-command solution scaffolding** with Core, Application, Infrastructure, and API layers—choose **controller** or **fast** minimal APIs.
 - **Git & docs bootstrap**: initializes a repository, adds a `.gitignore`, and drops in a README template.
 - **Docker-ready**: generates Dockerfile and `docker-compose.yml`; `exec --docker` builds images, runs containers, streams logs, and tears everything down safely.
-- **Vertical-slice CRUD generation** using MediatR, FluentValidation, EF Core repositories, and pagination helpers.
+- **Vertical-slice CRUD generation** using MediatR, FluentValidation, and Unit-of-Work based EF Core repositories with pagination helpers.
+- **Unit-of-Work repositories** are created automatically so your data layer is production-ready from the start.
 - **Custom action scaffolding** for additional commands or queries without breaking existing slices.
 - **Event scaffolding** to create domain events and wire subscribers across features.
 - **Service scaffolder** for custom services, Redis caches, RabbitMQ message brokers, or HTTP clients complete with environment configuration.
+- **HttpRequest service wrapper** centralizes outbound API calls with resilient typed clients and automatic DI registration.
 - **Database provider selection** (SQL Server, SQLite, PostgreSQL, or MongoDB) stored for reuse across commands.
 - **Idempotent updates**: running commands again augments existing files instead of duplicating them.
 - **Automatic NuGet package and service registration**, including Swagger and startup configuration.
-- **Exec and migration helpers** to run the application or roll back EF Core migrations.
+- **Exec command auto-migrates**: detects property changes, creates missing migrations, applies them, and then runs the API or Docker container.
 - **Cross-platform** and tested on Windows, macOS, and Linux.
 
 ## Requirements
@@ -67,13 +83,16 @@ cd MyApp
 # optional: choose API style, startup project, and database provider interactively
 
 dotnet-arch new crud --entity Product
-# creates controllers/endpoints, repositories, handlers, validators, and migrations
+# creates controllers/endpoints, unit-of-work repository, handlers, validators, and migrations
 
 dotnet-arch new event --entity Product --event Created
 # scaffolds ProductCreatedEvent and lets you add subscribers
 
+dotnet-arch new service
+# choose "HttpRequest" to generate a typed HTTP client wrapper
+
 dotnet-arch exec --docker
-# builds an image, starts a container, and cleans it up on exit
+# builds an image, starts a container, auto-applies migrations, and cleans it up on exit
 ```
 Missing options are prompted with sane defaults, keeping the experience smooth for newcomers.
 
@@ -88,7 +107,7 @@ Creates a clean, feature-based solution. Initializes Git, writes a README templa
 ```bash
 dotnet-arch new crud --entity=EntityName [--output=Path]
 ```
-Generates a full vertical slice for an entity with CQRS handlers, validators, repositories, API endpoints, and migrations. Re‑runs update existing files.
+Generates a full vertical slice for an entity with CQRS handlers, validators, Unit-of-Work repositories, API endpoints, and migrations. Re‑runs update existing files.
 
 ### new action
 ```bash
@@ -110,6 +129,7 @@ Interactive scaffolding for:
 - **Custom services** (per‑feature or common)
 - **Cache services** powered by Redis
 - **Message broker services** using RabbitMQ
+- **HttpRequest service wrapper** for calling external APIs
 
 Interfaces and implementations are placed in the appropriate layer and registered automatically.
 
@@ -117,7 +137,7 @@ Interfaces and implementations are placed in the appropriate layer and registere
 ```bash
 dotnet-arch exec [--output=Path] [--docker]
 ```
-Launches the startup project. Checks for model changes, creates missing migrations, applies pending ones, and then runs the API. With `--docker`, builds the image, starts the container, streams logs, and tears everything down safely on exit.
+Launches the startup project. Detects entity property changes, creates and applies migrations automatically, and then runs the API. With `--docker`, builds the image, starts the container, streams logs, and tears everything down safely on exit.
 
 ### remove migration
 ```bash
