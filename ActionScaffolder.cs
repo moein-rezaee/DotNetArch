@@ -718,6 +718,22 @@ public class {{className}}Validator : AbstractValidator<{{className}}Query>
             var lastUsing = lines.FindLastIndex(l => l.StartsWith("using "));
             if (!lines.Contains(usingLine))
                 lines.Insert(lastUsing + 1, usingLine);
+
+            if (crudStyle && httpMethod.Equals("DELETE", StringComparison.OrdinalIgnoreCase))
+            {
+                var attrIdx = lines.FindIndex(l => l.Contains("[HttpDelete"));
+                if (attrIdx != -1)
+                {
+                    var endIdx = attrIdx;
+                    while (endIdx < lines.Count && lines[endIdx].Trim() != "")
+                        endIdx++;
+                    lines.RemoveRange(attrIdx, endIdx - attrIdx + 1);
+                    lines.InsertRange(attrIdx, method);
+                    File.WriteAllLines(file, lines);
+                    return;
+                }
+            }
+
             var end = lines.FindLastIndex(l => l.Trim() == "}");
             lines.InsertRange(end, method);
             File.WriteAllLines(file, lines);
