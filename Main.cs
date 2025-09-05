@@ -98,6 +98,14 @@ class Program
                 }
                 entity = SanitizeIdentifier(entity);
 
+                if (!EventScaffolder.EntityExists(config, entity))
+                {
+                    Error($"Entity '{entity}' does not exist.");
+                    entity = null;
+                    eventName = null;
+                    continue;
+                }
+
                 var events = EventScaffolder.ListEvents(config, entity);
                 if (events.Length == 0 && string.IsNullOrWhiteSpace(eventName))
                     eventName = Ask("Enter event name");
@@ -146,12 +154,11 @@ class Program
                 var currentEvent = eventName;
                 while (true)
                 {
-                    string choice;
-                    if (events.Length > 1)
-                        choice = Ask("1) Add subscriber  2) Add subscriber for other events  3) Finish");
-                    else
-                        choice = Ask("1) Add subscriber  2) Finish");
-                    if (choice == "1")
+                    var options = events.Length > 1
+                        ? new[] { "Add subscriber", "Add subscriber for other events", "Finish" }
+                        : new[] { "Add subscriber", "Finish" };
+                    var choice = AskOption("Select action", options);
+                    if (choice == "Add subscriber")
                     {
                         var sub = Ask("Enter subscriber entity");
                         sub = SanitizeIdentifier(sub);
@@ -162,12 +169,14 @@ class Program
                         }
                         Success($"Subscriber {sub} added.");
                     }
-                    else if (choice == "2" && events.Length > 1)
+                    else if (choice == "Add subscriber for other events")
                     {
                         currentEvent = AskOption("Select event", events);
                     }
                     else
+                    {
                         break;
+                    }
                 }
                 break;
             }

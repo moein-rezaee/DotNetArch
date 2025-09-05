@@ -7,6 +7,14 @@ using DotNetArch.Scaffolding;
 
 static class EventScaffolder
 {
+    public static bool EntityExists(SolutionConfig config, string entity)
+    {
+        var solution = config.SolutionName;
+        var plural = Naming.Pluralize(entity);
+        var featureDir = Path.Combine(config.SolutionPath, $"{solution}.Application", "Features", plural);
+        return Directory.Exists(featureDir);
+    }
+
     public static string[] ListEvents(SolutionConfig config, string entity)
     {
         var solution = config.SolutionName;
