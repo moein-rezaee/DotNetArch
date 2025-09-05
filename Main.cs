@@ -168,8 +168,8 @@ class Program
                 while (true)
                 {
                     var options = events.Length > 1
-                        ? new[] { "Add subscriber", "Add subscriber for other events", "Finish", "Cancel" }
-                        : new[] { "Add subscriber", "Finish", "Cancel" };
+                        ? new[] { "Add subscriber", "Add subscriber for other events", "Finish" }
+                        : new[] { "Add subscriber", "Finish" };
                     var choice = AskOption("Select action", options);
                     if (choice == "Add subscriber")
                     {
@@ -191,10 +191,6 @@ class Program
                         if (selected == "Cancel")
                             return;
                         currentEvent = selected;
-                    }
-                    else if (choice == "Cancel")
-                    {
-                        return;
                     }
                     else
                     {
