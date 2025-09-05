@@ -332,6 +332,7 @@ class Program
             string? outputPath = null;
             bool useDocker = false;
             bool detach = false;
+            bool dockerStop = false;
             for (int i = 1; i < args.Length; i++)
             {
                 if (args[i].StartsWith("--output="))
@@ -342,6 +343,11 @@ class Program
                 {
                     useDocker = true;
                     detach = true;
+                }
+                else if (args[i] == "--docker-stop")
+                {
+                    useDocker = true;
+                    dockerStop = true;
                 }
             }
 
@@ -357,6 +363,25 @@ class Program
             }
 
             var solutionPath = config.SolutionPath;
+
+            if (dockerStop)
+            {
+                var image = string.IsNullOrWhiteSpace(config.DockerImage) ? $"{config.SolutionName.ToLower()}.api" : config.DockerImage;
+                var tag = $"{image}:0.0.0";
+                var container = string.IsNullOrWhiteSpace(config.DockerContainer) ? $"{config.SolutionName.ToLower()}-api" : config.DockerContainer;
+
+                Step("Docker Cleanup", "Tearing down containers and images");
+                var down = RunCommand("docker compose down", solutionPath);
+                SubStep(down, $"Container stopped: {container}");
+                SubStep(down, $"Container removed: {container}");
+                if (ImageExists(tag))
+                {
+                    var rm = RunCommand($"docker rmi {tag}", solutionPath);
+                    SubStep(rm, $"Image removed: {tag}");
+                }
+                Logger.Blank();
+                return;
+            }
 
             // ensure unit of work and repositories exist before syncing project wiring
             foreach (var e in config.Entities.Keys)
