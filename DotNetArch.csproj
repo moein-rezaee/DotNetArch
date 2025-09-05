@@ -11,12 +11,14 @@
     <PackageId>DotNetArch</PackageId>
     <Version>1.1.0</Version>
     <PackageTags>dotnet;cli;clean-architecture;scaffold;dotnetarch</PackageTags> 
-    <RepositoryUrl>https://github.com/moein-rezaee/DotNetArch.git</RepositoryUrl> 
+    <RepositoryUrl>https://github.com/moein-rezaee/DotNetArch.git</RepositoryUrl>
     <PackageIcon>assets/icon.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
     <None Include="assets/icon.png" Pack="true" PackagePath="assets/" />
+    <None Include="README.md" Pack="true" PackagePath="/" />
   </ItemGroup>
 
 
