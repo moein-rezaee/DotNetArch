@@ -7,13 +7,15 @@ using DotNetArch.Scaffolding.Steps;
 
 static class ActionScaffolder
 {
-    public static void Generate(SolutionConfig config, string entity, string action, bool isCommand, string httpMethod, bool crudStyle)
+    public static void Generate(SolutionConfig config, string entity, string action, string httpMethod, bool crudStyle)
     {
         if (string.IsNullOrWhiteSpace(config.SolutionName) || string.IsNullOrWhiteSpace(entity) || string.IsNullOrWhiteSpace(action))
         {
             Program.Error("Solution, entity and action names are required.");
             return;
         }
+
+        var isCommand = !httpMethod.Equals("GET", StringComparison.OrdinalIgnoreCase);
 
         if (ActionExists(config, entity, action, isCommand, httpMethod, crudStyle))
         {

@@ -369,9 +369,6 @@ class Program
             entity = SanitizeIdentifier(entity);
             action = SanitizeIdentifier(action);
 
-            var cq = AskOption("Is this a Command or Query?", new[] { "Command", "Query" });
-            bool isCommand = cq.Equals("Command", StringComparison.OrdinalIgnoreCase);
-
             if (string.IsNullOrWhiteSpace(outputPath))
                 outputPath = PathState.Load() ?? Directory.GetCurrentDirectory();
 
@@ -383,7 +380,7 @@ class Program
                 return;
             }
 
-            ActionScaffolder.Generate(config, entity, action, isCommand, method.ToUpperInvariant(), autoAction);
+            ActionScaffolder.Generate(config, entity, action, method.ToUpperInvariant(), autoAction);
             return;
         }
 
