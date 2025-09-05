@@ -8,8 +8,8 @@ A cross-platform .NET global tool that bootstraps opinionated Clean Architecture
 
 ## Table of Contents
 - [Introduction](#introduction)
-- [Features](#features)
 - [Solution Structure](#solution-structure)
+- [Features](#features)
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
@@ -17,6 +17,8 @@ A cross-platform .NET global tool that bootstraps opinionated Clean Architecture
   - [new solution](#new-solution)
   - [new crud](#new-crud)
   - [new action](#new-action)
+  - [new event](#new-event)
+  - [new enum](#new-enum)
   - [new service](#new-service)
   - [exec](#exec)
   - [remove migration](#remove-migration)
@@ -31,39 +33,37 @@ DotNetArch removes the friction of setting up a well-structured .NET application
 ## Solution Structure
 ```text
 MyApp/
-├── src/
-│   ├── MyApp.Core/
-│   ├── MyApp.Application/
-│   ├── MyApp.Infrastructure/
-│   └── MyApp.API/
-├── tests/
-│   └── MyApp.IntegrationTests/
-├── config/
-│   ├── env/
-│   │   ├── .env.development
-│   │   ├── .env.test
-│   │   └── .env.production
-│   └── settings/
-│       ├── appsettings.development.json
-│       ├── appsettings.test.json
-│       └── appsettings.production.json
+├── MyApp.Core/
+├── MyApp.Application/
+├── MyApp.Infrastructure/
+├── MyApp.API/
+│   └── Config/
+│       ├── Env/
+│       │   ├── .env.development
+│       │   ├── .env.test
+│       │   └── .env.production
+│       └── Settings/
+│           ├── appsettings.development.json
+│           ├── appsettings.test.json
+│           └── appsettings.production.json
 ├── Dockerfile
 ├── docker-compose.yml
 ├── dotnet-arch.yml
 └── README.md
 ```
-This layout exposes all the moving parts up front—source and test projects, environment configs, and Docker assets.
+This layout exposes all the moving parts up front—application layers, environment configs, and Docker assets.
 
 ## Features
 - **One-command solution scaffolding** with Core, Application, Infrastructure, and API layers—choose **controller** or **fast** minimal APIs.
 - **Git & docs bootstrap**: initializes a repository, adds a `.gitignore`, and drops in a README template.
-- **Docker-ready**: generates Dockerfile and `docker-compose.yml`; `exec --docker` builds images, runs containers, streams logs, and tears everything down safely.
-- **Environment-specific configuration**: prepopulated `.env` and `appsettings` files for development, test, and production.
+- **Docker-friendly**: generates Dockerfile and `docker-compose.yml`; `exec --docker` builds images, starts containers, streams logs, and cleans everything up safely on exit.
+- **Environment-specific configuration**: prepopulated `.env` and `appsettings` files for development, test, and production under `API/Config`.
 - **Vertical-slice CRUD generation** using MediatR, FluentValidation, and Unit-of-Work based EF Core repositories with pagination helpers.
 - **Unit-of-Work repositories** are created automatically so your data layer is production-ready from the start.
 - **Custom action scaffolding** for additional commands or queries without breaking existing slices.
-- **Event scaffolding** to create domain events and wire subscribers across features.
-- **Service scaffolder** for custom services, Redis caches, RabbitMQ message brokers, or outbound HTTP clients with resilient typed wrappers and automatic DI registration.
+- **Event scaffolding** to create domain events and interactively wire subscribers across features.
+- **Enum scaffolding** to generate strongly typed enumerations per feature.
+- **Service scaffolder** for custom services, Redis caches, RabbitMQ message brokers, or outbound HTTP clients with resilient `HttpRequest` wrappers and automatic DI registration.
 - **Database provider selection** (SQL Server, SQLite, PostgreSQL, or MongoDB) stored for reuse across commands.
 - **Idempotent updates**: running commands again augments existing files instead of duplicating them.
 - **Automatic NuGet package and service registration**, including Swagger and startup configuration.
@@ -102,6 +102,9 @@ dotnet-arch new crud --entity Product
 dotnet-arch new event --entity Product --event Created
 # scaffolds ProductCreatedEvent and lets you add subscribers
 
+dotnet-arch new enum --entity Product --enum Status
+# creates Status enum under Core/Features/Products/Enums
+
 dotnet-arch new service
 # choose "HttpRequest" to generate a typed HTTP client wrapper
 
@@ -134,6 +137,12 @@ Adds a custom command or query to an existing slice. If the slice is missing, a 
 dotnet-arch new event --entity=EntityName [--event=EventName] [--output=Path]
 ```
 Creates a domain event for an entity and interactively adds subscribers from other slices.
+
+### new enum
+```bash
+dotnet-arch new enum --entity=EntityName --enum=EnumName [--output=Path]
+```
+Creates an enum for an existing entity under `Core/Features/<Entity>/Enums`.
 
 ### new service
 ```bash

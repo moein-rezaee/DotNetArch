@@ -196,6 +196,45 @@ class Program
             return;
         }
 
+        if (args.Length >= 2 && args[0].ToLower() == "new" && args[1].ToLower() == "enum")
+        {
+            string? entity = null;
+            string? enumName = null;
+            string? outputPath = null;
+            for (int i = 2; i < args.Length; i++)
+            {
+                if (args[i].StartsWith("--entity="))
+                    entity = args[i].Substring("--entity=".Length);
+                else if (args[i].StartsWith("--enum="))
+                    enumName = args[i].Substring("--enum=".Length);
+                else if (args[i].StartsWith("--output="))
+                    outputPath = args[i].Substring("--output=".Length);
+            }
+            if (string.IsNullOrWhiteSpace(entity))
+                entity = Ask("Enter entity name");
+            if (string.IsNullOrWhiteSpace(enumName))
+                enumName = Ask("Enter enum name");
+            if (string.IsNullOrWhiteSpace(entity) || string.IsNullOrWhiteSpace(enumName))
+            {
+                Error("Entity and enum names are required.");
+                return;
+            }
+            entity = SanitizeIdentifier(entity);
+            enumName = SanitizeIdentifier(enumName);
+            if (string.IsNullOrWhiteSpace(outputPath))
+                outputPath = PathState.Load() ?? Directory.GetCurrentDirectory();
+            var basePath = outputPath!;
+            var config = ConfigManager.Load(basePath);
+            if (config == null)
+            {
+                Error("Solution configuration not found. Run 'new solution' first.");
+                return;
+            }
+            if (EnumScaffolder.Generate(config, entity, enumName))
+                Success($"Enum {enumName} for {entity} generated.");
+            return;
+        }
+
         if (args.Length >= 2 && args[0].ToLower() == "new" && args[1].ToLower() == "action")
         {
             string? entity = null;
