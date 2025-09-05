@@ -112,7 +112,11 @@ class Program
 
                 if (string.IsNullOrWhiteSpace(eventName))
                 {
-                    var action = AskOption($"Entity '{entity}' has existing events. Select action", new[] { "Create new event", "Add subscriber to existing events" });
+                    var actionOptions = new[] { "Create new event", "Add subscriber to existing events", "Cancel" };
+                    var action = AskOption($"Entity '{entity}' has existing events. Select action", actionOptions);
+                    if (action == "Cancel")
+                        return;
+
                     if (action == "Create new event")
                     {
                         eventName = Ask("Enter event name");
@@ -134,7 +138,16 @@ class Program
                     }
                     else
                     {
-                        eventName = AskOption("Select event", events);
+                        var eventOptions = events.Concat(new[] { "Back", "Cancel" }).ToArray();
+                        var selected = AskOption("Select event", eventOptions);
+                        if (selected == "Back")
+                        {
+                            eventName = null;
+                            continue;
+                        }
+                        if (selected == "Cancel")
+                            return;
+                        eventName = selected;
                     }
                 }
                 else
@@ -155,8 +168,8 @@ class Program
                 while (true)
                 {
                     var options = events.Length > 1
-                        ? new[] { "Add subscriber", "Add subscriber for other events", "Finish" }
-                        : new[] { "Add subscriber", "Finish" };
+                        ? new[] { "Add subscriber", "Add subscriber for other events", "Finish", "Cancel" }
+                        : new[] { "Add subscriber", "Finish", "Cancel" };
                     var choice = AskOption("Select action", options);
                     if (choice == "Add subscriber")
                     {
@@ -171,7 +184,17 @@ class Program
                     }
                     else if (choice == "Add subscriber for other events")
                     {
-                        currentEvent = AskOption("Select event", events);
+                        var eventOptions = events.Concat(new[] { "Back", "Cancel" }).ToArray();
+                        var selected = AskOption("Select event", eventOptions);
+                        if (selected == "Back")
+                            continue;
+                        if (selected == "Cancel")
+                            return;
+                        currentEvent = selected;
+                    }
+                    else if (choice == "Cancel")
+                    {
+                        return;
                     }
                     else
                     {
