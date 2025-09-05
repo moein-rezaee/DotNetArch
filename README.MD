@@ -1,241 +1,197 @@
 <img src="assets/icon.png" width="128" height="128" style="vertical-align: middle;"/>
 
-# **DotNetArch: Simplify Clean Architecture Setup**  
+# DotNetArch
 
-#### **Introduction**  
-
-DotNetArch is a .NET global tool designed to help developers quickly set up solutions following Clean Architecture principles and Domain-Driven Design (DDD). This tool streamlines the creation of well-structured .NET projects, saving time and effort while adhering to industry standards.  
+A cross-platform .NET global tool that bootstraps opinionated Clean Architecture solutions with Domain-Driven Design in seconds.
 
 ---
 
-#### **Requirements**  
+## Table of Contents
+- [Introduction](#introduction)
+- [Solution Structure](#solution-structure)
+- [Features](#features)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Command Reference](#command-reference)
+  - [new solution](#new-solution)
+  - [new crud](#new-crud)
+  - [new action](#new-action)
+  - [new event](#new-event)
+  - [new enum](#new-enum)
+  - [new service](#new-service)
+  - [exec](#exec)
+  - [remove migration](#remove-migration)
+- [Contributing](#contributing)
+- [Roadmap](#roadmap)
+- [License](#license)
+- [Contact](#contact)
 
-Before using DotNetArch, ensure your system meets the following requirements:  
+## Introduction
+DotNetArch removes the friction of setting up a well-structured .NET application. The tool generates a fully wired solution with clearly separated layers, ready-made infrastructure, and sensible defaults so you can focus on your domain from day one.
 
-1. **.NET SDK**: Version 6.0 or higher (recommended: .NET 8.0).
-   - Install it from the official [.NET Downloads page](https://dotnet.microsoft.com/download).  
-2. **Operating System**:  
-   - **Windows**: Windows 10 or higher.  
-   - **macOS**: macOS Catalina or higher.  
-   - **Linux**: Any distribution supporting .NET Core.  
-3. **Git**: Ensure Git is installed if you plan to clone or contribute.  
+## Solution Structure
+```text
+MyApp/
+├── MyApp.Core/
+├── MyApp.Application/
+├── MyApp.Infrastructure/
+├── MyApp.API/
+│   └── Config/
+│       ├── Env/
+│       │   ├── .env.development
+│       │   ├── .env.test
+│       │   └── .env.production
+│       └── Settings/
+│           ├── appsettings.development.json
+│           ├── appsettings.test.json
+│           └── appsettings.production.json
+├── Dockerfile
+├── docker-compose.yml
+├── dotnet-arch.yml
+└── README.md
+```
+This layout exposes all the moving parts up front—application layers, environment configs, and Docker assets.
 
-To check your .NET version, run:  
+## Features
+- **One-command solution scaffolding** with Core, Application, Infrastructure, and API layers—choose **controller** or **fast** minimal APIs.
+- **Git & docs bootstrap**: initializes a repository, adds a `.gitignore`, and drops in a README template.
+- **Docker-friendly**: generates Dockerfile and `docker-compose.yml`; `exec --docker` builds images, starts containers, streams logs, and cleans everything up safely on exit.
+- **Environment-specific configuration**: prepopulated `.env` and `appsettings` files for development, test, and production under `API/Config`.
+- **Vertical-slice CRUD generation** using MediatR, FluentValidation, and Unit-of-Work based EF Core repositories with pagination helpers.
+- **Unit-of-Work repositories** are created automatically so your data layer is production-ready from the start.
+- **Custom action scaffolding** for additional commands or queries without breaking existing slices.
+- **Event scaffolding** to create domain events and interactively wire subscribers across features.
+- **Enum scaffolding** to generate strongly typed enumerations per feature or globally under `Core/Common/Enums`.
+- **Service scaffolder** for custom services, Redis caches, RabbitMQ message brokers, or outbound HTTP clients with resilient `HttpRequest` wrappers and automatic DI registration.
+- **Database provider selection** (SQL Server, SQLite, PostgreSQL, or MongoDB) stored for reuse across commands.
+- **Idempotent updates**: running commands again augments existing files instead of duplicating them.
+- **Automatic NuGet package and service registration**, including Swagger and startup configuration.
+- **Exec command auto-migrates**: detects property changes, creates missing migrations, applies them, and then runs the API or Docker container.
+- **Cross-platform** and tested on Windows, macOS, and Linux.
 
+## Requirements
+- [.NET SDK](https://dotnet.microsoft.com/download) **6.0+** (recommended: 8.0)
+- Supported OS: Windows 10+, macOS Catalina+, or any modern Linux distribution
+- [Git](https://git-scm.com/) for cloning or contributing
+
+Check your .NET version:
 ```bash
 dotnet --version
-```  
+```
 
----
-
-#### **How to Install and Use the NuGet Package**  
-
-**Step 1: Install the Tool**  
-You can install DotNetArch globally via NuGet with the following command:  
-
+## Installation
+Install or update the tool globally from NuGet:
 ```bash
 dotnet tool install --global DotNetArch
-```  
+# or
+ dotnet tool update --global DotNetArch
+```
 
-**Step 2: Update the Tool**  
-To ensure you have the latest version of the tool:  
-
+## Quick Start
+Generate a new solution, scaffold an entity, and run the API:
 ```bash
-dotnet tool update --global DotNetArch
-```  
+dotnet-arch new solution MyApp
+cd MyApp
+# optional: choose API style, startup project, and database provider interactively
+# env and appsettings for dev/test/prod are under ./config
 
-**Step 3: Generate a Clean Architecture Solution**  
-Once installed, you can use the tool to create a solution structure:
+dotnet-arch new crud --entity Product
+# creates controllers/endpoints, unit-of-work repository, handlers, validators, and migrations
 
+dotnet-arch new event --entity Product --event Created
+# scaffolds ProductCreatedEvent and lets you add subscribers
+
+dotnet-arch new enum --entity Product --enum Status
+# creates Status enum under Core/Features/Products/Enums
+
+dotnet-arch new enum --enum Priority
+# creates Priority enum under Core/Common/Enums
+
+dotnet-arch new service
+# choose "HttpRequest" to generate a typed HTTP client wrapper
+
+dotnet-arch exec --docker
+# builds an image, starts a container, auto-applies migrations, and cleans it up on exit
+```
+Missing options are prompted with sane defaults, keeping the experience smooth for newcomers.
+
+## Command Reference
+### new solution
 ```bash
 dotnet-arch new solution <SolutionName> [--output=Path] [--startup=ProjectName] [--style=controller|fast]
 ```
+Creates a clean, feature-based solution. Initializes Git, writes a README template, scaffolds `.env` and `appsettings` files for development, test, and production, optionally adds Docker assets, and records choices in `dotnet-arch.yml` for later commands.
 
-`--output` is optional and lets you specify where the solution is created (useful for tests). If omitted, the current directory is used. `--startup` lets you choose which project should act as the startup project (default is `<SolutionName>.API`). `--style` selects between classic **Controller** APIs or lightweight **Fast** minimal APIs (default `controller`). Missing parameters are prompted interactively with defaults shown in brackets; when selecting API style, simply enter **1** for Controller or **2** for Fast. During creation you'll be prompted for a database provider (SQL Server or SQLite; hitting enter selects SQLite). After scaffolding, a `dotnet-arch.yml` file records the solution name, path, startup project, API style, chosen provider, and the scaffolding state of each entity so later commands can skip work already done. Swagger and service registrations are configured at this stage so the API runs immediately.
-
-This command generates the following layers:
-
-- **Core**
-- **Application**
-- **Infrastructure**
-- **API**
-
-#### Generate CRUD for an Entity
-
-After creating a solution you can scaffold a full CRUD vertical slice for an entity:
-
+### new crud
 ```bash
 dotnet-arch new crud --entity=EntityName [--output=Path]
 ```
+Generates a full vertical slice for an entity with CQRS handlers, validators, Unit-of-Work repositories, API endpoints, and migrations. Re‑runs update existing files.
 
-`--output` points to the solution directory; if omitted, the last path saved by the tool is used (falling back to the current directory). If required arguments are missing the CLI prompts for them. The command reads `dotnet-arch.yml` to locate the solution name and scaffolds the entity slice. Depending on the selected style it creates either API controllers or minimal FastAPI endpoints along with domain models, repositories, unit of work, MediatR handlers and validators. The CLI installs `dotnet-ef` if needed and runs migrations for relational providers (SQL Server, SQLite, PostgreSQL) so schema changes are applied automatically. Each feature is grouped under `Features/<Entity>` in every layer; domain entities live in `Core/Features/<Entity>/Entities` while handlers, repositories and other slices sit alongside them following a CQRS-aware vertical structure:
-
+### new action
+```bash
+dotnet-arch new action --entity=EntityName --action=ActionName [--is-command=false] [--output=Path]
 ```
-Application/<Entity>/
-├── Commands/
-│   ├── Create/
-│   ├── Update/
-│   └── Delete/
-└── Queries/
-    ├── GetById/
-    ├── GetAll/
-    └── GetList/
+Adds a custom command or query to an existing slice. If the slice is missing, a minimal repository and controller are created.
+
+### new event
+```bash
+dotnet-arch new event --entity=EntityName [--event=EventName] [--output=Path]
 ```
+Creates a domain event for an entity and interactively adds subscribers from other slices.
 
-Every operation folder under Commands or Queries contains the request, its handler, and a corresponding validator. The first time you scaffold an entity you choose either SQL Server or SQLite and the choice is saved to `dotnet-arch.yml` so later `new crud` runs reuse the same provider. Generated code supports pagination via `PagedResult<T>` and re-running the command updates existing files instead of duplicating them.
-
-All controller routes and endpoint paths are emitted in **PascalCase** (for example, `/Api/Product/All`).
-
-#### Add a Custom Action
-
-Extend an existing slice or create a minimal slice with a single action:
-
+### new enum
+```bash
+dotnet-arch new enum [--entity=EntityName] --enum=EnumName [--output=Path]
 ```
-dotnet-arch new action --entity=EntityName --action=download --output=../MyApp
-```
+Creates an enum for an existing entity under `Core/Features/<Entity>/Enums`. If no entity is supplied, the enum is placed in `Core/Common/Enums`.
 
-When running outside the solution directory the command reuses the last saved solution path. Provide `--output` to override it and point to a different `dotnet-arch.yml`. By default the action is treated as a command. To scaffold a query instead, append `--is-command=false`:
-
-```
-dotnet-arch new action --entity=EntityName --action=getfile --is-command=false --output=../MyApp
-```
-
-The tool generates the command or query, handler, validator, repository method, and controller endpoint for the specified action. If the entity slice is missing, a minimal repository and controller are also created with only this action stub. Migrations are applied automatically after scaffolding so the database stays in sync.
-
-#### Add a Service
-
-Scaffold application or infrastructure services through an interactive menu:
-
-```
+### new service
+```bash
 dotnet-arch new service [--output=Path]
 ```
+Interactive scaffolding for:
+- **Custom services** (per‑feature or common)
+- **Cache services** powered by Redis
+- **Message broker services** using RabbitMQ
+- **HttpRequest service wrapper** for calling external APIs
 
-The CLI lets you choose between **Custom**, **Cache**, and **Message Broker** services. During generation you select the desired dependency injection lifetime (scoped, transient, or singleton).
+Interfaces and implementations are placed in the appropriate layer and registered automatically.
 
-Custom services first prompt for an entity name. When provided, the interface is placed under `Application/Features/<Entity>/Interfaces` and the implementation under `Application/Features/<Entity>/Services`; existing feature folders (including pluralized names) are reused. If no entity is supplied, the service name becomes mandatory; internal services land in `Application/Common/Services` while external services are emitted under `Infrastructure/Services/<ServiceName>` with their interfaces in `Application/Common/Interfaces`. Service names are normalized to **PascalCase** and suffixed with `Service` if missing. Registrations are appended to per‑layer `DependencyInjection` extension classes and invoked from `Program.cs`.
-
-Selecting **Cache** or **Message Broker** scaffolds ready‑to‑use Redis or RabbitMQ wrappers. Their NuGet packages are added automatically, interfaces live in `Application/Common/Interfaces` and implementations in `Infrastructure/Services/<Provider>`. The Redis wrapper supports optional encode/decode using AES with a generated secret key and IV plus expiry on stored values, while the RabbitMQ wrapper provides publish and subscribe helpers. These services are registered as singletons and rely on `config/env/.env.development`, `config/env/.env.test`, and `config/env/.env.production` files (with uppercase keys like `REDIS_USER` and `RABBITMQ_PASSWORD`) alongside `config/settings/appsettings.development.json`, `config/settings/appsettings.test.json`, and `config/settings/appsettings.production.json` (with PascalCase keys such as Host and Port); the startup project loads them via **DotNetEnv** and accesses values through `IConfiguration`.
-
-#### Run the Startup Project
-
-After scaffolding, launch the API and optionally apply EF Core migrations:
-
+### exec
+```bash
+dotnet-arch exec [--output=Path] [--docker]
 ```
-dotnet-arch exec [--output=Path]
-```
+Launches the startup project. Detects entity property changes, creates and applies migrations automatically, and then runs the API. With `--docker`, builds the image, starts the container, streams logs, and tears everything down safely on exit.
 
-When run, the command asks whether to check for model changes. Choosing **y** creates a migration if needed, applies pending migrations, and then runs the configured startup project. The optional `--output` overrides the last solution path stored by the tool.
-
-#### Manage Migrations
-
-Work with EF Core migrations without starting the application:
-
+### remove migration
 ```bash
 dotnet-arch remove migration [--output=Path]
 ```
+Rolls the database back one migration and deletes the last migration file without running the application.
 
-`remove migration` rolls the database back to the previous state and deletes the most recent migration. The command accepts an optional `--output` to override the stored solution path and automatically supplies `--project`, `--startup-project`, and migration folder arguments to `dotnet ef` so you don't have to.
+## Contributing
+Contributions are welcome! To get started:
+1. **Fork** the repository and create a branch: `git checkout -b feature/awesome-thing`
+2. **Build** to ensure everything compiles: `dotnet build`
+3. **Commit** your changes following conventional commits if possible
+4. **Push** and open a pull request
 
----
+Please open an issue for large features to discuss your proposal first.
 
-#### **How to Clone and Run the Project**
+## Roadmap
+- Support for additional architectural styles (microservices, event-driven)
+- Extended template customization options
+- Deeper integrations with libraries like MassTransit
+- Optional GUI for non-CLI users
 
-**Step 1: Clone the Repository**  
+## License
+[MIT](LICENSE)
 
-To get the source code, clone the repository from GitHub:  
-
-```bash
-git clone https://github.com/moein-rezaee/DotNetArch.git
-cd DotNetArch
-```  
-
-**Step 2: Build the Project**  
-
-Ensure you have the .NET SDK installed. Then, build the project:  
-
-```bash
-dotnet build
-```  
-
-**Step 3: Run the Project**  
-
-To test the functionality, you can execute the project locally:  
-
-```bash
-dotnet run
-```  
-
----
-
-#### **How to Contribute**  
-
-We welcome contributions to DotNetArch! Here’s how you can contribute:  
-
-1. **Fork the Repository**:  
-   Create a fork of the main repository to your GitHub account.  
-
-2. **Create a New Branch**:  
-   Use a meaningful branch name, such as `feature/add-new-command`.  
-
-   ```bash
-   git checkout -b feature/add-new-command
-   ```  
-
-3. **Make Your Changes**:  
-   Ensure your code adheres to .NET coding guidelines.  
-
-4. **Push and Submit a Pull Request**:  
-   Push your changes and open a pull request to the main repository.  
-
-   ```bash
-   git push origin feature/add-new-command
-   ```  
-
----
-
-#### **Features**
-
-- **Automated Project Setup**: Generate Clean Architecture solutions with a single command.
-- **Cross-Platform**: Fully functional on Windows, macOS, and Linux.
-- **Domain-Driven Design Support**: Includes pre-configured layers for DDD.
-- **Ease of Use**: Intuitive and straightforward CLI commands.
-- **`new crud` scaffolding**: Generates vertical-slice CQRS CRUD with MediatR, FluentValidation, EF Core repositories, and paginated results.
-- **Database Provider Selection**: Choose between SQL Server, SQLite, PostgreSQL or MongoDB (default SQLite); the selected provider is stored so future runs don't prompt again.
-  - *Other providers are experimental and require more testing and development before a NuGet release.*
-- **Idempotent Generation**: Re-running commands updates existing files without creating duplicates.
-- **Repository & Unit of Work patterns**: Each entity gets its own repository and UoW registration for clean data access.
-- **Automatic package & service registration**: Required NuGet packages are added to project files and services like `DbContext`, `IMediator`, `IUnitOfWork`, and validators are registered in `Program.cs`.
-- **`new action` command**: Add custom commands or queries with handlers, validators, repository methods, and controller endpoints.
-- **Composable actions and slices**: Actions scaffolded before a full `new crud` run are preserved and the later CRUD generation augments the existing files instead of overwriting them.
-- **`exec` command**: Run the startup project with an optional migration check that generates missing migrations, applies any pending ones, and otherwise launches the project directly if no updates are required.
-- **`remove migration` command**: Roll the database back and delete the most recent EF Core migration.
-- **Correct namespace wiring**: `Program.cs` updates include the necessary `using` directives and service registrations for each entity's repository without malformed entries.
-- **Configurable startup project**: `dotnet-arch.yml` tracks which project is the startup target so controllers are added to the correct application entry point.
-- **Custom output path**: Commands remember the last solution path but accept an `--output` option so code can be generated in test directories or alternative locations.
-- **Development Swagger setup**: API projects automatically reference `Microsoft.AspNetCore.OpenApi` and `Swashbuckle.AspNetCore`, register Swagger services, and enable Swagger UI in development while removing default template files and sample endpoints.
-- **Feature-based folder structure**: Each layer organizes code under `Features/<Entity>`; domain entities live in an `Entities` subfolder so slices stay grouped and extensible.
-  - **Automatic migrations**: `new crud`, `new action`, and `exec` verify `dotnet-ef` and attempt installation if needed. For relational providers (SQL Server, SQLite, PostgreSQL) migrations and database updates run automatically; for MongoDB the process skips migrations. Generated `Program.cs` calls `Database.Migrate()` on startup to apply any pending migrations so new tables are created automatically.
-
----
-
-#### **Future Goals**  
-
-- Add support for other architectural patterns such as **Microservices** and **Event-Driven Design**.  
-- Improve customization options for solution templates.  
-- Add integration with popular libraries and frameworks like **Fluent Validation**, **MediatR**, and **MassTransit**.  
-- Provide GUI support for non-CLI users.  
-
----
-
-#### **Contact Me**  
-
-If you have any questions, suggestions, or issues, feel free to reach out:  
-
-- **GitHub Issues**: [Report Here](https://github.com/moein-rezaee/DotNetArch/issues)  
-- **Email**: me.rezaei1996@gmail.com  
-- **LinkedIn**: [Moein Rezaee](https://linkedin.com/in/moein-rezaee-26331a125)  
-
----
+## Contact
+- **GitHub Issues**: [Report a problem](https://github.com/moein-rezaee/DotNetArch/issues)
+- **Email**: me.rezaei1996@gmail.com
+- **LinkedIn**: [Moein Rezaee](https://linkedin.com/in/moein-rezaee-26331a125)
 
 Start simplifying your .NET project setup today with **DotNetArch**! 🚀
-

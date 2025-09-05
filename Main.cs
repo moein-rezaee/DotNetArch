@@ -196,6 +196,64 @@ class Program
             return;
         }
 
+        if (args.Length >= 2 && args[0].ToLower() == "new" && args[1].ToLower() == "enum")
+        {
+            string? entity = null;
+            string? enumName = null;
+            string? outputPath = null;
+            for (int i = 2; i < args.Length; i++)
+            {
+                if (args[i].StartsWith("--entity="))
+                    entity = args[i].Substring("--entity=".Length);
+                else if (args[i].StartsWith("--enum="))
+                    enumName = args[i].Substring("--enum=".Length);
+                else if (args[i].StartsWith("--output="))
+                    outputPath = args[i].Substring("--output=".Length);
+            }
+            if (string.IsNullOrWhiteSpace(outputPath))
+                outputPath = PathState.Load() ?? Directory.GetCurrentDirectory();
+            var basePath = outputPath!;
+            var config = ConfigManager.Load(basePath);
+            if (config == null)
+            {
+                Error("Solution configuration not found. Run 'new solution' first.");
+                return;
+            }
+
+            while (true)
+            {
+                if (string.IsNullOrWhiteSpace(entity))
+                    entity = Ask("Enter entity name (leave blank for common)");
+                if (string.IsNullOrWhiteSpace(entity))
+                    break;
+                entity = SanitizeIdentifier(entity);
+                if (!EnumScaffolder.EntityExists(config, entity))
+                {
+                    Error($"Entity '{entity}' does not exist.");
+                    entity = null;
+                    continue;
+                }
+                break;
+            }
+
+            if (string.IsNullOrWhiteSpace(enumName))
+                enumName = Ask("Enter enum name");
+            if (string.IsNullOrWhiteSpace(enumName))
+            {
+                Error("Enum name is required.");
+                return;
+            }
+            enumName = SanitizeIdentifier(enumName);
+            if (EnumScaffolder.Generate(config, entity, enumName))
+            {
+                var msg = string.IsNullOrWhiteSpace(entity)
+                    ? $"Enum {enumName} generated under Common."
+                    : $"Enum {enumName} for {entity} generated.";
+                Success(msg);
+            }
+            return;
+        }
+
         if (args.Length >= 2 && args[0].ToLower() == "new" && args[1].ToLower() == "action")
         {
             string? entity = null;
