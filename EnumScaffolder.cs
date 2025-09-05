@@ -12,38 +12,54 @@ static class EnumScaffolder
         return Directory.Exists(featureDir);
     }
 
-    public static bool Generate(SolutionConfig config, string entity, string enumName)
+    public static bool Generate(SolutionConfig config, string? entity, string enumName)
     {
         if (string.IsNullOrWhiteSpace(config.SolutionName) ||
-            string.IsNullOrWhiteSpace(entity) ||
             string.IsNullOrWhiteSpace(enumName))
         {
-            Program.Error("Solution, entity and enum names are required.");
-            return false;
-        }
-
-        if (!EntityExists(config, entity))
-        {
-            Program.Error($"Entity '{entity}' does not exist.");
+            Program.Error("Solution and enum names are required.");
             return false;
         }
 
         var solution = config.SolutionName;
-        var plural = Naming.Pluralize(entity);
-        var coreDir = Path.Combine(config.SolutionPath, $"{solution}.Core");
-        var featureDir = Path.Combine(coreDir, "Features", plural);
-        var enumsDir = Path.Combine(featureDir, "Enums");
+        string enumsDir;
+        string @namespace;
+
+        if (!string.IsNullOrWhiteSpace(entity))
+        {
+            if (!EntityExists(config, entity))
+            {
+                Program.Error($"Entity '{entity}' does not exist.");
+                return false;
+            }
+
+            var plural = Naming.Pluralize(entity);
+            var coreDir = Path.Combine(config.SolutionPath, $"{solution}.Core");
+            var featureDir = Path.Combine(coreDir, "Features", plural);
+            enumsDir = Path.Combine(featureDir, "Enums");
+            @namespace = $"{solution}.Core.Features.{plural}.Enums";
+        }
+        else
+        {
+            var coreDir = Path.Combine(config.SolutionPath, $"{solution}.Core");
+            enumsDir = Path.Combine(coreDir, "Common", "Enums");
+            @namespace = $"{solution}.Core.Common.Enums";
+        }
+
         Directory.CreateDirectory(enumsDir);
 
         enumName = Upper(enumName);
         var file = Path.Combine(enumsDir, enumName + ".cs");
         if (File.Exists(file))
         {
-            Program.Error($"Enum '{enumName}' already exists for entity '{entity}'.");
+            var msg = string.IsNullOrWhiteSpace(entity)
+                ? $"Enum '{enumName}' already exists."
+                : $"Enum '{enumName}' already exists for entity '{entity}'.";
+            Program.Error(msg);
             return false;
         }
 
-        var content = $@"namespace {solution}.Core.Features.{plural}.Enums;
+        var content = $@"namespace {@namespace};
 
 public enum {enumName}
 {{

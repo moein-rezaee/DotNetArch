@@ -62,7 +62,7 @@ This layout exposes all the moving parts up front—application layers, environm
 - **Unit-of-Work repositories** are created automatically so your data layer is production-ready from the start.
 - **Custom action scaffolding** for additional commands or queries without breaking existing slices.
 - **Event scaffolding** to create domain events and interactively wire subscribers across features.
-- **Enum scaffolding** to generate strongly typed enumerations per feature.
+- **Enum scaffolding** to generate strongly typed enumerations per feature or globally under `Core/Common/Enums`.
 - **Service scaffolder** for custom services, Redis caches, RabbitMQ message brokers, or outbound HTTP clients with resilient `HttpRequest` wrappers and automatic DI registration.
 - **Database provider selection** (SQL Server, SQLite, PostgreSQL, or MongoDB) stored for reuse across commands.
 - **Idempotent updates**: running commands again augments existing files instead of duplicating them.
@@ -105,6 +105,9 @@ dotnet-arch new event --entity Product --event Created
 dotnet-arch new enum --entity Product --enum Status
 # creates Status enum under Core/Features/Products/Enums
 
+dotnet-arch new enum --enum Priority
+# creates Priority enum under Core/Common/Enums
+
 dotnet-arch new service
 # choose "HttpRequest" to generate a typed HTTP client wrapper
 
@@ -140,9 +143,9 @@ Creates a domain event for an entity and interactively adds subscribers from oth
 
 ### new enum
 ```bash
-dotnet-arch new enum --entity=EntityName --enum=EnumName [--output=Path]
+dotnet-arch new enum [--entity=EntityName] --enum=EnumName [--output=Path]
 ```
-Creates an enum for an existing entity under `Core/Features/<Entity>/Enums`. The command validates the entity exists and re-prompts if not found.
+Creates an enum for an existing entity under `Core/Features/<Entity>/Enums`. If no entity is supplied, the enum is placed in `Core/Common/Enums`.
 
 ### new service
 ```bash

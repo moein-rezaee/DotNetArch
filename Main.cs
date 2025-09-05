@@ -223,12 +223,9 @@ class Program
             while (true)
             {
                 if (string.IsNullOrWhiteSpace(entity))
-                    entity = Ask("Enter entity name");
+                    entity = Ask("Enter entity name (leave blank for common)");
                 if (string.IsNullOrWhiteSpace(entity))
-                {
-                    Error("Entity name is required.");
-                    return;
-                }
+                    break;
                 entity = SanitizeIdentifier(entity);
                 if (!EnumScaffolder.EntityExists(config, entity))
                 {
@@ -248,7 +245,12 @@ class Program
             }
             enumName = SanitizeIdentifier(enumName);
             if (EnumScaffolder.Generate(config, entity, enumName))
-                Success($"Enum {enumName} for {entity} generated.");
+            {
+                var msg = string.IsNullOrWhiteSpace(entity)
+                    ? $"Enum {enumName} generated under Common."
+                    : $"Enum {enumName} for {entity} generated.";
+                Success(msg);
+            }
             return;
         }
 
