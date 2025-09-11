@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Linq;
 using DotNetArch.Scaffolding;
@@ -8,6 +9,8 @@ public class DbContextStep : IScaffoldStep
 {
     public void Execute(SolutionConfig config, string entity)
     {
+        if (string.Equals(config.DatabaseProvider, "None", StringComparison.OrdinalIgnoreCase))
+            return;
         var solution = config.SolutionName;
         var basePath = config.SolutionPath;
         var plural = Naming.Pluralize(entity);
@@ -51,4 +54,3 @@ public class AppDbContext : DbContext
         }
     }
 }
-

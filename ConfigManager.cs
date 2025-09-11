@@ -30,6 +30,8 @@ public static class ConfigManager
                 config.ApiStyle = value;
             else if (key.Equals("port", StringComparison.OrdinalIgnoreCase))
                 config.ApiPort = value;
+            else if (key.Equals("framework", StringComparison.OrdinalIgnoreCase) || key.Equals("tfm", StringComparison.OrdinalIgnoreCase))
+                config.TargetFramework = value;
             else if (key.Equals("docker.image", StringComparison.OrdinalIgnoreCase))
                 config.DockerImage = value;
             else if (key.Equals("docker.container", StringComparison.OrdinalIgnoreCase))
@@ -61,7 +63,8 @@ public static class ConfigManager
             $"path: {config.SolutionPath}{nl}" +
             $"startup: {config.StartupProject}{nl}" +
             $"style: {config.ApiStyle}{nl}" +
-            $"port: {config.ApiPort}{nl}";
+            $"port: {config.ApiPort}{nl}" +
+            $"framework: {config.TargetFramework}{nl}";
         if (!string.IsNullOrWhiteSpace(config.DatabaseProvider))
             content += $"database: {config.DatabaseProvider}{nl}";
         if (!string.IsNullOrWhiteSpace(config.DockerImage))

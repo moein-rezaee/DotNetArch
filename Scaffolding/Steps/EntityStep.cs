@@ -7,6 +7,7 @@ public class EntityStep : IScaffoldStep
 {
     public void Execute(SolutionConfig config, string entity)
     {
+        // Even in no-database mode, generate a minimal Entity (Id only)
         var solution = config.SolutionName;
         var basePath = config.SolutionPath;
         var plural = Naming.Pluralize(entity);

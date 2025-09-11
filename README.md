@@ -62,7 +62,12 @@ This layout exposes all the moving parts up front—application layers, environm
 - **Environment-specific configuration**: prepopulated `.env` and `appsettings` files for development, test, and production under `API/Config`.
 - **Vertical-slice CRUD generation** using MediatR, FluentValidation, and Unit-of-Work based EF Core repositories with pagination helpers.
 - **Unit-of-Work repositories** are created automatically so your data layer is production-ready from the start.
+- **Incremental CRUD generation**: re‑runs complement missing parts (handlers, controllers/endpoints, repositories, UoW, DbContext) instead of failing or duplicating.
 - **Custom action scaffolding** for additional commands or queries without breaking existing slices.
+- **Standard vs. non‑standard actions**: exact, case‑insensitive match to CRUD keywords (Create, Update, Delete, GetById, GetAll, GetList, Patch) triggers full CRUD behavior; any other name is treated as non‑standard.
+- **No‑DB friendly**: even without a database provider, a minimal Core Entity (Id only) is generated so Application code compiles. Handlers are skeletons and repositories contain TODO bodies.
+- **Controller purity**: controllers use Application models only (no Entity usings). GET methods return IActionResult with NotFound/Ok.
+- **Robust controller updates**: existing method detection uses regex (not substring) to avoid false positives (e.g., Update vs UpdateTelegram).
 - **Event scaffolding** to create domain events and interactively wire subscribers across features.
 - **Enum scaffolding** to generate strongly typed enumerations per feature or globally under `Core/Common/Enums`.
 - **Service scaffolder** for custom services, Redis caches, RabbitMQ message brokers, or outbound HTTP clients with resilient `HttpRequest` wrappers and automatic DI registration.
@@ -141,13 +146,33 @@ Creates a clean, feature-based solution. Initializes Git, writes a README templa
 ```bash
 dotnet-arch new crud --entity=EntityName [--output=Path]
 ```
-Generates a full vertical slice for an entity with CQRS handlers, validators, Unit-of-Work repositories, API endpoints, and migrations. Re‑runs update existing files.
+Generates a full vertical slice for an entity with CQRS handlers, validators, Unit‑of‑Work repositories, API endpoints, and migrations.
+
+Notes
+- Re‑runs are incremental: missing parts are added; existing code is left intact.
+- In no‑DB mode a minimal Entity with `Id` is still created so Application code compiles; repository methods are generated with TODO bodies.
+- Standard CRUD endpoints/actions created:
+  - Commands: Create, Update, Delete
+  - Queries: GetById, GetAll, GetList
+  - Update command includes `Id`; controllers send `command with { Id = id }`.
 
 ### new action
 ```bash
 dotnet-arch new action --entity=EntityName [--action=ActionName] --method=METHOD [--output=Path]
 ```
 Adds a custom command or query to an existing slice. After choosing the HTTP verb, you're prompted for an optional action name—leaving it blank infers a CRUD-style name from the method. The scaffolder infers command versus query based on the HTTP verb. If the slice is missing, a minimal repository and controller are created.
+
+Behavior
+- Exact, case‑insensitive CRUD names (Create, Update, Delete, GetById, GetAll, GetList, Patch) are treated as “standard” and generate full end‑to‑end code (handlers, validators, controller/endpoints, and repository methods).
+- Any other name is “non‑standard”: no database logic is generated. With a DB provider configured, you’ll be asked whether to add a matching repository method; signatures are parameterless.
+- Non‑standard commands and queries do not take inputs:
+  - Controller: `public async Task<IActionResult> MyAction()` sends `new MyActionCommand()` / `new MyActionQuery()`
+  - Minimal API: `routes.MapX("/Api/<Entity>/MyAction", async (IMediator m) => …)`
+- Standard Update always includes `Id` in the command. Controllers use `command with { Id = id }`.
+
+Validation
+- The method/action conflict check only applies to exact keywords (case‑insensitive). Examples:
+  - POST + Create → allowed; POST + Update → error; POST + UpdateTelegram → allowed.
 
 ### new event
 ```bash
@@ -215,3 +240,13 @@ Please open an issue for large features to discuss your proposal first.
 - **LinkedIn**: [Moein Rezaee](https://linkedin.com/in/moein-rezaee-26331a125)
 
 Start simplifying your .NET project setup today with **DotNetArch**! 🚀
+
+---
+
+## Tips & Notes
+- Controllers never reference Core Entities; they use Application Models. Legacy `using <Solution>.Core.Features.<Entity>.Entities;` directives are removed on update.
+- GET endpoints return IActionResult with NotFound/Ok to prevent null-cast issues.
+- Regex‑based method detection prevents collisions like `Update` versus `UpdateTelegram` when augmenting controllers.
+- Non‑standard actions (commands/queries) are parameterless by default for both controllers and minimal APIs.
+- In no‑DB runs, a minimal Entity class (Id only) is generated to satisfy type references; repository methods contain TODO placeholders.
+- Re‑running scaffolds augments files in place; it won’t overwrite your custom logic.

@@ -39,27 +39,50 @@ static class ActionScaffolder
                 return;
             }
         }
-        var steps = new IScaffoldStep[]
+        var steps = new List<IScaffoldStep>
         {
             new ProjectUpdateStep(),
-            new EntityStep(),
-            new DbContextStep()
         };
+        // Always generate minimal entity (even in no-db)
+        steps.Add(new EntityStep());
+        if (!string.Equals(provider, "None", StringComparison.OrdinalIgnoreCase))
+            steps.Add(new DbContextStep());
         foreach (var step in steps)
             step.Execute(config, entity);
 
-        AddRepositoryMethod(config, entity, action, isCommand);
-        AddApplicationFiles(config, entity, action, isCommand, crudStyle);
-        if (config.ApiStyle.Equals("fast", StringComparison.OrdinalIgnoreCase))
-            AddEndpointMethod(config, entity, action, isCommand, httpMethod, crudStyle);
-        else
-            AddControllerMethod(config, entity, action, isCommand, httpMethod, crudStyle);
+        // Determine effective CRUD style even if user supplied a CRUD action name
+        var actionUpper = Upper(action).ToUpperInvariant();
+        bool isCrudNamed = actionUpper is "CREATE" or "UPDATE" or "DELETE" or "GETBYID" or "GETALL" or "GETLIST";
+        var effectiveCrud = crudStyle || isCrudNamed;
 
-        // ensure newly added files still have required DI registration
-        new UnitOfWorkStep().Execute(config, entity);
+        if (!string.Equals(provider, "None", StringComparison.OrdinalIgnoreCase))
+        {
+            if (effectiveCrud)
+            {
+                AddRepositoryMethod(config, entity, action, isCommand, true);
+            }
+            else
+            {
+                var confirm = Program.Ask($"Database detected. Add repository method '{Upper(action)}Async' for {entity}? (y/N)");
+                if (!string.IsNullOrWhiteSpace(confirm) && (confirm.Trim().Equals("y", StringComparison.OrdinalIgnoreCase) || confirm.Trim().Equals("yes", StringComparison.OrdinalIgnoreCase)))
+                {
+                    AddRepositoryMethod(config, entity, action, isCommand, false);
+                }
+            }
+        }
+
+        AddApplicationFiles(config, entity, action, isCommand, effectiveCrud);
+        if (config.ApiStyle.Equals("fast", StringComparison.OrdinalIgnoreCase))
+            AddEndpointMethod(config, entity, action, isCommand, httpMethod, effectiveCrud);
+        else
+            AddControllerMethod(config, entity, action, isCommand, httpMethod, effectiveCrud);
+
+        // ensure newly added files still have required DI registration (skip UoW for no-db)
+        if (!string.Equals(provider, "None", StringComparison.OrdinalIgnoreCase))
+            new UnitOfWorkStep().Execute(config, entity);
         new ProjectUpdateStep().Execute(config, entity);
 
-        if (!provider.Equals("Mongo", StringComparison.OrdinalIgnoreCase))
+        if (!provider.Equals("Mongo", StringComparison.OrdinalIgnoreCase) && !provider.Equals("None", StringComparison.OrdinalIgnoreCase))
         {
             var prev = Directory.GetCurrentDirectory();
             try
@@ -170,7 +193,7 @@ static class ActionScaffolder
         }
     }
 
-    static void AddRepositoryMethod(SolutionConfig config, string entity, string action, bool isCommand)
+    static void AddRepositoryMethod(SolutionConfig config, string entity, string action, bool isCommand, bool crudStyle)
     {
         var solution = config.SolutionName;
         var plural = Naming.Pluralize(entity);
@@ -179,7 +202,9 @@ static class ActionScaffolder
         Directory.CreateDirectory(Path.GetDirectoryName(iface)!);
 
         var actionUpper = Upper(action);
-        var cmdUsesEntity = isCommand && !actionUpper.Equals("Delete", StringComparison.OrdinalIgnoreCase);
+        var hasDb = !string.Equals(config.DatabaseProvider, "None", StringComparison.OrdinalIgnoreCase);
+        var cmdIsDelete = isCommand && actionUpper.Equals("Delete", StringComparison.OrdinalIgnoreCase);
+        var cmdIsCreateOrUpdate = isCommand && (actionUpper.Equals("Create", StringComparison.OrdinalIgnoreCase) || actionUpper.Equals("Update", StringComparison.OrdinalIgnoreCase));
 
         if (!File.Exists(iface))
         {
@@ -195,10 +220,14 @@ public interface I{{entity}}Repository
 }
 """;
             var sig = isCommand
-                ? cmdUsesEntity
-                    ? $"Task {actionUpper}Async({entity} entity);"
-                    : $"Task {actionUpper}Async(int id);"
-                : $"Task<{entity}?> {actionUpper}Async(int id);";
+                ? (cmdIsDelete
+                    ? $"Task {actionUpper}Async(int id);"
+                    : (crudStyle && hasDb
+                        ? $"Task {actionUpper}Async({entity} entity);"
+                        : $"Task {actionUpper}Async();"))
+                : (crudStyle
+                    ? $"Task<{entity}?> {actionUpper}Async(int id);"
+                    : $"Task<{entity}?> {actionUpper}Async();");
             File.WriteAllText(iface, ifaceTemplate
                 .Replace("{{solution}}", solution)
                 .Replace("{{entity}}", entity)
@@ -208,14 +237,48 @@ public interface I{{entity}}Repository
         else
         {
             var lines = File.ReadAllLines(iface).ToList();
-            if (!lines.Any(l => l.Contains($"{actionUpper}Async")))
+            var sigEntity = $"{actionUpper}Async({entity} ";
+            var sigId = $"{actionUpper}Async(int ";
+            var sigNone = $"{actionUpper}Async()";
+            bool hasEntityOverload = lines.Any(l => l.Contains(sigEntity));
+            bool hasIdOverload = lines.Any(l => l.Contains(sigId));
+            bool hasParamless = lines.Any(l => l.Contains(sigNone));
+            bool needInsert = false;
+            string sig;
+            if (isCommand)
+            {
+                if (cmdIsDelete)
+                {
+                    needInsert = !hasIdOverload;
+                    sig = $"    Task {actionUpper}Async(int id);";
+                }
+                else if (crudStyle && hasDb)
+                {
+                    needInsert = !hasEntityOverload;
+                    sig = $"    Task {actionUpper}Async({entity} entity);";
+                }
+                else
+                {
+                    needInsert = !hasParamless;
+                    sig = $"    Task {actionUpper}Async();";
+                }
+            }
+            else
+            {
+                if (crudStyle)
+                {
+                    needInsert = !lines.Any(l => l.Contains($"Task<{entity}?> {actionUpper}Async(int id)"));
+                    sig = $"    Task<{entity}?> {actionUpper}Async(int id);";
+                }
+                else
+                {
+                    needInsert = !lines.Any(l => l.Contains($"Task<{entity}?> {actionUpper}Async()"));
+                    sig = $"    Task<{entity}?> {actionUpper}Async();";
+                }
+            }
+            if (needInsert)
             {
                 var idx = lines.FindLastIndex(l => l.Trim() == "}");
-                var sig = isCommand
-                    ? cmdUsesEntity
-                        ? $"    Task {actionUpper}Async({entity} entity);"
-                        : $"    Task {actionUpper}Async(int id);"
-                    : $"    Task<{entity}?> {actionUpper}Async(int id);";
                 lines.Insert(idx, sig);
                 File.WriteAllLines(iface, lines);
             }
@@ -225,15 +288,36 @@ public interface I{{entity}}Repository
         Directory.CreateDirectory(Path.GetDirectoryName(impl)!);
         var mReturn = isCommand ? "Task" : $"Task<{entity}?>";
         var param = isCommand
-            ? cmdUsesEntity ? $"{entity} entity" : "int id"
-            : "int id";
+            ? (cmdIsDelete ? "int id" : ((crudStyle && hasDb) ? $"{entity} entity" : string.Empty))
+            : (crudStyle ? "int id" : string.Empty);
         if (!File.Exists(impl))
         {
-            var body = isCommand
-                ? cmdUsesEntity
-                    ? "        // TODO: implement action\n        await Task.CompletedTask;\n"
-                    : $"        // TODO: implement action\n        var entity = await _context.Set<{entity}>().FindAsync(id);\n        if (entity != null) _context.Set<{entity}>().Remove(entity);\n        await Task.CompletedTask;\n"
-                : $"        // TODO: implement action\n        return await _context.Set<{entity}>().FindAsync(id);\n";
+            var isCreate = actionUpper.Equals("Create", StringComparison.OrdinalIgnoreCase);
+            var isUpdate = actionUpper.Equals("Update", StringComparison.OrdinalIgnoreCase);
+            string body;
+            if (isCommand)
+            {
+                if (cmdIsDelete)
+                {
+                    body = $"        // TODO: implement action\n        var entity = await _context.Set<{entity}>().FindAsync(id);\n        if (entity != null) _context.Set<{entity}>().Remove(entity);\n        await Task.CompletedTask;\n";
+                }
+                else if (crudStyle && hasDb)
+                {
+                    body = isCreate
+                        ? $"        // TODO: implement action\n        await _context.Set<{entity}>().AddAsync(entity);\n        await Task.CompletedTask;\n"
+                        : $"        // TODO: implement action\n        _context.Set<{entity}>().Update(entity);\n        await Task.CompletedTask;\n";
+                }
+                else
+                {
+                    body = "        // TODO: implement action\n        await Task.CompletedTask;\n";
+                }
+            }
+            else
+            {
+                body = crudStyle
+                    ? $"        // TODO: implement action\n        return await _context.Set<{entity}>().FindAsync(id);\n"
+                    : $"        // TODO: implement action\n        return await Task.FromResult<{entity}?>(null);\n";
+            }
             var implTemplate = """
 using System.Threading.Tasks;
 using {{solution}}.Application.Common.Interfaces.Repositories;
@@ -264,21 +348,22 @@ public class {{entity}}Repository : I{{entity}}Repository
         else
         {
             var lines = File.ReadAllLines(impl).ToList();
-            if (!lines.Any(l => l.Contains($"{actionUpper}Async(")))
+            var hasImplEntity = lines.Any(l => l.Contains($"Task {actionUpper}Async({entity} "));
+            var hasImplId = lines.Any(l => l.Contains($"Task {actionUpper}Async(int "));
+            var hasImplNone = lines.Any(l => l.Contains($"Task {actionUpper}Async()"));
+            bool needImpl;
+            if (isCommand)
+                needImpl = cmdIsDelete ? !hasImplId : (crudStyle && hasDb ? !hasImplEntity : !hasImplNone);
+            else
+                needImpl = !lines.Any(l => l.Contains($"Task<{entity}?> {actionUpper}Async(int id)"));
+            if (needImpl)
             {
                 string[] insert;
                 if (isCommand)
                 {
-                    insert = cmdUsesEntity
-                        ? new[]
-                        {
-                            $"    public async Task {actionUpper}Async({entity} entity)",
-                            "    {",
-                            "        // TODO: implement action",
-                            "        await Task.CompletedTask;",
-                            "    }",
-                        }
-                        : new[]
+                    if (cmdIsDelete)
+                    {
+                        insert = new[]
                         {
                             $"    public async Task {actionUpper}Async(int id)",
                             "    {",
@@ -288,8 +373,37 @@ public class {{entity}}Repository : I{{entity}}Repository
                             "        await Task.CompletedTask;",
                             "    }",
                         };
+                    }
+                    else if (crudStyle && hasDb)
+                    {
+                        var isCreateInline = actionUpper == "Create";
+                        insert = new[]
+                        {
+                            $"    public async Task {actionUpper}Async({entity} entity)",
+                            "    {",
+                            $"        // TODO: implement action",
+                            isCreateInline
+                                ? $"        await _context.Set<{entity}>().AddAsync(entity);"
+                                : $"        _context.Set<{entity}>().Update(entity);",
+                            "        await Task.CompletedTask;",
+                            "    }",
+                        };
+                    }
+                    else
+                    {
+                        insert = new[]
+                        {
+                            $"    public async Task {actionUpper}Async()",
+                            "    {",
+                            "        // TODO: implement action",
+                            "        await Task.CompletedTask;",
+                            "    }",
+                        };
+                    }
                 }
-                else
+            else
+            {
+                if (crudStyle)
                 {
                     insert = new[]
                     {
@@ -300,6 +414,18 @@ public class {{entity}}Repository : I{{entity}}Repository
                         "    }",
                     };
                 }
+                else
+                {
+                    insert = new[]
+                    {
+                        $"    public async Task<{entity}?> {actionUpper}Async()",
+                        "    {",
+                        "        // TODO: implement action",
+                        $"        return await Task.FromResult<{entity}?>(null);",
+                        "    }",
+                    };
+                }
+            }
                 var idx = lines.FindLastIndex(l => l.Trim() == "}");
                 lines.InsertRange(idx, insert);
                 File.WriteAllLines(impl, lines);
@@ -316,6 +442,8 @@ public class {{entity}}Repository : I{{entity}}Repository
         Directory.CreateDirectory(dir);
         var actionName = Upper(action);
         var className = crudStyle && actionName == "GetById" ? $"Get{entity}ById" : actionName + entity;
+        var noDb = string.Equals(config.DatabaseProvider, "None", StringComparison.OrdinalIgnoreCase);
+        var hasDb = !noDb;
         string Fill(string t) => t.Replace("{{solution}}", solution)
                                   .Replace("{{entity}}", entity)
                                   .Replace("{{entities}}", plural)
@@ -332,11 +460,27 @@ namespace {{solution}}.Application.Features.{{entities}}.Commands.{{action}};
 
 public record {{className}}Command(int Id) : IRequest;
 """));
-                File.WriteAllText(Path.Combine(dir, $"{className}Handler.cs"), Fill("""
+                File.WriteAllText(Path.Combine(dir, $"{className}Handler.cs"), Fill(noDb ? """
+using MediatR;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace {{solution}}.Application.Features.{{entities}}.Commands.{{action}};
+
+public class {{className}}Handler : IRequestHandler<{{className}}Command>
+{
+    public async Task Handle({{className}}Command request, CancellationToken ct)
+    {
+        // No database configured. Implement deletion logic here if needed.
+        await Task.CompletedTask;
+    }
+}
+""" : """
 using MediatR;
 using System.Threading;
 using System.Threading.Tasks;
 using {{solution}}.Application.Common.Interfaces;
+using {{solution}}.Core.Features.{{entities}}.Entities;
 
 namespace {{solution}}.Application.Features.{{entities}}.Commands.{{action}};
 
@@ -365,17 +509,32 @@ public class {{className}}Validator : AbstractValidator<{{className}}Command>
 }
 """));
             }
-            else
+            else if (hasDb && (actionName == "Create" || actionName == "Update"))
             {
-                File.WriteAllText(Path.Combine(dir, $"{className}Command.cs"), Fill("""
+                var props = ExtractScalarProps(config.SolutionPath, solution, entity, plural);
+                if (actionName == "Create") props = new List<(string Type,string Name)>();
+                var ctorParts = new List<string>();
+                if (actionName == "Update") ctorParts.Add("int Id");
+                if (props.Count > 0) ctorParts.AddRange(props.Select(p => $"{p.Type} {p.Name}"));
+                var ctor = string.Join(", ", ctorParts);
+                var cmdContent = string.IsNullOrEmpty(ctor)
+                    ? Fill("""
 using MediatR;
-using {{solution}}.Core.Features.{{entities}}.Entities;
+namespace {{solution}}.Application.Features.{{entities}}.Commands.{{action}};
+
+public record {{className}}Command() : IRequest;
+""")
+                    : Fill("""
+using MediatR;
 
 namespace {{solution}}.Application.Features.{{entities}}.Commands.{{action}};
 
-public record {{className}}Command({{entity}} Entity) : IRequest;
-"""));
-                File.WriteAllText(Path.Combine(dir, $"{className}Handler.cs"), Fill("""
+public record {{className}}Command(__CTOR__) : IRequest;
+""").Replace("__CTOR__", ctor);
+                File.WriteAllText(Path.Combine(dir, $"{className}Command.cs"), cmdContent);
+
+                var handlerContent = (actionName == "Create" && props.Count == 0)
+                    ? Fill("""
 using MediatR;
 using System.Threading;
 using System.Threading.Tasks;
@@ -390,8 +549,79 @@ public class {{className}}Handler : IRequestHandler<{{className}}Command>
     public {{className}}Handler(IUnitOfWork uow) => _uow = uow;
     public async Task Handle({{className}}Command request, CancellationToken ct)
     {
-        await _uow.{{entity}}Repository.{{action}}Async(request.Entity);
+        var e = new {{entity}}();
+        // e.Id remains default for Create
+        await _uow.{{entity}}Repository.{{action}}Async(e);
         await _uow.SaveChangesAsync();
+    }
+}
+""")
+                    : Fill("""
+using MediatR;
+using System.Threading;
+using System.Threading.Tasks;
+using {{solution}}.Application.Common.Interfaces;
+using {{solution}}.Core.Features.{{entities}}.Entities;
+
+namespace {{solution}}.Application.Features.{{entities}}.Commands.{{action}};
+
+public class {{className}}Handler : IRequestHandler<{{className}}Command>
+{
+    private readonly IUnitOfWork _uow;
+    public {{className}}Handler(IUnitOfWork uow) => _uow = uow;
+    public async Task Handle({{className}}Command request, CancellationToken ct)
+    {
+        var e = new {{entity}}()
+        {
+__PROPS__
+        };
+        // Include Id for Update when present in command
+__SETID__
+        await _uow.{{entity}}Repository.{{action}}Async(e);
+        await _uow.SaveChangesAsync();
+    }
+}
+""")
+                    .Replace("__PROPS__", string.Join("\n", props.Select(p => $"            {p.Name} = request.{p.Name},")))
+                    .Replace("__SETID__", actionName == "Update" ? "        e.Id = request.Id;" : string.Empty);
+                File.WriteAllText(Path.Combine(dir, $"{className}Handler.cs"), handlerContent);
+                File.WriteAllText(Path.Combine(dir, $"{className}Validator.cs"), Fill("""
+using FluentValidation;
+
+namespace {{solution}}.Application.Features.{{entities}}.Commands.{{action}};
+
+public class {{className}}Validator : AbstractValidator<{{className}}Command>
+{
+    public {{className}}Validator()
+    {
+        // Add rules per properties if needed
+    }
+}
+"""));
+            }
+            else if (!hasDb && crudStyle && actionName == "Update")
+            {
+                // No-DB standard Update: include Id in command, skeleton handler
+                File.WriteAllText(Path.Combine(dir, $"{className}Command.cs"), Fill("""
+using MediatR;
+
+namespace {{solution}}.Application.Features.{{entities}}.Commands.{{action}};
+
+public record {{className}}Command(int Id) : IRequest;
+"""));
+                File.WriteAllText(Path.Combine(dir, $"{className}Handler.cs"), Fill("""
+using MediatR;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace {{solution}}.Application.Features.{{entities}}.Commands.{{action}};
+
+public class {{className}}Handler : IRequestHandler<{{className}}Command>
+{
+    public async Task Handle({{className}}Command request, CancellationToken ct)
+    {
+        // No database configured. Implement update logic here if needed.
+        await Task.CompletedTask;
     }
 }
 """));
@@ -404,7 +634,70 @@ public class {{className}}Validator : AbstractValidator<{{className}}Command>
 {
     public {{className}}Validator()
     {
-        RuleFor(x => x.Entity).NotNull();
+        RuleFor(x => x.Id).GreaterThan(0);
+    }
+}
+"""));
+            }
+            else
+            {
+                // Non-standard single action: empty command and skeleton handler, no entity mapping
+                File.WriteAllText(Path.Combine(dir, $"{className}Command.cs"), Fill(noDb ? """
+using MediatR;
+namespace {{solution}}.Application.Features.{{entities}}.Commands.{{action}};
+
+public record {{className}}Command() : IRequest;
+""" : """
+using MediatR;
+
+namespace {{solution}}.Application.Features.{{entities}}.Commands.{{action}};
+
+public record {{className}}Command() : IRequest;
+"""));
+                File.WriteAllText(Path.Combine(dir, $"{className}Handler.cs"), Fill(noDb ? """
+using MediatR;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace {{solution}}.Application.Features.{{entities}}.Commands.{{action}};
+
+public class {{className}}Handler : IRequestHandler<{{className}}Command>
+{
+    public async Task Handle({{className}}Command request, CancellationToken ct)
+    {
+        // No database configured. Implement command logic here if needed.
+        await Task.CompletedTask;
+    }
+}
+""" : """
+using MediatR;
+using System.Threading;
+using System.Threading.Tasks;
+using {{solution}}.Application.Common.Interfaces;
+
+namespace {{solution}}.Application.Features.{{entities}}.Commands.{{action}};
+
+public class {{className}}Handler : IRequestHandler<{{className}}Command>
+{
+    private readonly IUnitOfWork _uow;
+    public {{className}}Handler(IUnitOfWork uow) => _uow = uow;
+    public async Task Handle({{className}}Command request, CancellationToken ct)
+    {
+        // TODO: implement non-standard action logic here
+        await Task.CompletedTask;
+    }
+}
+"""));
+                File.WriteAllText(Path.Combine(dir, $"{className}Validator.cs"), Fill("""
+using FluentValidation;
+
+namespace {{solution}}.Application.Features.{{entities}}.Commands.{{action}};
+
+public class {{className}}Validator : AbstractValidator<{{className}}Command>
+{
+    public {{className}}Validator()
+    {
+        // Add rules for command properties if needed
     }
 }
 """));
@@ -412,7 +705,15 @@ public class {{className}}Validator : AbstractValidator<{{className}}Command>
         }
         else
         {
-            File.WriteAllText(Path.Combine(dir, $"{className}Query.cs"), Fill("""
+            if (crudStyle)
+            {
+                File.WriteAllText(Path.Combine(dir, $"{className}Query.cs"), Fill(noDb ? """
+using MediatR;
+
+namespace {{solution}}.Application.Features.{{entities}}.Queries.{{action}};
+
+public record {{className}}Query(int Id) : IRequest<object?>;
+""" : """
 using MediatR;
 using {{solution}}.Core.Features.{{entities}}.Entities;
 
@@ -420,7 +721,19 @@ namespace {{solution}}.Application.Features.{{entities}}.Queries.{{action}};
 
 public record {{className}}Query(int Id) : IRequest<{{entity}}?>;
 """));
-            File.WriteAllText(Path.Combine(dir, $"{className}Handler.cs"), Fill("""
+                File.WriteAllText(Path.Combine(dir, $"{className}Handler.cs"), Fill(noDb ? """
+using MediatR;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace {{solution}}.Application.Features.{{entities}}.Queries.{{action}};
+
+public class {{className}}Handler : IRequestHandler<{{className}}Query, object?>
+{
+    public Task<object?> Handle({{className}}Query request, CancellationToken ct)
+        => Task.FromResult<object?>(null);
+}
+""" : """
 using MediatR;
 using System.Threading;
 using System.Threading.Tasks;
@@ -437,7 +750,7 @@ public class {{className}}Handler : IRequestHandler<{{className}}Query, {{entity
         => await _uow.{{entity}}Repository.{{action}}Async(request.Id);
 }
 """));
-            File.WriteAllText(Path.Combine(dir, $"{className}Validator.cs"), Fill("""
+                File.WriteAllText(Path.Combine(dir, $"{className}Validator.cs"), Fill("""
 using FluentValidation;
 
 namespace {{solution}}.Application.Features.{{entities}}.Queries.{{action}};
@@ -450,6 +763,43 @@ public class {{className}}Validator : AbstractValidator<{{className}}Query>
     }
 }
 """));
+            }
+            else
+            {
+                File.WriteAllText(Path.Combine(dir, $"{className}Query.cs"), Fill("""
+using MediatR;
+
+namespace {{solution}}.Application.Features.{{entities}}.Queries.{{action}};
+
+public record {{className}}Query() : IRequest<object?>;
+"""));
+                File.WriteAllText(Path.Combine(dir, $"{className}Handler.cs"), Fill("""
+using MediatR;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace {{solution}}.Application.Features.{{entities}}.Queries.{{action}};
+
+public class {{className}}Handler : IRequestHandler<{{className}}Query, object?>
+{
+    public Task<object?> Handle({{className}}Query request, CancellationToken ct)
+        => Task.FromResult<object?>(null);
+}
+"""));
+                File.WriteAllText(Path.Combine(dir, $"{className}Validator.cs"), Fill("""
+using FluentValidation;
+
+namespace {{solution}}.Application.Features.{{entities}}.Queries.{{action}};
+
+public class {{className}}Validator : AbstractValidator<{{className}}Query>
+{
+    public {{className}}Validator()
+    {
+        // no parameters
+    }
+}
+"""));
+            }
         }
     }
 
@@ -458,6 +808,7 @@ public class {{className}}Validator : AbstractValidator<{{className}}Query>
         var solution = config.SolutionName;
         var startupProject = config.StartupProject;
         var plural = Naming.Pluralize(entity);
+        var noDb = string.Equals(config.DatabaseProvider, "None", StringComparison.OrdinalIgnoreCase);
         var apiDir = Path.Combine(config.SolutionPath, startupProject, "Features", plural);
         Directory.CreateDirectory(apiDir);
         var file = Path.Combine(apiDir, $"{entity}Endpoints.cs");
@@ -508,9 +859,9 @@ public class {{className}}Validator : AbstractValidator<{{className}}Query>
                 case "POST":
                     methodLines = new List<string>
                     {
-                        $"        routes.MapPost(\"/Api/{entity}\", async (IMediator mediator, {entity} entity) =>",
+                        $"        routes.MapPost(\"/Api/{entity}\", async (IMediator mediator, Create{entity}Command command) =>",
                         "        {",
-                        $"            await mediator.Send(new {className}Command(entity));",
+                        $"            await mediator.Send(command);",
                         "            return Results.Ok();",
                         $"        }}).WithTags(\"{entity}\");"
                     };
@@ -518,10 +869,9 @@ public class {{className}}Validator : AbstractValidator<{{className}}Query>
                 case "PUT":
                     methodLines = new List<string>
                     {
-                        $"        routes.MapPut(\"/Api/{entity}/{{id}}\", async (IMediator mediator, int id, {entity} entity) =>",
+                        $"        routes.MapPut(\"/Api/{entity}/{{id}}\", async (IMediator mediator, int id, Update{entity}Command command) =>",
                         "        {",
-                        "            entity.Id = id;",
-                        $"            await mediator.Send(new {className}Command(entity));",
+                        $"            await mediator.Send(command with {{ Id = id }});",
                         "            return Results.NoContent();",
                         $"        }}).WithTags(\"{entity}\");"
                     };
@@ -540,17 +890,16 @@ public class {{className}}Validator : AbstractValidator<{{className}}Query>
                     methodLines = new List<string>
                     {
                         $"        routes.MapGet(\"/Api/{entity}/{{id}}\", async (IMediator mediator, int id) =>",
-                        $"            await mediator.Send(new {className}Query(id)) is {entity} result ? Results.Ok(result) : Results.NotFound())",
+                        $"            await mediator.Send(new {className}Query(id)) is {(noDb ? "object" : entity)} result ? Results.Ok(result) : Results.NotFound())",
                         $"            .WithTags(\"{entity}\");"
                     };
                     break;
                 case "PATCH":
                     methodLines = new List<string>
                     {
-                        $"        routes.MapPatch(\"/Api/{entity}/{{id}}\", async (IMediator mediator, int id, {entity} entity) =>",
+                        $"        routes.MapPatch(\"/Api/{entity}/{{id}}\", async (IMediator mediator, int id, Update{entity}Command command) =>",
                         "        {",
-                        "            entity.Id = id;",
-                        $"            await mediator.Send(new {className}Command(entity));",
+                        $"            await mediator.Send(command with {{ Id = id }});",
                         "            return Results.NoContent();",
                         $"        }}).WithTags(\"{entity}\");"
                     };
@@ -562,11 +911,12 @@ public class {{className}}Validator : AbstractValidator<{{className}}Query>
         }
         else if (isCommand)
         {
+            // Non-standard command endpoint: no payload
             methodLines = new List<string>
             {
-                $"        routes.{mapCall}(\"/Api/{entity}/{actionName}\", async (IMediator mediator, {entity} entity) =>",
+                $"        routes.{mapCall}(\"/Api/{entity}/{actionName}\", async (IMediator mediator) =>",
                 "        {",
-                $"            await mediator.Send(new {className}Command(entity));",
+                $"            await mediator.Send(new {className}Command());",
                 "            return Results.Ok();",
                 $"        }}).WithTags(\"{entity}\");"
             };
@@ -575,8 +925,8 @@ public class {{className}}Validator : AbstractValidator<{{className}}Query>
         {
             methodLines = new List<string>
             {
-                $"        routes.{mapCall}(\"/Api/{entity}/{actionName}/{{id}}\", async (IMediator mediator, int id) =>",
-                $"            await mediator.Send(new {className}Query(id)) is {entity} result ? Results.Ok(result) : Results.NotFound())",
+                $"        routes.{mapCall}(\"/Api/{entity}/{actionName}\", async (IMediator mediator) =>",
+                $"            await mediator.Send(new {className}Query()) is object result ? Results.Ok(result) : Results.NotFound())",
                 $"            .WithTags(\"{entity}\");"
             };
         }
@@ -613,9 +963,9 @@ public class {{className}}Validator : AbstractValidator<{{className}}Query>
                     method = new[]
                     {
                         "    [HttpPost]",
-                        $"    public async Task Create([FromBody] {entity} entity)",
+                        $"    public async Task Create([FromBody] Create{entity}Command command)",
                         "    {",
-                        $"        await _mediator.Send(new {className}Command(entity));",
+                        $"        await _mediator.Send(command);",
                         "    }",
                         "",
                     };
@@ -624,10 +974,9 @@ public class {{className}}Validator : AbstractValidator<{{className}}Query>
                     method = new[]
                     {
                         "    [HttpPut(\"{id}\")]",
-                        $"    public async Task Update(int id, [FromBody] {entity} entity)",
+                        $"    public async Task Update(int id, [FromBody] Update{entity}Command command)",
                         "    {",
-                        "        entity.Id = id;",
-                        $"        await _mediator.Send(new {className}Command(entity));",
+                        $"        await _mediator.Send(command with {{ Id = id }});",
                         "    }",
                         "",
                     };
@@ -644,8 +993,11 @@ public class {{className}}Validator : AbstractValidator<{{className}}Query>
                     method = new[]
                     {
                         "    [HttpGet(\"{id}\")]",
-                        $"    public async Task<{entity}?> GetById(int id)",
-                        $"        => await _mediator.Send(new {className}Query(id));",
+                        "    public async Task<IActionResult> GetById(int id)",
+                        "    {",
+                        $"        var result = await _mediator.Send(new {className}Query(id));",
+                        "        return result is null ? NotFound() : Ok(result);",
+                        "    }",
                         "",
                     };
                     break;
@@ -668,12 +1020,13 @@ public class {{className}}Validator : AbstractValidator<{{className}}Query>
         }
         else if (isCommand)
         {
+            // Non-standard command: take no body, send empty command
             method = new[]
             {
                 $"    [{httpAttr}(\"{actionName}\")]",
-                $"    public async Task<IActionResult> {actionName}([FromBody] {entity} entity)",
+                $"    public async Task<IActionResult> {actionName}()",
                 "    {",
-                $"        await _mediator.Send(new {className}Command(entity));",
+                $"        await _mediator.Send(new {className}Command());",
                 "        return Ok();",
                 "    }",
                 "",
@@ -683,9 +1036,12 @@ public class {{className}}Validator : AbstractValidator<{{className}}Query>
         {
             method = new[]
             {
-                $"    [{httpAttr}(\"{actionName}/{{id}}\")]",
-                $"    public async Task<{entity}?> {actionName}(int id)",
-                $"        => await _mediator.Send(new {className}Query(id));",
+                $"    [{httpAttr}(\"{actionName}\")]",
+                $"    public async Task<IActionResult> {actionName}()",
+                "    {",
+                $"        var result = await _mediator.Send(new {className}Query());",
+                "        return result is null ? NotFound() : Ok(result);",
+                "    }",
                 "",
             };
         }
@@ -696,7 +1052,6 @@ public class {{className}}Validator : AbstractValidator<{{className}}Query>
             {
                 "using MediatR;",
                 "using Microsoft.AspNetCore.Mvc;",
-                $"using {solution}.Core.Features.{plural}.Entities;",
                 $"using {solution}.Application.Features.{plural}.{(isCommand ? "Commands" : "Queries")}.{actionName};",
                 "",
                 $"namespace {config.StartupProject}.Features.{plural};",
@@ -714,6 +1069,8 @@ public class {{className}}Validator : AbstractValidator<{{className}}Query>
         else
         {
             var lines = File.ReadAllLines(file).ToList();
+            var entityUsing = $"using {solution}.Core.Features.{plural}.Entities;";
+            lines.RemoveAll(l => l.Trim() == entityUsing);
             var usingLine = $"using {solution}.Application.Features.{plural}.{(isCommand ? "Commands" : "Queries")}.{actionName};";
             var lastUsing = lines.FindLastIndex(l => l.StartsWith("using "));
             if (!lines.Contains(usingLine))
@@ -741,4 +1098,31 @@ public class {{className}}Validator : AbstractValidator<{{className}}Query>
     }
 
     static string Upper(string text) => string.IsNullOrEmpty(text) ? text : char.ToUpper(text[0]) + text.Substring(1);
+
+    // Extracts scalar properties from the entity class to generate command parameters.
+    static List<(string Type, string Name)> ExtractScalarProps(string solutionPath, string solutionName, string entity, string plural)
+    {
+        var result = new List<(string, string)>();
+        try
+        {
+            var entityFile = Path.Combine(solutionPath, $"{solutionName}.Core", "Features", plural, "Entities", $"{entity}.cs");
+            if (!File.Exists(entityFile)) return result;
+            foreach (var line in File.ReadAllLines(entityFile))
+            {
+                var t = line.Trim();
+                if (!t.StartsWith("public ") || !t.Contains("{ get; set; }")) continue;
+                var parts = t.Split(new[]{' ', '\t'}, StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length < 4) continue;
+                var type = parts[1];
+                var name = parts[2];
+                if (name == "Id") continue;
+                if (type.StartsWith("ICollection<") || type.StartsWith("List<") || type.EndsWith("[]")) continue;
+                var allowed = new HashSet<string>{"string","int","long","bool","decimal","double","float","DateTime","Guid","short","byte","char","DateOnly","TimeOnly","DateTimeOffset"};
+                var baseType = type.TrimEnd('?');
+                if (allowed.Contains(baseType)) result.Add((type, name));
+            }
+        }
+        catch { }
+        return result;
+    }
 }
