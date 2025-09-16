@@ -17,6 +17,7 @@ public class ProjectUpdateStep : IScaffoldStep
     // Will be computed per target framework
     private static string _efCoreVersion = "8.0.0";
     private static string _openApiVersion = "8.0.0";
+    private static string _extensionsVersion = "8.0.0";
 
     public void Execute(SolutionConfig config, string entity)
     {
@@ -28,11 +29,10 @@ public class ProjectUpdateStep : IScaffoldStep
         var infraPath = Path.Combine(basePath, $"{solution}.Infrastructure");
         // Choose package versions based on selected TFM
         var tfm = config.TargetFramework ?? "net8.0";
-        if (tfm.StartsWith("net9."))
-        {
-            _efCoreVersion = "9.0.0";
-            _openApiVersion = "9.0.0";
-        }
+        var sharedFxVersion = PackageVersionResolver.ResolveSharedFrameworkPackageVersion(tfm);
+        _efCoreVersion = sharedFxVersion;
+        _openApiVersion = sharedFxVersion;
+        _extensionsVersion = sharedFxVersion;
         var persistencePath = Path.Combine(infraPath, "Persistence");
         if (provider == "SQLite")
         {
@@ -145,8 +145,8 @@ public class ProjectUpdateStep : IScaffoldStep
 
         var doc = XDocument.Load(infraProj);
         // Always ensure DI/config abstractions for library-level IServiceCollection/IConfiguration
-        EnsurePackage(doc, "Microsoft.Extensions.DependencyInjection.Abstractions", "8.0.0");
-        EnsurePackage(doc, "Microsoft.Extensions.Configuration.Abstractions", "8.0.0");
+        EnsurePackage(doc, "Microsoft.Extensions.DependencyInjection.Abstractions", _extensionsVersion);
+        EnsurePackage(doc, "Microsoft.Extensions.Configuration.Abstractions", _extensionsVersion);
 
         if (!string.Equals(provider, "None", StringComparison.OrdinalIgnoreCase))
         {
