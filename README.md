@@ -62,18 +62,25 @@ This layout exposes all the moving parts up front—application layers, environm
 - **Environment-specific configuration**: prepopulated `.env` and `appsettings` files for development, test, and production under `API/Config`.
 - **Vertical-slice CRUD generation** using MediatR, FluentValidation, and Unit-of-Work based EF Core repositories with pagination helpers.
 - **Unit-of-Work repositories** are created automatically so your data layer is production-ready from the start.
+- **Incremental CRUD generation**: re‑runs complement missing parts (handlers, controllers/endpoints, repositories, UoW, DbContext) instead of failing or duplicating.
 - **Custom action scaffolding** for additional commands or queries without breaking existing slices.
+- **Standard vs. non‑standard actions**: exact, case‑insensitive match to CRUD keywords (Create, Update, Delete, GetById, GetAll, GetList, Patch) triggers full CRUD behavior; any other name is treated as non‑standard.
+- **No‑DB friendly**: even without a database provider, a minimal Core Entity (Id only) is generated so Application code compiles. Handlers are skeletons and repositories contain TODO bodies.
+- **Controller purity**: controllers use Application models only (no Entity usings). GET methods return IActionResult with NotFound/Ok.
+- **Robust controller updates**: existing method detection uses regex (not substring) to avoid false positives (e.g., Update vs UpdateTelegram).
 - **Event scaffolding** to create domain events and interactively wire subscribers across features.
 - **Enum scaffolding** to generate strongly typed enumerations per feature or globally under `Core/Common/Enums`.
 - **Service scaffolder** for custom services, Redis caches, RabbitMQ message brokers, or outbound HTTP clients with resilient `HttpRequest` wrappers and automatic DI registration.
-- **Database provider selection** (SQL Server, SQLite, PostgreSQL, or MongoDB) stored for reuse across commands.
+- **Database provider selection** (SQL Server, SQLite, PostgreSQL, MongoDB, or No Database) stored for reuse across commands.
 - **Idempotent updates**: running commands again augments existing files instead of duplicating them.
 - **Automatic NuGet package and service registration**, including Swagger and startup configuration.
 - **Exec command auto-migrates**: detects property changes, creates missing migrations, applies them, and then runs the API or Docker container.
 - **Cross-platform** and tested on Windows, macOS, and Linux.
+- **Target framework auto-detect (net8/net9)**: picks the highest installed SDK (8+), sets the solution TFM, and generates a `global.json` with `rollForward: latestMajor` for smooth upgrades.
+- **Per-TFM package alignment**: EF Core, OpenAPI, Microsoft.Extensions.* and related packages match the selected TFM (8.x or 9.x) to prevent version mismatches.
 
 ## Requirements
-- [.NET SDK](https://dotnet.microsoft.com/download) **6.0+** (recommended: 8.0)
+- [.NET SDK](https://dotnet.microsoft.com/download) **8.0+** (the CLI targets `net8.0` and `net9.0` automatically)
 - Supported OS: Windows 10+, macOS Catalina+, or any modern Linux distribution
 - [Git](https://git-scm.com/) for cloning or contributing
 
@@ -130,24 +137,58 @@ dotnet-arch exec --docker-stop
 ```
 Missing options are prompted with sane defaults, keeping the experience smooth for newcomers.
 
+## Working with Multiple .NET SDKs
+DotNetArch is multi-targeted so you can keep several SDKs installed without friction.
+
+- The tool ships for both `net8.0` and `net9.0`. When running it from the repository, use the helper scripts to pick the best match automatically:
+  - macOS/Linux: `./scripts/run.sh -- --help`
+  - Windows (PowerShell): `pwsh ./scripts/run.ps1 -- --help`
+  - Prefer manual control? Run `dotnet run -f net8.0 -- --help` (or `net9.0`) instead.
+- Newly generated solutions include a `global.json` with `rollForward` set to `latestMajor`, so your projects transparently adopt the highest installed .NET 8/9 SDK.
+- During scaffolding DotNetArch inspects `dotnet --list-sdks` and selects the highest supported target framework, ensuring the produced projects match your environment.
+
 ## Command Reference
 ### new solution
 ```bash
-dotnet-arch new solution <SolutionName> [--output=Path] [--startup=ProjectName] [--style=controller|fast]
+dotnet-arch new solution <SolutionName> [--output=Path] [--startup=ProjectName] [--style=controller|fast] [--no-database]
 ```
 Creates a clean, feature-based solution. Initializes Git, writes a README template, scaffolds `.env` and `appsettings` files for development, test, and production, optionally adds Docker assets, and records choices in `dotnet-arch.yml` for later commands.
+
+Notes
+- If `--no-database` is supplied, the scaffold skips EF Core setup and migrations. A minimal Core Entity (Id only) is still generated so the Application layer compiles.
+- The target framework is detected from installed SDKs (8+). A `global.json` with `rollForward: latestMajor` is added, and package versions are aligned to the selected TFM.
 
 ### new crud
 ```bash
 dotnet-arch new crud --entity=EntityName [--output=Path]
 ```
-Generates a full vertical slice for an entity with CQRS handlers, validators, Unit-of-Work repositories, API endpoints, and migrations. Re‑runs update existing files.
+Generates a full vertical slice for an entity with CQRS handlers, validators, Unit‑of‑Work repositories, API endpoints, and migrations.
+
+Notes
+- Re‑runs are incremental: missing parts are added; existing code is left intact.
+- In no‑DB mode a minimal Entity with `Id` is still created so Application code compiles; repository methods are generated with TODO bodies.
+- Standard CRUD endpoints/actions created:
+  - Commands: Create, Update, Delete
+  - Queries: GetById, GetAll, GetList
+  - Update command includes `Id`; controllers send `command with { Id = id }`.
 
 ### new action
 ```bash
 dotnet-arch new action --entity=EntityName [--action=ActionName] --method=METHOD [--output=Path]
 ```
 Adds a custom command or query to an existing slice. After choosing the HTTP verb, you're prompted for an optional action name—leaving it blank infers a CRUD-style name from the method. The scaffolder infers command versus query based on the HTTP verb. If the slice is missing, a minimal repository and controller are created.
+
+Behavior
+- Exact, case‑insensitive CRUD names (Create, Update, Delete, GetById, GetAll, GetList, Patch) are treated as “standard” and generate full end‑to‑end code (handlers, validators, controller/endpoints, and repository methods).
+- Any other name is “non‑standard”: no database logic is generated. With a DB provider configured, you’ll be asked whether to add a matching repository method; signatures are parameterless.
+- Non‑standard commands and queries do not take inputs:
+  - Controller: `public async Task<IActionResult> MyAction()` sends `new MyActionCommand()` / `new MyActionQuery()`
+  - Minimal API: `routes.MapX("/Api/<Entity>/MyAction", async (IMediator m) => …)`
+- Standard Update always includes `Id` in the command. Controllers use `command with { Id = id }`.
+
+Validation
+- The method/action conflict check only applies to exact keywords (case‑insensitive). Examples:
+  - POST + Create → allowed; POST + Update → error; POST + UpdateTelegram → allowed.
 
 ### new event
 ```bash
@@ -183,7 +224,7 @@ Interfaces and implementations are placed in the appropriate layer and registere
 ```bash
 dotnet-arch exec [--output=Path] [--docker] [--docker-detach] [--docker-stop]
 ```
-Launches the startup project. Detects entity property changes, creates and applies migrations automatically, and then runs the API. With `--docker`, builds the image, starts the container, streams logs, and tears everything down safely on exit. With `--docker-detach`, performs the same setup with step-by-step logging but leaves the container running in the background without streaming logs or cleaning up. With `--docker-stop`, safely stops and removes the container and image from a detached run.
+Launches the startup project. Detects entity property changes, creates and applies migrations automatically (skipped in No Database mode), and then runs the API. With `--docker`, builds the image, starts the container, streams logs, and tears everything down safely on exit. With `--docker-detach`, performs the same setup with step-by-step logging but leaves the container running in the background without streaming logs or cleaning up. With `--docker-stop`, safely stops and removes the container and image from a detached run.
 
 ### remove migration
 ```bash
@@ -215,3 +256,13 @@ Please open an issue for large features to discuss your proposal first.
 - **LinkedIn**: [Moein Rezaee](https://linkedin.com/in/moein-rezaee-26331a125)
 
 Start simplifying your .NET project setup today with **DotNetArch**! 🚀
+
+---
+
+## Tips & Notes
+- Controllers never reference Core Entities; they use Application Models. Legacy `using <Solution>.Core.Features.<Entity>.Entities;` directives are removed on update.
+- GET endpoints return IActionResult with NotFound/Ok to prevent null-cast issues.
+- Regex‑based method detection prevents collisions like `Update` versus `UpdateTelegram` when augmenting controllers.
+- Non‑standard actions (commands/queries) are parameterless by default for both controllers and minimal APIs.
+- In no‑DB runs, a minimal Entity class (Id only) is generated to satisfy type references; repository methods contain TODO placeholders.
+- Re‑running scaffolds augments files in place; it won’t overwrite your custom logic.

@@ -10,6 +10,7 @@ public class SolutionConfig
     public string ApiPort { get; set; } = "";
     public string DockerImage { get; set; } = "";
     public string DockerContainer { get; set; } = "";
+    public string TargetFramework { get; set; } = "net8.0";
 
     public Dictionary<string, EntityStatus> Entities { get; set; } = new();
 }

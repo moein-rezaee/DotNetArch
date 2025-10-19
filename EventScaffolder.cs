@@ -9,23 +9,25 @@ static class EventScaffolder
 {
     public static bool EntityExists(SolutionConfig config, string entity)
     {
-        var solution = config.SolutionName;
+        var solution = config.SolutionName ?? string.Empty;
         var plural = Naming.Pluralize(entity);
-        var featureDir = Path.Combine(config.SolutionPath, $"{solution}.Application", "Features", plural);
+        var basePath = string.IsNullOrWhiteSpace(config.SolutionPath) ? Directory.GetCurrentDirectory() : config.SolutionPath;
+        var featureDir = Path.Combine(basePath, $"{solution}.Application", "Features", plural);
         return Directory.Exists(featureDir);
     }
 
     public static string[] ListEvents(SolutionConfig config, string entity)
     {
-        var solution = config.SolutionName;
+        var solution = config.SolutionName ?? string.Empty;
         var plural = Naming.Pluralize(entity);
-        var eventsDir = Path.Combine(config.SolutionPath, $"{solution}.Application", "Features", plural, "Events");
+        var basePath = string.IsNullOrWhiteSpace(config.SolutionPath) ? Directory.GetCurrentDirectory() : config.SolutionPath;
+        var eventsDir = Path.Combine(basePath, $"{solution}.Application", "Features", plural, "Events");
         if (!Directory.Exists(eventsDir))
             return Array.Empty<string>();
         return Directory.GetFiles(eventsDir, $"{entity}*Event.cs")
             .Select(Path.GetFileNameWithoutExtension)
-            .Where(n => n.StartsWith(entity) && n.EndsWith("Event"))
-            .Select(n => n.Substring(entity.Length, n.Length - entity.Length - "Event".Length))
+            .Where(n => !string.IsNullOrEmpty(n) && n!.StartsWith(entity) && n.EndsWith("Event"))
+            .Select(n => n!.Substring(entity.Length, n.Length - entity.Length - "Event".Length))
             .ToArray();
     }
 
@@ -37,9 +39,10 @@ static class EventScaffolder
             return false;
         }
         eventName = Upper(eventName);
-        var solution = config.SolutionName;
+        var solution = config.SolutionName ?? string.Empty;
         var plural = Naming.Pluralize(entity);
-        var appDir = Path.Combine(config.SolutionPath, $"{solution}.Application");
+        var basePath = string.IsNullOrWhiteSpace(config.SolutionPath) ? Directory.GetCurrentDirectory() : config.SolutionPath;
+        var appDir = Path.Combine(basePath, $"{solution}.Application");
         var featureDir = Path.Combine(appDir, "Features", plural);
         if (!Directory.Exists(featureDir))
             return false;
@@ -69,9 +72,10 @@ public class {eventClass} : INotification
 
     public static bool AddSubscriber(SolutionConfig config, string eventEntity, string eventName, string subscriberEntity)
     {
-        var solution = config.SolutionName;
+        var solution = config.SolutionName ?? string.Empty;
         var subscriberPlural = Naming.Pluralize(subscriberEntity);
-        var subFeatureDir = Path.Combine(config.SolutionPath, $"{solution}.Application", "Features", subscriberPlural);
+        var basePath2 = string.IsNullOrWhiteSpace(config.SolutionPath) ? Directory.GetCurrentDirectory() : config.SolutionPath;
+        var subFeatureDir = Path.Combine(basePath2, $"{solution}.Application", "Features", subscriberPlural);
         if (!Directory.Exists(subFeatureDir))
         {
             Program.Error($"Subscriber entity '{subscriberEntity}' does not exist.");
@@ -85,7 +89,7 @@ public class {eventClass} : INotification
         var file = Path.Combine(handlersDir, handlerClass + ".cs");
 
         var eventPlural = Naming.Pluralize(eventEntity);
-        var eventsDir = Path.Combine(config.SolutionPath, $"{solution}.Application", "Features", eventPlural, "Events");
+        var eventsDir = Path.Combine(basePath2, $"{solution}.Application", "Features", eventPlural, "Events");
         var eventFile = Path.Combine(eventsDir, $"{eventEntity}{eventName}Event.cs");
         if (!File.Exists(eventFile))
         {

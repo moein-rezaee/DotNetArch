@@ -15,8 +15,8 @@ static class CrudScaffolder
 
         if (config.Entities.TryGetValue(entityName, out var existing) && existing.HasCrud)
         {
-            Program.Error($"CRUD for {entityName} already exists.");
-            return;
+            Program.Info($"CRUD for {entityName} already exists; ensuring missing parts are added.");
+            // Continue to run steps to add any missing files/methods.
         }
 
         var provider = config.DatabaseProvider;
@@ -27,7 +27,7 @@ static class CrudScaffolder
             ConfigManager.Save(config.SolutionPath, config);
         }
 
-        if (!provider.Equals("Mongo", StringComparison.OrdinalIgnoreCase))
+        if (!provider.Equals("Mongo", StringComparison.OrdinalIgnoreCase) && !provider.Equals("None", StringComparison.OrdinalIgnoreCase))
         {
             if (!Program.EnsureEfTool(config.SolutionPath))
             {
@@ -39,21 +39,26 @@ static class CrudScaffolder
             ? (IScaffoldStep)new MinimalApiStep()
             : new ControllerStep();
 
-        var steps = new IScaffoldStep[]
+        var stepsList = new System.Collections.Generic.List<IScaffoldStep>
         {
             new ProjectUpdateStep(),
-            new EntityStep(),
-            new DbContextStep(),
-            new RepositoryStep(),
-            new UnitOfWorkStep(),
-            new ApplicationStep(),
-            controllerStep
         };
+        // Always generate minimal entity (even in no-db) so app code compiles
+        stepsList.Add(new EntityStep());
+        if (!provider.Equals("None", StringComparison.OrdinalIgnoreCase))
+        {
+            stepsList.Add(new DbContextStep());
+            stepsList.Add(new RepositoryStep());
+            stepsList.Add(new UnitOfWorkStep());
+        }
+        stepsList.Add(new ApplicationStep());
+        stepsList.Add(controllerStep);
+        var steps = stepsList.ToArray();
 
         foreach (var step in steps)
             step.Execute(config, entityName);
 
-        if (!provider.Equals("Mongo", StringComparison.OrdinalIgnoreCase))
+        if (!provider.Equals("Mongo", StringComparison.OrdinalIgnoreCase) && !provider.Equals("None", StringComparison.OrdinalIgnoreCase))
         {
             var prev = Directory.GetCurrentDirectory();
             try

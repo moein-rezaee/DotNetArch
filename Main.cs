@@ -366,6 +366,27 @@ class Program
                 };
             }
 
+            // Validate explicit action name vs HTTP method (only for exact CRUD keywords)
+            var m = method.ToUpperInvariant();
+            var a = (action ?? string.Empty).ToUpperInvariant();
+            var validForMethod = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["GET"] = new[] { "GETBYID", "GETALL", "GETLIST" },
+                ["POST"] = new[] { "CREATE" },
+                ["PUT"] = new[] { "UPDATE" },
+                ["PATCH"] = new[] { "PATCH", "UPDATE" },
+                ["DELETE"] = new[] { "DELETE" },
+            };
+            var crudNames = new HashSet<string>(new[] { "CREATE", "UPDATE", "DELETE", "GETBYID", "GETALL", "GETLIST", "PATCH" }, StringComparer.OrdinalIgnoreCase);
+            if (!autoAction && crudNames.Contains(a))
+            {
+                if (validForMethod.TryGetValue(m, out var allowed) && !allowed.Contains(a, StringComparer.OrdinalIgnoreCase))
+                {
+                    Error($"Action name '{action}' conflicts with HTTP method '{method}'. Allowed for {method}: {string.Join(", ", allowed)}.");
+                    return;
+                }
+            }
+
             entity = SanitizeIdentifier(entity);
             action = SanitizeIdentifier(action);
 
@@ -464,19 +485,26 @@ class Program
                 return;
             }
 
-            // ensure unit of work and repositories exist before syncing project wiring
-            foreach (var e in config.Entities.Keys)
-                new UnitOfWorkStep().Execute(config, e);
+            // ensure unit of work and repositories exist before syncing project wiring (skip in no-db mode)
+            if (!string.Equals(config.DatabaseProvider, "None", StringComparison.OrdinalIgnoreCase))
+            {
+                foreach (var e in config.Entities.Keys)
+                    new UnitOfWorkStep().Execute(config, e);
+            }
 
             // keep project wiring (e.g. IUnitOfWork registration) up to date after updates
             new ProjectUpdateStep().Execute(config, string.Empty);
 
             // run unit of work step again to apply registrations if DI files were recreated
-            foreach (var e in config.Entities.Keys)
-                new UnitOfWorkStep().Execute(config, e);
+            if (!string.Equals(config.DatabaseProvider, "None", StringComparison.OrdinalIgnoreCase))
+            {
+                foreach (var e in config.Entities.Keys)
+                    new UnitOfWorkStep().Execute(config, e);
+            }
 
-            // ensure any pending migrations are applied before running
-            UpdateMigrations(config, solutionPath);
+            // ensure any pending migrations are applied before running (skip in no-db)
+            if (!string.Equals(config.DatabaseProvider, "None", StringComparison.OrdinalIgnoreCase))
+                UpdateMigrations(config, solutionPath);
 
             if (useDocker)
             {
@@ -652,6 +680,7 @@ class Program
             string? outputPath = null;
             string? startup = null;
             string? style = null;
+            bool noDatabase = false;
             for (int i = 2; i < args.Length; i++)
             {
                 if (!args[i].StartsWith("--"))
@@ -662,6 +691,8 @@ class Program
                     startup = args[i].Substring("--startup=".Length);
                 else if (args[i].StartsWith("--style="))
                     style = args[i].Substring("--style=".Length);
+                else if (args[i].Equals("--no-database", StringComparison.OrdinalIgnoreCase))
+                    noDatabase = true;
             }
 
             if (string.IsNullOrWhiteSpace(solutionName))
@@ -681,7 +712,7 @@ class Program
             if (string.IsNullOrWhiteSpace(style))
                 style = "controller";
 
-            GenerateSolution(solutionName, outputPath!, startup!, style!);
+            GenerateSolution(solutionName, outputPath!, startup!, style!, noDatabase ? "None" : null);
             return;
         }
 
@@ -800,13 +831,19 @@ class Program
         GenerateSolution(solutionName, outputPath, startup, style);
     }
 
-    static void GenerateSolution(string solutionName, string outputPath, string startupProject, string apiStyle)
+    static void GenerateSolution(string solutionName, string outputPath, string startupProject, string apiStyle, string? providerOverride = null)
     {
         var solutionDir = Path.Combine(outputPath, solutionName);
         if (!Directory.Exists(solutionDir))
             Directory.CreateDirectory(solutionDir);
 
         Directory.SetCurrentDirectory(solutionDir);
+
+        // Ensure a global.json that rolls SDK forward to the latest major
+        EnsureGlobalJson(solutionDir);
+
+        // Resolve preferred target framework from installed SDKs
+        var tfm = ResolveTargetFramework();
 
         var gitInstalled = IsGitInstalled();
         var gitInitialized = false;
@@ -829,10 +866,10 @@ class Program
             EnsureReadmeTemplate(solutionDir, solutionName);
 
         RunCommand($"dotnet new sln -n {solutionName} --force");
-        RunCommand($"dotnet new classlib -n {solutionName}.Core --force --framework net8.0");
-        RunCommand($"dotnet new classlib -n {solutionName}.Application --force --framework net8.0");
-        RunCommand($"dotnet new classlib -n {solutionName}.Infrastructure --force --framework net8.0");
-        RunCommand($"dotnet new webapi -n {solutionName}.API --force --framework net8.0");
+        RunCommand($"dotnet new classlib -n {solutionName}.Core --force --framework {tfm}");
+        RunCommand($"dotnet new classlib -n {solutionName}.Application --force --framework {tfm}");
+        RunCommand($"dotnet new classlib -n {solutionName}.Infrastructure --force --framework {tfm}");
+        RunCommand($"dotnet new webapi -n {solutionName}.API --force --framework {tfm}");
         
 
         DeleteDefaultClass($"{solutionName}.Core");
@@ -849,9 +886,9 @@ class Program
         RunCommand($"dotnet add {solutionName}.API/{solutionName}.API.csproj reference {solutionName}.Application/{solutionName}.Application.csproj");
         RunCommand($"dotnet add {solutionName}.API/{solutionName}.API.csproj reference {solutionName}.Infrastructure/{solutionName}.Infrastructure.csproj");
 
-        var provider = DatabaseProviderSelector.Choose();
+        var provider = string.IsNullOrWhiteSpace(providerOverride) ? DatabaseProviderSelector.Choose() : providerOverride!;
         var port = ReadApiPort(solutionDir, startupProject);
-        var config = new SolutionConfig { SolutionName = solutionName, SolutionPath = solutionDir, StartupProject = startupProject, DatabaseProvider = provider, ApiStyle = apiStyle, ApiPort = port };
+        var config = new SolutionConfig { SolutionName = solutionName, SolutionPath = solutionDir, StartupProject = startupProject, DatabaseProvider = provider, ApiStyle = apiStyle, ApiPort = port, TargetFramework = tfm };
         ConfigManager.Save(solutionDir, config);
         PathState.Save(solutionDir);
         new ApplicationStep().Execute(config, string.Empty);
@@ -871,6 +908,39 @@ class Program
         Info($"Navigate to the '{solutionName}' directory and run 'dotnet build'.");
     }
 
+    static void EnsureGlobalJson(string basePath)
+    {
+        try
+        {
+            var path = Path.Combine(basePath, "global.json");
+            if (File.Exists(path)) return;
+            var content = "{\n  \"sdk\": {\n    \"version\": \"8.0.100\",\n    \"rollForward\": \"latestMajor\",\n    \"allowPrerelease\": false\n  }\n}";
+            File.WriteAllText(path, content);
+        }
+        catch { }
+    }
+    static string ResolveTargetFramework()
+    {
+        try
+        {
+            var (ok, output) = RunCommandCapture("dotnet --list-sdks");
+            if (!ok) return "net8.0";
+            var versions = new List<Version>();
+            foreach (var raw in output.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                var token = raw.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+                if (token == null) continue;
+                var verStr = token.Split('-')[0];
+                if (Version.TryParse(verStr, out var v)) versions.Add(v);
+            }
+            if (versions.Count == 0) return "net8.0";
+            var max = versions.Max();
+            var major = Math.Max(8, max.Major); // support 8+ only
+            return $"net{major}.0";
+        }
+        catch { return "net8.0"; }
+    }
+
     static string ReadApiPort(string basePath, string startupProject)
     {
         var lsPath = Path.Combine(basePath, startupProject, "Properties", "launchSettings.json");
@@ -879,15 +949,17 @@ class Program
         try
         {
             using var doc = JsonDocument.Parse(File.ReadAllText(lsPath));
-            var profiles = doc.RootElement.GetProperty("profiles");
-            foreach (var prof in profiles.EnumerateObject())
+            if (doc.RootElement.TryGetProperty("profiles", out var profiles))
             {
-                if (prof.Value.TryGetProperty("applicationUrl", out var urlEl))
+                foreach (var prof in profiles.EnumerateObject())
                 {
-                    var url = urlEl.GetString() ?? string.Empty;
-                    var http = url.Split(';').FirstOrDefault(u => u.StartsWith("http://", StringComparison.OrdinalIgnoreCase));
-                    if (http != null && Uri.TryCreate(http, UriKind.Absolute, out var uri))
-                        return uri.Port.ToString();
+                    if (prof.Value.TryGetProperty("applicationUrl", out var urlEl))
+                    {
+                        var url = urlEl.GetString() ?? string.Empty;
+                        var http = url.Split(';').FirstOrDefault(u => u.StartsWith("http://", StringComparison.OrdinalIgnoreCase));
+                        if (http != null && Uri.TryCreate(http, UriKind.Absolute, out var uri))
+                            return uri.Port.ToString();
+                    }
                 }
             }
         }
@@ -1172,7 +1244,7 @@ class Program
     static void UpdateMigrations(SolutionConfig config, string basePath)
     {
         var provider = config.DatabaseProvider;
-        if (string.IsNullOrWhiteSpace(provider) || provider.Equals("Mongo", StringComparison.OrdinalIgnoreCase))
+        if (string.IsNullOrWhiteSpace(provider) || provider.Equals("Mongo", StringComparison.OrdinalIgnoreCase) || provider.Equals("None", StringComparison.OrdinalIgnoreCase))
         {
             Info("No migrations for the selected provider.");
             return;
@@ -1312,7 +1384,7 @@ class Program
             return true;
 
         Info("dotnet-ef not found. Attempting installation...");
-        var cmd = GetEfToolInstallMessage();
+        var cmd = GetEfToolInstallMessage(workingDir);
         if (RunCommand(cmd, workingDir))
             return RunCommand("dotnet ef --version", workingDir, print: false);
 
@@ -1329,9 +1401,19 @@ class Program
         return false;
     }
 
-    public static string GetEfToolInstallMessage()
+    public static string GetEfToolInstallMessage(string? workingDir = null)
     {
-        const string version = "8.*";
+        var version = "8.*";
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(workingDir))
+            {
+                var cfg = ConfigManager.Load(workingDir!);
+                if (cfg != null && !string.IsNullOrWhiteSpace(cfg.TargetFramework) && cfg.TargetFramework.StartsWith("net9."))
+                    version = "9.*";
+            }
+        }
+        catch { }
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             return $"dotnet tool install --global dotnet-ef --version {version} && setx PATH \"%PATH%;%USERPROFILE%\\.dotnet\\tools\"";
         else

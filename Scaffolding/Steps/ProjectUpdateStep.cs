@@ -12,11 +12,12 @@ public class ProjectUpdateStep : IScaffoldStep
 {
     private const string MediatRVersion = "12.1.1";
     private const string FluentValidationVersion = "11.9.0";
-    // Use EF Core 8 to match the dotnet-ef 8.x tool installed by the scaffolded project
-    private const string EfCoreVersion = "8.0.0";
     private const string SqlClientVersion = "5.2.1";
-    private const string OpenApiVersion = "8.0.0";
     private const string SwaggerVersion = "6.5.0";
+    // Will be computed per target framework
+    private static string _efCoreVersion = "8.0.0";
+    private static string _openApiVersion = "8.0.0";
+    private static string _extensionsVersion = "8.0.0";
 
     public void Execute(SolutionConfig config, string entity)
     {
@@ -26,13 +27,20 @@ public class ProjectUpdateStep : IScaffoldStep
         var startupProject = config.StartupProject;
         var apiStyle = config.ApiStyle;
         var infraPath = Path.Combine(basePath, $"{solution}.Infrastructure");
+        // Choose package versions based on selected TFM
+        var tfm = config.TargetFramework ?? "net8.0";
+        var sharedFxVersion = PackageVersionResolver.ResolveSharedFrameworkPackageVersion(tfm);
+        _efCoreVersion = sharedFxVersion;
+        _openApiVersion = sharedFxVersion;
+        _extensionsVersion = sharedFxVersion;
         var persistencePath = Path.Combine(infraPath, "Persistence");
         if (provider == "SQLite")
         {
             var dataDir = Path.Combine(persistencePath, "Data");
             Directory.CreateDirectory(dataDir);
         }
-        Directory.CreateDirectory(Path.Combine(persistencePath, PathConstants.Migrations));
+        if (!string.Equals(provider, "None", StringComparison.OrdinalIgnoreCase))
+            Directory.CreateDirectory(Path.Combine(persistencePath, PathConstants.Migrations));
         UpdateApplicationProject(solution, basePath);
         UpdateInfrastructureProject(solution, basePath, provider);
         UpdateApiProject(solution, provider, basePath, startupProject);
@@ -41,22 +49,32 @@ public class ProjectUpdateStep : IScaffoldStep
         EnsureConfigFiles(basePath, startupProject);
         UpdateProgram(solution, provider, entity, basePath, startupProject, apiStyle);
     }
+    
 
     static void EnsurePackage(XDocument doc, string include, string version)
     {
+        // پیدا کردن همه PackageReference های همنام
         var refs = doc.Root!.Elements("ItemGroup").Elements("PackageReference")
             .Where(p => (string?)p.Attribute("Include") == include).ToList();
 
+        // یک گروهِ مشترک برای همهٔ پکیج‌ها پیدا کن (یا بساز)
+        var group = doc.Root.Elements("ItemGroup")
+            .FirstOrDefault(g => g.Elements("PackageReference").Any());
+        if (group == null)
+        {
+            group = new XElement("ItemGroup");
+            doc.Root.Add(group);
+        }
+
         if (refs.Count == 0)
         {
-            var group = new XElement("ItemGroup",
-                new XElement("PackageReference",
-                    new XAttribute("Include", include),
-                    new XAttribute("Version", version)));
-            doc.Root.Add(group);
+            group.Add(new XElement("PackageReference",
+                new XAttribute("Include", include),
+                new XAttribute("Version", version)));
         }
         else
         {
+            // به‌روزرسانی اولین رفرنس و حذف تکراری‌ها
             var first = refs[0];
             var attr = first.Attribute("Version");
             var elem = first.Element("Version");
@@ -65,6 +83,13 @@ public class ProjectUpdateStep : IScaffoldStep
             else first.Add(new XAttribute("Version", version));
 
             foreach (var extra in refs.Skip(1).ToList()) extra.Remove();
+
+            // اگر این رفرنس داخل یک ItemGroup مجزا بود، به گروهِ مشترک منتقلش کن
+            if (!ReferenceEquals(first.Parent, group))
+            {
+                first.Remove();
+                group.Add(first);
+            }
         }
     }
 
@@ -119,16 +144,22 @@ public class ProjectUpdateStep : IScaffoldStep
         if (!File.Exists(infraProj)) return;
 
         var doc = XDocument.Load(infraProj);
+        // Always ensure DI/config abstractions for library-level IServiceCollection/IConfiguration
+        EnsurePackage(doc, "Microsoft.Extensions.DependencyInjection.Abstractions", _extensionsVersion);
+        EnsurePackage(doc, "Microsoft.Extensions.Configuration.Abstractions", _extensionsVersion);
 
-        EnsurePackage(doc, "Microsoft.EntityFrameworkCore", EfCoreVersion);
-        EnsurePackage(doc, "Microsoft.EntityFrameworkCore.Design", EfCoreVersion);
+        if (!string.Equals(provider, "None", StringComparison.OrdinalIgnoreCase))
+        {
+            EnsurePackage(doc, "Microsoft.EntityFrameworkCore", _efCoreVersion);
+            EnsurePackage(doc, "Microsoft.EntityFrameworkCore.Design", _efCoreVersion);
 
-        var providerPackage = provider == "SQLite"
-            ? "Microsoft.EntityFrameworkCore.Sqlite"
-            : "Microsoft.EntityFrameworkCore.SqlServer";
-        EnsurePackage(doc, providerPackage, EfCoreVersion);
-        if (provider != "SQLite")
-            EnsurePackage(doc, "Microsoft.Data.SqlClient", SqlClientVersion);
+            var providerPackage = provider == "SQLite"
+                ? "Microsoft.EntityFrameworkCore.Sqlite"
+                : "Microsoft.EntityFrameworkCore.SqlServer";
+            EnsurePackage(doc, providerPackage, _efCoreVersion);
+            if (provider != "SQLite")
+                EnsurePackage(doc, "Microsoft.Data.SqlClient", SqlClientVersion);
+        }
 
         doc.Save(infraProj);
     }
@@ -142,18 +173,22 @@ public class ProjectUpdateStep : IScaffoldStep
 
         EnsurePackage(doc, "MediatR", MediatRVersion);
         EnsurePackage(doc, "FluentValidation.DependencyInjectionExtensions", FluentValidationVersion);
-        EnsurePackage(doc, "Microsoft.AspNetCore.OpenApi", OpenApiVersion);
+        EnsurePackage(doc, "Microsoft.AspNetCore.OpenApi", _openApiVersion);
         EnsurePackage(doc, "Swashbuckle.AspNetCore", SwaggerVersion);
-        EnsurePackage(doc, "Microsoft.EntityFrameworkCore.Design", EfCoreVersion);
+        if (!string.Equals(provider, "None", StringComparison.OrdinalIgnoreCase))
+            EnsurePackage(doc, "Microsoft.EntityFrameworkCore.Design", _efCoreVersion);
         foreach (var old in doc.Root!.Elements("ItemGroup").Elements("PackageReference")
                      .Where(p => (string?)p.Attribute("Include") == "MediatR.Extensions.Microsoft.DependencyInjection").ToList())
             old.Remove();
-        var providerPackage = provider == "SQLite"
-            ? "Microsoft.EntityFrameworkCore.Sqlite"
-            : "Microsoft.EntityFrameworkCore.SqlServer";
-        EnsurePackage(doc, providerPackage, EfCoreVersion);
-        if (provider != "SQLite")
-            EnsurePackage(doc, "Microsoft.Data.SqlClient", SqlClientVersion);
+        if (!string.Equals(provider, "None", StringComparison.OrdinalIgnoreCase))
+        {
+            var providerPackage = provider == "SQLite"
+                ? "Microsoft.EntityFrameworkCore.Sqlite"
+                : "Microsoft.EntityFrameworkCore.SqlServer";
+            EnsurePackage(doc, providerPackage, _efCoreVersion);
+            if (provider != "SQLite")
+                EnsurePackage(doc, "Microsoft.Data.SqlClient", SqlClientVersion);
+        }
 
         var rel = ".." + Path.DirectorySeparatorChar;
         EnsureProjectReference(doc, $"{rel}{solution}.Core{Path.DirectorySeparatorChar}{solution}.Core.csproj");
@@ -215,7 +250,25 @@ public static class DependencyInjection
         if (!File.Exists(infraDi))
         {
             string infraContent;
-            if (provider == "SQLite")
+            if (string.Equals(provider, "None", StringComparison.OrdinalIgnoreCase))
+            {
+                infraContent = """
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace {{solution}}.Infrastructure;
+
+public static class DependencyInjection
+{
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
+    {
+        // No database configured
+        return services;
+    }
+}
+""";
+            }
+            else if (provider == "SQLite")
             {
                 infraContent = """
 using System.IO;
@@ -261,16 +314,18 @@ public static class DependencyInjection
             }
             File.WriteAllText(infraDi, infraContent.Replace("{{solution}}", solution));
         }
-        EnsureUnitOfWorkRegistration(solution, infraDir, infraDi);
-        // ensure design-time factory for EF Core so migrations can run without full host
-        var persistenceDir = Path.Combine(infraDir, "Persistence");
-        Directory.CreateDirectory(persistenceDir);
-
-        // ensure a basic AppDbContext exists so the factory compiles even if no entities yet
-        var dbContextFile = Path.Combine(persistenceDir, "AppDbContext.cs");
-        if (!File.Exists(dbContextFile))
+        if (!string.Equals(provider, "None", StringComparison.OrdinalIgnoreCase))
         {
-            var dbContextContent = """
+            EnsureUnitOfWorkRegistration(solution, infraDir, infraDi);
+            // ensure design-time factory for EF Core so migrations can run without full host
+            var persistenceDir = Path.Combine(infraDir, "Persistence");
+            Directory.CreateDirectory(persistenceDir);
+
+            // ensure a basic AppDbContext exists so the factory compiles even if no entities yet
+            var dbContextFile = Path.Combine(persistenceDir, "AppDbContext.cs");
+            if (!File.Exists(dbContextFile))
+            {
+                var dbContextContent = """
 using Microsoft.EntityFrameworkCore;
 
 namespace {{solution}}.Infrastructure.Persistence;
@@ -280,16 +335,16 @@ public class AppDbContext : DbContext
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 }
 """;
-            File.WriteAllText(dbContextFile, dbContextContent.Replace("{{solution}}", solution));
-        }
+                File.WriteAllText(dbContextFile, dbContextContent.Replace("{{solution}}", solution));
+            }
 
-        var factoryFile = Path.Combine(persistenceDir, "AppDbContextFactory.cs");
-        if (!File.Exists(factoryFile))
-        {
-            string factoryContent;
-            if (provider == "SQLite")
+            var factoryFile = Path.Combine(persistenceDir, "AppDbContextFactory.cs");
+            if (!File.Exists(factoryFile))
             {
-                factoryContent = """
+                string factoryContent;
+                if (provider == "SQLite")
+                {
+                    factoryContent = """
 using System.IO;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
@@ -309,10 +364,10 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
     }
 }
 """;
-            }
-            else
-            {
-                factoryContent = """
+                }
+                else
+                {
+                    factoryContent = """
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
@@ -329,8 +384,9 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
     }
 }
 """;
+                }
+                File.WriteAllText(factoryFile, factoryContent.Replace("{{solution}}", solution));
             }
-            File.WriteAllText(factoryFile, factoryContent.Replace("{{solution}}", solution));
         }
     }
 
@@ -353,9 +409,10 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
             "using Microsoft.Extensions.Configuration;",
             "using Microsoft.Extensions.DependencyInjection;",
             $"using {solution}.Application;",
-            $"using {solution}.Infrastructure;",
-            $"using {solution}.Infrastructure.Persistence;"
+            $"using {solution}.Infrastructure;"
         };
+        if (!string.Equals(provider, "None", StringComparison.OrdinalIgnoreCase))
+            usingLines.Add($"using {solution}.Infrastructure.Persistence;");
         var uowInterface = Path.Combine(basePath, $"{solution}.Application", "Common", "Interfaces", "IUnitOfWork.cs");
         var hasUow = File.Exists(uowInterface);
         if (hasUow)
@@ -363,8 +420,11 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
         if (!string.IsNullOrWhiteSpace(entity))
         {
             var plural = Naming.Pluralize(entity);
-            usingLines.Add("using Microsoft.EntityFrameworkCore;");
-            usingLines.Add($"using {solution}.Infrastructure.Persistence;");
+            if (!string.Equals(provider, "None", StringComparison.OrdinalIgnoreCase))
+            {
+                usingLines.Add("using Microsoft.EntityFrameworkCore;");
+                usingLines.Add($"using {solution}.Infrastructure.Persistence;");
+            }
             if (apiStyle == "fast")
                 usingLines.Add($"using {startupProject}.Features.{plural};");
         }
@@ -400,7 +460,7 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
             }
             if (!lines.Any(l => l.Contains("AddApplication()")))
                 lines.Insert(insertIndex++, "builder.Services.AddApplication();");
-            if (!lines.Any(l => l.Contains("AddInfrastructure")))
+            if (!lines.Any(l => l.Contains("AddInfrastructure") ) && !string.Equals(provider, "None", StringComparison.OrdinalIgnoreCase))
                 lines.Insert(insertIndex++, "builder.Services.AddInfrastructure(builder.Configuration);");
             if (hasUow && !lines.Any(l => l.Contains("AddScoped<IUnitOfWork, UnitOfWork>()")))
                 lines.Insert(insertIndex++, "builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();");
@@ -427,7 +487,7 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
                 if (!string.IsNullOrWhiteSpace(entity) && !lines.Any(l => l.Contains($"app.Map{entity}Endpoints")))
                     lines.Insert(runIdx++, $"app.Map{entity}Endpoints();");
             }
-            if (!string.IsNullOrWhiteSpace(entity) && !lines.Any(l => l.Contains("Database.Migrate") || l.Contains("Database.EnsureCreated")))
+            if (!string.IsNullOrWhiteSpace(entity) && !string.Equals(provider, "None", StringComparison.OrdinalIgnoreCase) && !lines.Any(l => l.Contains("Database.Migrate") || l.Contains("Database.EnsureCreated")))
             {
                 var migrateLines = new List<string>
                 {
@@ -492,19 +552,40 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
             var mapStart = lines.FindIndex(l => l.Contains("app.MapGet") && l.Contains("/weatherforecast"));
             if (mapStart >= 0)
             {
-                // The sample endpoint chains configuration calls like
-                // .WithName(...).WithOpenApi();. A naive search for the
-                // first line ending with ");" can stop early on lines such
-                // as ".ToArray();", leaving trailing endpoint fragments that
-                // cause compilation errors. Instead, look specifically for
-                // the terminating ".WithOpenApi()" line and fall back to the
-                // previous behaviour only if it is missing.
+                // try to remove whole chained endpoint (MapGet ... WithOpenApi ...);
                 var mapEnd = lines.FindIndex(mapStart, l => l.Contains(".WithOpenApi()"));
                 if (mapEnd < 0)
                     mapEnd = lines.FindIndex(mapStart, l => l.Trim().EndsWith(");"));
                 if (mapEnd >= mapStart)
                     lines.RemoveRange(mapStart, mapEnd - mapStart + 1);
             }
+            // aggressively clean any remaining weather fragments if chain was broken
+            var removePatterns = new[]
+            {
+                "/weatherforecast",
+                "GetWeatherForecast",
+                "return forecast",
+                ".WithName(\"GetWeatherForecast\"",
+                ".WithOpenApi(",
+                "record WeatherForecast",
+                "WeatherForecast[]",
+                "var summaries =",
+                "new[] {\"Freezing\""
+            };
+            bool removed;
+            do
+            {
+                removed = false;
+                for (int i = lines.Count - 1; i >= 0; i--)
+                {
+                    var t = lines[i].Trim();
+                    if (removePatterns.Any(p => t.Contains(p)) || t == "})")
+                    {
+                        lines.RemoveAt(i);
+                        removed = true;
+                    }
+                }
+            } while (removed);
 
             // remove sample record definition
             var recordIndex = lines.FindIndex(l => l.Contains("record WeatherForecast"));
@@ -513,6 +594,16 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
                 var closeIndex = lines.FindIndex(recordIndex + 1, l => l.Trim() == "}");
                 if (closeIndex >= recordIndex)
                     lines.RemoveRange(recordIndex, closeIndex - recordIndex + 1);
+            }
+
+            // remove any remaining weather sample artifacts (e.g., TemperatureF/C properties)
+            lines.RemoveAll(l => l.Contains("TemperatureF") || l.Contains("TemperatureC"));
+
+            // ensure nothing remains after app.Run();
+            var runLine = lines.FindIndex(l => l.Contains("app.Run("));
+            if (runLine >= 0 && runLine < lines.Count - 1)
+            {
+                lines.RemoveRange(runLine + 1, lines.Count - (runLine + 1));
             }
 
             File.WriteAllLines(program, lines);

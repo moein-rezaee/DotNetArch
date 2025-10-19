@@ -13,13 +13,57 @@ public class MinimalApiStep : IScaffoldStep
         var solution = config.SolutionName;
         var basePath = config.SolutionPath;
         var startupProject = config.StartupProject;
+        var noDb = string.Equals(config.DatabaseProvider, "None", StringComparison.OrdinalIgnoreCase);
         var plural = Naming.Pluralize(entity);
         var apiDir = Path.Combine(basePath, startupProject, "Features", plural);
         Directory.CreateDirectory(apiDir);
         var file = Path.Combine(apiDir, $"{entity}Endpoints.cs");
         if (!File.Exists(file))
         {
-            var content = """
+            var content = noDb ? """
+using MediatR;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using {{solution}}.Application.Features.{{entities}}.Commands.Create;
+using {{solution}}.Application.Features.{{entities}}.Commands.Update;
+using {{solution}}.Application.Features.{{entities}}.Commands.Delete;
+using {{solution}}.Application.Features.{{entities}}.Queries.GetById;
+using {{solution}}.Application.Features.{{entities}}.Queries.GetAll;
+
+namespace {{startupProject}}.Features.{{entities}};
+
+public static class {{entity}}Endpoints
+{
+    public static void Map{{entity}}Endpoints(this IEndpointRouteBuilder routes)
+    {
+        routes.MapGet("/Api/{{entity}}/{id}", async (IMediator mediator, int id) =>
+            await mediator.Send(new Get{{entity}}ByIdQuery(id)) is object result ? Results.Ok(result) : Results.NotFound())
+            .WithTags("{{entity}}");
+
+        routes.MapGet("/Api/{{entity}}/All", async (IMediator mediator) =>
+            Results.Ok(await mediator.Send(new Get{{entity}}AllQuery())))
+            .WithTags("{{entity}}");
+
+        routes.MapPost("/Api/{{entity}}", async (IMediator mediator, Create{{entity}}Command command) =>
+        {
+            await mediator.Send(command);
+            return Results.Ok();
+        }).WithTags("{{entity}}");
+
+        routes.MapPut("/Api/{{entity}}/{id}", async (IMediator mediator, int id, Update{{entity}}Command command) =>
+        {
+            await mediator.Send(command with { Id = id });
+            return Results.NoContent();
+        }).WithTags("{{entity}}");
+
+        routes.MapDelete("/Api/{{entity}}/{id}", async (IMediator mediator, int id) =>
+        {
+            await mediator.Send(new Delete{{entity}}Command(id));
+            return Results.NoContent();
+        }).WithTags("{{entity}}");
+    }
+}
+""" : """
 using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -93,48 +137,86 @@ public static class {{entity}}Endpoints
         EnsureUsing($"{solution}.Application.Features.{plural}.Commands.Delete");
         EnsureUsing($"{solution}.Application.Features.{plural}.Queries.GetById");
         EnsureUsing($"{solution}.Application.Features.{plural}.Queries.GetAll");
-        EnsureUsing($"{solution}.Application.Features.{plural}.Queries.GetList");
-        EnsureUsing($"{solution}.Core.Common.Models");
+        if (!noDb)
+        {
+            EnsureUsing($"{solution}.Application.Features.{plural}.Queries.GetList");
+            EnsureUsing($"{solution}.Core.Common.Models");
+        }
 
         if (!lines.Any(l => l.Contains($"Get{entity}ByIdQuery")))
         {
             var classClose = lines.FindLastIndex(l => l.Trim() == "}");
             var methodClose = lines.FindLastIndex(classClose - 1, l => l.Trim() == "}");
             var insertIndex = methodClose < 0 ? classClose : methodClose;
-            var crudLines = new[]
+            var linesToInsert = new List<string>
             {
                 $"        routes.MapGet(\"/Api/{entity}/{{id}}\", async (IMediator mediator, int id) =>",
-                $"            await mediator.Send(new Get{entity}ByIdQuery(id)) is {entity} result ? Results.Ok(result) : Results.NotFound())",
+                $"            await mediator.Send(new Get{entity}ByIdQuery(id)) is object result ? Results.Ok(result) : Results.NotFound())",
                 $"            .WithTags(\"{entity}\");",
                 "",
                 $"        routes.MapGet(\"/Api/{entity}/All\", async (IMediator mediator) =>",
                 $"            Results.Ok(await mediator.Send(new Get{entity}AllQuery())))",
                 $"            .WithTags(\"{entity}\");",
                 "",
-                $"        routes.MapGet(\"/Api/{entity}/List\", async (IMediator mediator, int page, int pageSize) =>",
-                $"            Results.Ok(await mediator.Send(new Get{entity}ListQuery(page, pageSize))))",
-                $"            .WithTags(\"{entity}\");",
-                "",
-                $"        routes.MapPost(\"/Api/{entity}\", async (IMediator mediator, {entity} entity) =>",
-                "        {",
-                $"            var created = await mediator.Send(new Create{entity}Command(entity));",
-                $"            return Results.Created($\"/Api/{entity}/{{created.Id}}\", created);",
-                $"        }}).WithTags(\"{entity}\");",
-                "",
-                $"        routes.MapPut(\"/Api/{entity}/{{id}}\", async (IMediator mediator, int id, {entity} entity) =>",
-                "        {",
-                $"            entity.Id = id;",
-                $"            await mediator.Send(new Update{entity}Command(entity));",
-                $"            return Results.NoContent();",
-                $"        }}).WithTags(\"{entity}\");",
-                "",
-                $"        routes.MapDelete(\"/Api/{entity}/{{id}}\", async (IMediator mediator, int id) =>",
-                "        {",
-                $"            await mediator.Send(new Delete{entity}Command(id));",
-                $"            return Results.NoContent();",
-                $"        }}).WithTags(\"{entity}\");",
             };
-            lines.InsertRange(insertIndex, crudLines);
+            if (!noDb)
+            {
+                linesToInsert.AddRange(new[]
+                {
+                    $"        routes.MapGet(\"/Api/{entity}/List\", async (IMediator mediator, int page, int pageSize) =>",
+                    $"            Results.Ok(await mediator.Send(new Get{entity}ListQuery(page, pageSize))))",
+                    $"            .WithTags(\"{entity}\");",
+                    "",
+                });
+            }
+            if (noDb)
+            {
+                linesToInsert.AddRange(new[]
+                {
+                    $"        routes.MapPost(\"/Api/{entity}\", async (IMediator mediator, Create{entity}Command command) =>",
+                    "        {",
+                    $"            await mediator.Send(command);",
+                    $"            return Results.Ok();",
+                    $"        }}).WithTags(\"{entity}\");",
+                    "",
+                    $"        routes.MapPut(\"/Api/{entity}/{{id}}\", async (IMediator mediator, int id, Update{entity}Command command) =>",
+                    "        {",
+                    $"            await mediator.Send(command with {{ Id = id }});",
+                    $"            return Results.NoContent();",
+                    $"        }}).WithTags(\"{entity}\");",
+                    "",
+                    $"        routes.MapDelete(\"/Api/{entity}/{{id}}\", async (IMediator mediator, int id) =>",
+                    "        {",
+                    $"            await mediator.Send(new Delete{entity}Command(id));",
+                    $"            return Results.NoContent();",
+                    $"        }}).WithTags(\"{entity}\");",
+                });
+            }
+            else
+            {
+                linesToInsert.AddRange(new[]
+                {
+                    $"        routes.MapPost(\"/Api/{entity}\", async (IMediator mediator, Create{entity}Command command) =>",
+                    "        {",
+                    $"            var created = await mediator.Send(command);",
+                    $"            return Results.Ok(created);",
+                    $"        }}).WithTags(\"{entity}\");",
+                    "",
+                    $"        routes.MapPut(\"/Api/{entity}/{{id}}\", async (IMediator mediator, int id, Update{entity}Command command) =>",
+                    "        {",
+                    $"            command.Entity.Id = id;",
+                    $"            await mediator.Send(command);",
+                    $"            return Results.NoContent();",
+                    $"        }}).WithTags(\"{entity}\");",
+                    "",
+                    $"        routes.MapDelete(\"/Api/{entity}/{{id}}\", async (IMediator mediator, int id) =>",
+                    "        {",
+                    $"            await mediator.Send(new Delete{entity}Command(id));",
+                    $"            return Results.NoContent();",
+                    $"        }}).WithTags(\"{entity}\");",
+                });
+            }
+            lines.InsertRange(insertIndex, linesToInsert);
         }
 
         File.WriteAllLines(file, lines);

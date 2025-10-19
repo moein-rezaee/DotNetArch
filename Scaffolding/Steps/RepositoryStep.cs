@@ -8,6 +8,8 @@ public class RepositoryStep : IScaffoldStep
 {
     public void Execute(SolutionConfig config, string entity)
     {
+        if (string.Equals(config.DatabaseProvider, "None", StringComparison.OrdinalIgnoreCase))
+            return;
         var solution = config.SolutionName;
         var basePath = config.SolutionPath;
         var plural = Naming.Pluralize(entity);
@@ -159,4 +161,3 @@ public class {{entity}}Repository : I{{entity}}Repository
         }
     }
 }
-
