@@ -4,7 +4,6 @@
     <OutputType>Exe</OutputType>
     <PackAsTool>true</PackAsTool> <!-- Convert To Global Tool -->
     <ToolCommandName>dotnet-arch</ToolCommandName> <!-- For Execute CLI -->
-    <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
     <Nullable>enable</Nullable>
     <Authors>Moein Rezaee</Authors>
     <Description>A CLI tool for creating Clean Architecture solutions.</Description>
@@ -15,6 +14,16 @@
     <RepositoryUrl>https://github.com/moein-rezaee/DotNetArch.git</RepositoryUrl>
     <PackageIcon>assets/icon.png</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <!-- Debug: اجرای ساده با یک فریم‌ورک پیش‌فرض -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+
+  <!-- Release: چندفریم‌ورکی برای پکیج ابزار -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
   </PropertyGroup>
 
   <ItemGroup>
