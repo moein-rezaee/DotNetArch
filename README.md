@@ -71,14 +71,16 @@ This layout exposes all the moving parts up front—application layers, environm
 - **Event scaffolding** to create domain events and interactively wire subscribers across features.
 - **Enum scaffolding** to generate strongly typed enumerations per feature or globally under `Core/Common/Enums`.
 - **Service scaffolder** for custom services, Redis caches, RabbitMQ message brokers, or outbound HTTP clients with resilient `HttpRequest` wrappers and automatic DI registration.
-- **Database provider selection** (SQL Server, SQLite, PostgreSQL, or MongoDB) stored for reuse across commands.
+- **Database provider selection** (SQL Server, SQLite, PostgreSQL, MongoDB, or No Database) stored for reuse across commands.
 - **Idempotent updates**: running commands again augments existing files instead of duplicating them.
 - **Automatic NuGet package and service registration**, including Swagger and startup configuration.
 - **Exec command auto-migrates**: detects property changes, creates missing migrations, applies them, and then runs the API or Docker container.
 - **Cross-platform** and tested on Windows, macOS, and Linux.
+- **Target framework auto-detect (net8/net9)**: picks the highest installed SDK (8+), sets the solution TFM, and generates a `global.json` with `rollForward: latestMajor` for smooth upgrades.
+- **Per-TFM package alignment**: EF Core, OpenAPI, Microsoft.Extensions.* and related packages match the selected TFM (8.x or 9.x) to prevent version mismatches.
 
 ## Requirements
-- [.NET SDK](https://dotnet.microsoft.com/download) **6.0+** (recommended: 8.0)
+- [.NET SDK](https://dotnet.microsoft.com/download) **8.0+** (8.0 or 9.0 recommended)
 - Supported OS: Windows 10+, macOS Catalina+, or any modern Linux distribution
 - [Git](https://git-scm.com/) for cloning or contributing
 
@@ -138,9 +140,13 @@ Missing options are prompted with sane defaults, keeping the experience smooth f
 ## Command Reference
 ### new solution
 ```bash
-dotnet-arch new solution <SolutionName> [--output=Path] [--startup=ProjectName] [--style=controller|fast]
+dotnet-arch new solution <SolutionName> [--output=Path] [--startup=ProjectName] [--style=controller|fast] [--no-database]
 ```
 Creates a clean, feature-based solution. Initializes Git, writes a README template, scaffolds `.env` and `appsettings` files for development, test, and production, optionally adds Docker assets, and records choices in `dotnet-arch.yml` for later commands.
+
+Notes
+- If `--no-database` is supplied, the scaffold skips EF Core setup and migrations. A minimal Core Entity (Id only) is still generated so the Application layer compiles.
+- The target framework is detected from installed SDKs (8+). A `global.json` with `rollForward: latestMajor` is added, and package versions are aligned to the selected TFM.
 
 ### new crud
 ```bash
@@ -208,7 +214,7 @@ Interfaces and implementations are placed in the appropriate layer and registere
 ```bash
 dotnet-arch exec [--output=Path] [--docker] [--docker-detach] [--docker-stop]
 ```
-Launches the startup project. Detects entity property changes, creates and applies migrations automatically, and then runs the API. With `--docker`, builds the image, starts the container, streams logs, and tears everything down safely on exit. With `--docker-detach`, performs the same setup with step-by-step logging but leaves the container running in the background without streaming logs or cleaning up. With `--docker-stop`, safely stops and removes the container and image from a detached run.
+Launches the startup project. Detects entity property changes, creates and applies migrations automatically (skipped in No Database mode), and then runs the API. With `--docker`, builds the image, starts the container, streams logs, and tears everything down safely on exit. With `--docker-detach`, performs the same setup with step-by-step logging but leaves the container running in the background without streaming logs or cleaning up. With `--docker-stop`, safely stops and removes the container and image from a detached run.
 
 ### remove migration
 ```bash
