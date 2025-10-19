@@ -80,7 +80,7 @@ This layout exposes all the moving parts up front—application layers, environm
 - **Per-TFM package alignment**: EF Core, OpenAPI, Microsoft.Extensions.* and related packages match the selected TFM (8.x or 9.x) to prevent version mismatches.
 
 ## Requirements
-- [.NET SDK](https://dotnet.microsoft.com/download) **8.0+** (8.0 or 9.0 recommended)
+- [.NET SDK](https://dotnet.microsoft.com/download) **8.0+** (the CLI targets `net8.0` and `net9.0` automatically)
 - Supported OS: Windows 10+, macOS Catalina+, or any modern Linux distribution
 - [Git](https://git-scm.com/) for cloning or contributing
 
@@ -136,6 +136,16 @@ dotnet-arch exec --docker-stop
 # safely stops and removes the detached container and image
 ```
 Missing options are prompted with sane defaults, keeping the experience smooth for newcomers.
+
+## Working with Multiple .NET SDKs
+DotNetArch is multi-targeted so you can keep several SDKs installed without friction.
+
+- The tool ships for both `net8.0` and `net9.0`. When running it from the repository, use the helper scripts to pick the best match automatically:
+  - macOS/Linux: `./scripts/run.sh -- --help`
+  - Windows (PowerShell): `pwsh ./scripts/run.ps1 -- --help`
+  - Prefer manual control? Run `dotnet run -f net8.0 -- --help` (or `net9.0`) instead.
+- Newly generated solutions include a `global.json` with `rollForward` set to `latestMajor`, so your projects transparently adopt the highest installed .NET 8/9 SDK.
+- During scaffolding DotNetArch inspects `dotnet --list-sdks` and selects the highest supported target framework, ensuring the produced projects match your environment.
 
 ## Command Reference
 ### new solution
