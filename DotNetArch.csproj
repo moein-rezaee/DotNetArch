@@ -26,6 +26,13 @@
     <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
   </PropertyGroup>
 
+  <!-- Samples and kits are read-only references; they must never compile into the tool. -->
+  <ItemGroup>
+    <Compile Remove="samples/**;kits/**;tests/**;bin/**;obj/**" />
+    <EmbeddedResource Remove="samples/**;kits/**;tests/**" />
+    <None Remove="samples/**;kits/**;tests/**" />
+  </ItemGroup>
+
   <ItemGroup>
     <None Include="assets/icon.png" Pack="true" PackagePath="assets/" />
     <None Include="README.md" Pack="true" PackagePath="/" />

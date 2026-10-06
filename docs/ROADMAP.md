@@ -3,15 +3,16 @@
 Persian mirror: `ROADMAP.fa.md`. Legend: `[ ]` todo, `[x]` done (note commit). Requirement IDs refer to `docs/specs/requirements.md`.
 
 ## Resume point
-**Current phase:** 0 (baseline docs committed). **Next item:** Phase 1.1. Branch: `claude/exciting-fermi-b41fue`.
-Open environment risk: no `dotnet` SDK in the cloud container (verification items stay unticked until it is installed or run elsewhere).
+**Current phase:** 0 done. **Next item:** Phase 1.1. Branch: `claude/exciting-fermi-b41fue`.
+Environment: dotnet SDK 8 available (net9 targets cannot be built here; verify net9 in CI).
 
 ## Phase 0 - Docs, specs, rules, roadmap (R-E1, R-D1..D5)
 - [x] 0.1 requirements (+fa), decisions (+fa), architecture trees, contracts, acceptance, overview, changelog
 - [x] 0.2 AGENTS.md (spec/architecture/config/tool-code/roadmap/git rules)
 - [x] 0.3 this roadmap (+fa)
 - [x] 0.4 `openspec.yaml` / `testspec.yaml` (machine-readable spec of CLI + acceptance)
-- [ ] 0.5 try to install dotnet SDK 8/9 in the container; record result in this file
+- [x] 0.5 dotnet SDK 8.0.131 installed via Microsoft apt repo (`packages.microsoft.com` and NuGet are reachable; SDK 9 is NOT available via apt, `builds.dotnet.microsoft.com` is blocked). Tool builds on net8.0.
+- [x] 0.6 Fix: `DotNetArch.csproj` compiled `samples/**` (3508 errors); excluded samples/kits/tests
 
 ## Phase 1 - Tool hardening and restructure (R-E4, D-10, D-13)
 - [ ] 1.1 Validate all identifiers (solution, entity, event, area, provider)

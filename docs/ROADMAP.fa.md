@@ -4,7 +4,7 @@
 
 ## نقطهٔ ادامه
 فاز فعلی: ۰ (مستندات پایه commit شده). مورد بعدی: ۱.۱. branch: `claude/exciting-fermi-b41fue`.
-ریسک محیط: `dotnet` در container نصب نیست؛ موارد تأییدِ build/test تیک نمی‌خورند تا SDK نصب یا جای دیگر اجرا شود.
+محیط: dotnet SDK 8 نصب شد (SDK 9 با apt در دسترس نیست؛ net9 باید در CI بررسی شود). باگ csproj که `samples/**` را compile می‌کرد رفع شد.
 
 ## فازها
 - **۰ مستندات:** requirements، decisions، معماری و درخت‌ها، contracts، acceptance، AGENTS.md، roadmap ✔؛ بعدی: openspec/testspec، تلاش نصب SDK.
