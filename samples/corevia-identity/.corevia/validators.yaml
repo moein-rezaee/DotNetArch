@@ -1,0 +1,8 @@
+---
+validators:
+- name: corevia-standards
+  command: ruby ../corevia-standards/validators/corevia-standards/validate.rb --target
+    . --check-repo
+- name: service-migration
+  command: ruby ../corevia-standards/validators/service-migration/validate.rb .corevia/operations/service-migration.values.yaml
+    --workspace ..

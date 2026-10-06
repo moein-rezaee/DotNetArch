@@ -1,0 +1,61 @@
+pattern: service-repo.provision
+repo_kind: service
+service:
+  slug: identity
+  name: Identity
+  owner: platform-engineering
+  capability: Identity
+repo:
+  group_path: corevia
+  path: corevia-identity
+  name: Identity
+  visibility: private
+  local_path: ../corevia-identity
+  remote_url: http://gitlab.getcorevia.ir/corevia/corevia-identity.git
+branches:
+  default: main
+  develop: develop
+  protected:
+    - main
+    - develop
+members:
+  - identity: moein-rezaee
+    access: owner
+  - identity: t.yasaghi
+    access: developer
+source:
+  mode: local-bootstrap
+  source_path: ../corevia-identity
+  target_path: .
+  history: none
+standards:
+  follows: corevia-standards@0.1.0
+  ai_workflow: corevia-ai-delivery-workflow@0.5.3
+  repeatable_operations: repeatable-operations-catalog@0.4.2
+  openspec_schema: service-openspec@0.1.0
+  testspec_schema: service-testspec@0.1.0
+  roadmap_template: per-service-migration-template@0.1.0
+bootstrap:
+  agents: true
+  follows: true
+  skills: true
+  validators: true
+  openspec: true
+  testspec: true
+  roadmap: true
+  operations_values: true
+repo_metadata:
+  type: service
+  verification:
+    level: contract
+    testspec:
+      mode: required
+registry:
+  service_registry_path: ../corevia-standards/registries/services.yaml
+gitlab:
+  apply_ready: true
+  ensure_project: true
+  bridge_usecase: platform gitlab-projects
+  platform_values_file: values/platform/corevia-identity-gitlab-project.yaml
+  push_bootstrap: true
+  remote_url_source: repo.remote_url

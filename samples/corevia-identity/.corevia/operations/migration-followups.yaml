@@ -1,0 +1,97 @@
+# Open follow-ups after the IdentityService extraction/Kit migration. Machine-readable; consumed by
+# corevia-standards/validators/service-migration (check 18). Every entry needs id, kind, description, owner, tracks.
+# Remove an entry only when the work is really done (and the temporary construct it tracks is deleted).
+followups:
+  # kit-not-on-nexus: RESOLVED (2026-10-05). All six Corevia.Kit.* areas Identity consumes are now published to
+  # Nexus and restorable (ErrorHandling 2.0.0, DatabaseConnection.{Core,Providers.Postgres,Providers.SqlServer} 2.0.0,
+  # DatabaseConnection.Abstractions 1.0.0, plus the already-published Logging/Swagger/JwtSecurity/Config/Secrets/
+  # ConfigLoader/ServiceDiscovery/Http 1.0.x areas). Every ProjectReference through CoreviaKitPackagesRoot was
+  # replaced with a versioned PackageReference, Directory.Build.props (which only held that property) was deleted,
+  # and the Dockerfile/docker-compose.yml no longer take a corevia-kit build context. Entry removed per this file's
+  # own convention ("remove an entry only when the work is really done and the temporary construct it tracks is
+  # deleted"). Remaining follow-up: .gitlab-ci.yml still runs the managed service-cicd.split kit_stopgap block (CI
+  # checks out corevia-kit) because that file is regenerated from corevia-standards/patterns/service-cicd.split and
+  # was intentionally left untouched here; see below.
+  # ci-job-token-kit-read: RESOLVED (2026-10-05). service_cicd.kit_stopgap.enabled was set to false and
+  # corevia-run apply regenerated .gitlab-ci.yml (commit bdfe0b9) -- the Kit checkout/CI_JOB_TOKEN clone is gone.
+  - id: dbinitializer-integration-tests
+    kind: test-gap
+    owner: identity-service
+    tracks:
+      - docs/specs/testspec.yaml#known_gaps
+    description: >-
+      Successful Postgres/SQL Server create-database, migrate and seed paths of DbInitializer have no test (they need a
+      real server). Add Testcontainers-based integration tests once the CI runner offers Docker (docker-in-docker or a
+      socket-mounted runner).
+  - id: kit-gap-jwt-standalone-validator
+    kind: kit-gap
+    owner: platform-engineering
+    tracks:
+      - kit-drift:jwt-own-bearer-registration
+    description: >-
+      Corevia.Kit.JwtSecurity has no standalone token validator or TokenValidationParameters factory;
+      IdentityService.Mcp/Mcp/McpAuthentication.cs validates the stdio launcher token itself (accepted drift exception in
+      .corevia/operations/kit-drift.values.yaml). Add the validator to the Kit, then remove the exception and the code.
+  - id: kit-gap-configloader-hostapplicationbuilder
+    kind: kit-gap
+    owner: platform-engineering
+    tracks:
+      - kit-gap
+    description: >-
+      Corevia.Kit.ConfigLoaderExtension lacks an IHostApplicationBuilder overload (Api uses WebApplicationBuilder, the
+      Mcp stdio host uses Host.CreateApplicationBuilder and needs a local bootstrap helper). Add the overload to the Kit
+      and delete the local bootstrap code.
+  - id: kit-gap-logging-production-filters
+    kind: kit-gap
+    owner: platform-engineering
+    tracks:
+      - kit-gap
+    description: >-
+      Corevia.Kit.Logging does not apply the production noise filters of the legacy shared/Logging bootstrap
+      (Microsoft.AspNetCore, Microsoft.EntityFrameworkCore, System.Net.Http.HttpClient, Ocelot at Warning).
+      IdentityService.Api/Program.cs re-adds them as plain logging configuration. Move them into the Kit.
+  - id: kit-gap-health-capability
+    kind: kit-gap
+    owner: platform-engineering
+    tracks:
+      - kit-gap
+    description: >-
+      The Kit has no health-check capability, so Api and Mcp implement /health (liveness) and /health/ready (readiness,
+      EF can-connect) with ASP.NET Core health checks locally. A Kit health extension would replace them.
+  # source-structure-graph: RESOLVED (2026-10-05). knowledge-repository.graphify re-applied; registry,
+  # documentation and source-structure graphs are fresh at commit 992dd6d (validator check 10 passes).
+  - id: documentation-quality-gaps
+    kind: docs-gap
+    owner: identity-service
+    tracks:
+      - .gitlab/ci/validate.rb#documentation
+    description: >-
+      The new mandatory validate-stage documentation check (service-cicd.split, decision 2026-10-05) found real
+      pre-existing gaps, not introduced by this change: docs/evidence/monorepo-extraction-file-diff.md has no .fa.md
+      pair; docs/specs/README.md is missing several of the DOCUMENTATION_STANDARD.md required sections (Purpose,
+      Scope, Prerequisites, Configuration, Run/Usage, Validation, Troubleshooting, Change Log); and
+      docs/specs/{acceptance,changelog,contracts,overview}.fa.md still contain placeholder text. Until fixed, the
+      documentation-validate CI job fails every pipeline run (expected, not a false positive) — fix the content,
+      then confirm with `ruby .gitlab/ci/validate.rb documentation`.
+  - id: docker-build-proof
+    kind: docker-build-proof
+    owner: platform-engineering
+    tracks:
+      - docs/evidence/docker-build-proof.yaml
+    description: >-
+      No successful image build is recorded: no Docker daemon was running where the migration was done (Docker Desktop
+      is installed but stopped; no colima/podman). On a host with a daemon, from the corevia-identity root run
+      `docker buildx build --secret id=nuget_config,src=<nuget.config with credentials>
+      -f IdentityService.Api/Dockerfile -t corevia-validate/identity:validate .`, then
+      `docker image inspect corevia-validate/identity:validate --format '{{.Id}}'`, and write
+      docs/evidence/docker-build-proof.yaml (timestamp, command, image_tag, image_digest, exit_code: 0, source_commit)
+      from the real output; or run the service-migration validator with --run-docker.
+  - id: discovery-health-runtime-proof
+    kind: runtime-evidence
+    owner: platform-engineering
+    tracks:
+      - docs/evidence/discovery-health-proof.yaml
+    description: >-
+      Live Consul registration and a real 200 from /health/ready against a running instance (with Consul and the
+      database) have not been demonstrated; docs/evidence/discovery-health-proof.yaml records only what the tests and the
+      static scan prove. Run the service against Consul and record the real health_url and registration.

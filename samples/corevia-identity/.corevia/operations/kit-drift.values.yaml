@@ -1,0 +1,20 @@
+# Kit-drift detector values for the extracted corevia-identity repository (Phase C item 3 hard gate).
+# Run from the workspace root (the directory holding corevia-identity, corevia-kit, corevia-standards):
+#   ruby corevia-standards/validators/kit-drift/validate.rb corevia-identity/.corevia/operations/kit-drift.values.yaml
+# accepted_exceptions never hide a finding; they stay visible in every report.
+pattern: kit-drift.scan
+service:
+  slug: identity
+  source_root: corevia-identity
+kit:
+  root: corevia-kit
+  packages_dir: packages
+accepted_exceptions:
+  - signature: jwt-own-bearer-registration
+    path_glob: "**/IdentityService.Mcp/Mcp/McpAuthentication.cs"
+    reason: "Kit gap: Corevia.Kit.JwtSecurity only exposes AddJwtSecurityExtension (JwtBearer scheme registration); it has no standalone token validator or TokenValidationParameters factory. DefaultMcpPrincipalResolver validates the stdio launcher token outside the ASP.NET auth pipeline with the same parameters as the Kit (issuer, audience, HMAC key, 1 minute skew, sub/role claim types). Resolving the registered JwtBearerOptions instead would change the resolver constructor that the existing MCP tests call positionally (new test coverage/changes belong to step 9). Follow-up: add a validator/factory to Corevia.Kit.JwtSecurity, then replace this code."
+    owner: platform-engineering
+  - signature: db-raw-provider-connection
+    path_glob: "**/IdentityService.Infrastructure.Database/DbInitializer.cs"
+    reason: "Database bootstrap (CREATE DATABASE against the maintenance database via NpgsqlConnection/SqlConnection, plus IDENTITY_DB_RESET handling) is outside Corevia.Kit.DatabaseConnection scope, which covers connection-string building and EF provider selection only. Provider-specific Npgsql/SqlClient PackageReferences in IdentityService.Infrastructure.Database remain for the same reason."
+    owner: platform-engineering

@@ -1,0 +1,94 @@
+# Updated values for the service-tests.audit-or-complete Pattern, reflecting the audited and completed suite
+# (Phase C step 9, 2026-10-04). This is the proposed replacement for
+# corevia-standards/patterns/service-tests.audit-or-complete/values.corevia-identity.yaml (that file lives in
+# corevia-standards and was NOT edited from this repository). Validate with:
+#   corevia-bridge/bin/connectcore service-tests validate --values corevia-identity/.corevia/operations/service-tests.values.yaml
+#
+# Every `complete` below names the real tests that back it (comments), all under this repository:
+#   IdentityService.Application.Tests     handlers, JWT, validators, seed        (xunit, SQLite in-memory relational stand-in)
+#   IdentityService.Infrastructure.Tests  own-storage adapter, provider selection, DbInitializer, OTP REST client
+#   IdentityService.Api.Tests             Identity/OIDC controllers over the real MediatR pipeline
+#   IdentityService.Mcp.Tests             MCP authorization, approval, envelope, catalog, transport selection
+# Not covered here (needs a real server; tracked in docs/specs/testspec.yaml): successful Postgres/SQL Server
+# create-database, migrate and seed flow in DbInitializer.
+pattern: service-tests.audit-or-complete
+service_tests:
+  repo:
+    slug: corevia-identity
+    local_path: ../corevia-identity
+    gitlab:
+      group_path: corevia
+      project_path: identity
+  test_project:
+    status: complete
+    path: IdentityService.Application.Tests
+    framework: xunit
+    action: verify-only
+  domain_ports:
+    - name: OwnStoragePort
+      adapters:
+        # Infrastructure.Tests: ProviderSelectionTests (Postgres_*), DbContextFactoryTests, DbInitializerTests
+        #   (Postgres_branch_with_an_unreachable_server...), RepositoryAndUnitOfWorkTests (EfRepository/UnitOfWork)
+        - name: Postgres
+          provider: Postgres
+          unit_test_status: complete
+        # Infrastructure.Tests: ProviderSelectionTests (SqlServer_*), DbInitializerTests
+        #   (SqlServer_branch_with_an_unreachable_server...)
+        - name: SqlServer
+          provider: SqlServer
+          unit_test_status: complete
+    - name: OtpPort
+      adapters:
+        # Infrastructure.Tests: OtpRestClientTests (Send_*, Verify_*) over the real Kit Http client with a stub handler
+        - name: OtpRest
+          provider: Rest
+          unit_test_status: complete
+  provider_switching:
+    scenarios:
+      # Infrastructure.Tests: ProviderSelectionTests.Provider_switching_flips_the_resolved_EF_provider_with_no_other_change,
+      #   IdentityDb_Provider_key_has_priority_over_DB_PROVIDER, Unrecognised_provider_value_falls_back_to_Postgres...
+      - name: database-provider-selection-postgres-vs-sqlserver
+        ports: [OwnStoragePort]
+        status: complete
+      # Infrastructure.Tests: OtpRestClientTests.Discovery_endpoint_wins_over_OTP_BASE_URL..., Discovery_miss_or_failure_falls_back...
+      - name: otp-endpoint-discovery-vs-env-fallback
+        ports: [OtpPort]
+        status: complete
+  error_paths:
+    validation_failures:
+      # Application.Tests: RequestValidatorTests (SendCode/VerifyCode/Refresh/Logout validators)
+      - scenario: send-and-verify-request-format-violations
+        status: complete
+      # Application.Tests: UserHandlerTests.CreateUser_duplicate_phone_is_bad_request_duplicate_phone_number (+ Role/Permission/Scope/Tenant duplicates)
+      - scenario: create-record-with-duplicate-unique-field
+        status: complete
+      # Application.Tests: RoleAndPermissionHandlerTests.DeleteRole_error_paths_..., ScopeClientTenantHandlerTests (scope_has_clients, tenant_has_users),
+      #   SessionProfileRelationHandlerTests (superadmin_assignment_forbidden, superadmin_unassign_forbidden)
+      - scenario: forbidden-state-transition-rejected
+        status: complete
+    external_dependency_failures:
+      # Infrastructure.Tests: OtpRestClientTests.Send_other_http_failures_become_ExternalServiceException..., Verify_other_http_failures...
+      - scenario: otp-http-failure-5xx-4xx
+        kit_error_handling_type: Corevia.Kit.ErrorHandling.Abstractions.Exceptions.ExternalServiceException
+        status: complete
+      # Infrastructure.Tests: OtpRestClientTests.Send_network_failure..., Send_timeout..., Verify_network_failure_and_timeout...,
+      #   Verify_garbage_success_body_is_an_external_service_failure...
+      - scenario: otp-unreachable-timeout-or-invalid-response
+        kit_error_handling_type: Corevia.Kit.ErrorHandling.Abstractions.Exceptions.ExternalServiceException
+        status: complete
+      # Infrastructure.Tests: OtpRestClientTests.Send_bad_request_with_a_problem_document..., Send_bad_request_falls_back...
+      - scenario: otp-send-rejected-bad-request
+        kit_error_handling_type: Corevia.Kit.ErrorHandling.Abstractions.Exceptions.BadRequestException
+        status: complete
+      # Application.Tests: VerifyCommandHandlerTests.Invalid_code_is_unauthorized..., Unknown_default_public_client...; RefreshCommandHandlerTests
+      - scenario: otp-code-or-refresh-token-rejected
+        kit_error_handling_type: Corevia.Kit.ErrorHandling.Abstractions.Exceptions.UnauthorizedException
+        status: complete
+      # Infrastructure.Tests: DbInitializerTests.Postgres_branch_... and SqlServer_branch_... (connection refused on a closed local port)
+      - scenario: database-connection-refused
+        kit_error_handling_type: Corevia.Kit.ErrorHandling.Abstractions.Exceptions.ExternalServiceException
+        status: complete
+  safety:
+    no_token_suite: true
+    full_domain_infrastructure_surface: true
+    no_raw_secrets: true

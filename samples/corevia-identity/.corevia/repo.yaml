@@ -1,0 +1,29 @@
+---
+kind: service
+repo:
+  type: service
+slug: identity
+name: Identity
+local:
+  path: corevia-identity
+gitlab:
+  group_path: corevia
+  path: identity
+  name: Identity
+  visibility: private
+branches:
+  default: main
+  develop: develop
+  protected:
+  - main
+  - develop
+source:
+  mode: local-bootstrap
+  source_of_truth: "../corevia-identity"
+automation:
+  bridge_usecase: service-repo.provision
+  apply_policy: bridge-only
+verification:
+  level: contract
+  testspec:
+    mode: required

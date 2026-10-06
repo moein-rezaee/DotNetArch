@@ -1,0 +1,49 @@
+pattern: mcp-source.create-or-update
+source:
+  repository: corevia-identity
+  serviceRoot: .
+  apiProject: IdentityService.Api
+  applicationProjects: [IdentityService.Application]
+  domainProjects: [IdentityService.Domain]
+  infrastructureProjects: [IdentityService.Infrastructure, IdentityService.Infrastructure.Database]
+  existingMcp: partial
+target:
+  manifest: corevia-identity/.corevia/mcp/identity-service.yaml
+  profile: service-mcp-adapter
+  adapterProject: IdentityService.Mcp
+  siblingOf: IdentityService.Api
+contract:
+  scopeNamespace: identity.mcp
+  modes: [self, admin, security]
+  delegation: signed-customer-context
+  toolKinds: [atomic, business]
+  applicationDirect: true
+  forbiddenGenericProxy: true
+  requiredSecurity: [server-owned-actor-subject, exact-sensitive-approval, redacted-audit]
+permissionParity:
+  required: true
+  apiPermissionSource: corevia-identity/.corevia/mcp/identity-api-permissions.yaml
+  apiNamespace: Identity
+  mcpNamespace: identity.mcp
+  grantIsolation: explicit-mcp-grant
+  apiGrantDoesNotImplyMcp: true
+  requireUsableTool: true
+  newApiPermissionPolicy: fail-closed
+  orphanPolicy: fail
+  sameRestrictionsRequired: true
+deployment:
+  profiles: [local-stdio, local-loopback-http, customer-server-https, customer-private-http]
+  gatewayCurrentDependency: none
+  localLoopbackSafe: true
+  cloudLocalConnector: true
+  enterpriseFederation: future-optional
+safety:
+  noApiMirror: true
+  noDirectDataAccess: true
+  noRawSecrets: true
+  noPublicLoopback: true
+  noGatewayDependency: true
+  approvalBeforeSourceEdit: true
+evidence:
+  required: [source-inventory, application-boundary, tool-policy, transport-profile, security-review]
+  redacted: true

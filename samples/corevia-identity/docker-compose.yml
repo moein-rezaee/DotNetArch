@@ -1,0 +1,58 @@
+services:
+  identityservice:
+    image: ${REGISTRY:-nexus.getcorevia.ir:8083}/identity-service:${IDENTITY_APP_VERSION:-0.0.0}
+    container_name: identity-service
+    build:
+      context: .
+      dockerfile: IdentityService.Api/Dockerfile
+      args:
+        DOCKER_REGISTRY: ${REGISTRY:-nexus.getcorevia.ir:8083}
+      secrets:
+        - nuget_config
+    ports:
+    - 5270:5270
+    env_file:
+    - ./IdentityService.Api/.env
+    environment:
+    - ASPNETCORE_URLS=http://+:5270
+    - DOTNET_GCHeapHardLimitPercent=70
+    volumes:
+    - ./IdentityService.Api/appsettings.json:/app/appsettings.json:ro
+    - ./IdentityService.Api/.env:/app/.env:ro
+    networks:
+    - services
+    - data
+    stop_grace_period: 30s
+    healthcheck:
+      test:
+      - CMD
+      - curl
+      - -fsS
+      - http://localhost:5270/health
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: always
+    logging:
+      driver: json-file
+      options:
+        max-size: 20m
+        max-file: '5'
+    deploy:
+      resources:
+        limits:
+          cpus: '0.60'
+          memory: 768M
+        reservations:
+          memory: 384M
+networks:
+  services:
+    external: true
+    name: services
+  data:
+    external: true
+    name: data
+secrets:
+  nuget_config:
+    environment: NUGET_CONFIG

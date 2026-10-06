@@ -1,0 +1,499 @@
+schemaVersion: 0.1.0
+kind: corevia.api-permission-catalog
+service:
+  slug: identity-service
+  apiProject: IdentityService/IdentityService.Api
+  authorizationSource: IdentityService.Api/Program.cs and IdentityService.Api/Controllers
+permissions:
+  - key: Identity.Profile.Get
+    status: active
+    capabilityType: authorization-permission
+    mcpExposure: required
+    action: read
+    resource: profile
+    audience: self
+    risk: read
+    approvalRequired: false
+    tenantScope: current-user
+    authorizationPolicy: IdentitySelf
+    apiRoutes: ["GET /v1/api/Profile"]
+  - key: Identity.Profile.Put
+    status: active
+    capabilityType: authorization-permission
+    mcpExposure: required
+    action: write
+    resource: profile
+    audience: self
+    risk: write
+    approvalRequired: false
+    tenantScope: current-user
+    authorizationPolicy: IdentitySelf
+    apiRoutes: ["PUT /v1/api/Profile"]
+  - key: Identity.Sessions.Get
+    status: active
+    capabilityType: authorization-permission
+    mcpExposure: required
+    action: read
+    resource: sessions
+    audience: self
+    risk: read
+    approvalRequired: false
+    tenantScope: current-user
+    authorizationPolicy: IdentitySelf
+    apiRoutes: ["GET /v1/api/Sessions"]
+  - key: Identity.Sessions.Revoke
+    status: active
+    capabilityType: authorization-permission
+    mcpExposure: required
+    action: sensitive
+    resource: sessions-revoke
+    audience: self
+    risk: sensitive
+    approvalRequired: true
+    tenantScope: current-user
+    authorizationPolicy: IdentitySelf
+    apiRoutes: ["DELETE /v1/api/Sessions/{id}"]
+  - key: Identity.Sessions.RevokeOthers
+    status: active
+    capabilityType: authorization-permission
+    mcpExposure: required
+    action: sensitive
+    resource: sessions-revoke-others
+    audience: self
+    risk: sensitive
+    approvalRequired: true
+    tenantScope: current-user
+    authorizationPolicy: IdentitySelf
+    apiRoutes: ["DELETE /v1/api/Sessions"]
+  - key: Identity.Users.AccessSummary.Get
+    status: active
+    capabilityType: authorization-permission
+    mcpExposure: required
+    action: read
+    resource: user-access-summary
+    audience: admin
+    risk: read
+    approvalRequired: false
+    tenantScope: tenant-scoped
+    authorizationPolicy: SuperAdmin
+    apiRoutes: ["GET /v1/api/Users/{id}", "GET /v1/api/Users/{id}/Roles", "GET /v1/api/Users/{id}/Tenants"]
+  - key: Identity.Sessions.AdminRevoke
+    status: active
+    capabilityType: authorization-permission
+    mcpExposure: required
+    action: sensitive
+    resource: sessions-admin
+    audience: admin
+    risk: sensitive
+    approvalRequired: true
+    tenantScope: tenant-scoped
+    authorizationPolicy: SuperAdmin
+    apiRoutes: ["DELETE /v1/api/Sessions/{id}", "DELETE /v1/api/Sessions"]
+  - key: Identity.Users.Read
+    status: active
+    capabilityType: authorization-permission
+    mcpExposure: required
+    action: read
+    resource: users
+    audience: admin
+    risk: read
+    approvalRequired: false
+    tenantScope: tenant-scoped
+    authorizationPolicy: SuperAdmin
+    apiRoutes: ["GET /v1/api/Users", "GET /v1/api/Users/{id}"]
+  - key: Identity.Users.Write
+    status: active
+    capabilityType: authorization-permission
+    mcpExposure: required
+    action: write
+    resource: users
+    audience: admin
+    risk: write
+    approvalRequired: false
+    tenantScope: platform-scoped
+    authorizationPolicy: SuperAdmin
+    apiRoutes: ["POST /v1/api/Users", "PUT /v1/api/Users/{id}"]
+  - key: Identity.Users.Delete
+    status: active
+    capabilityType: authorization-permission
+    mcpExposure: required
+    action: sensitive
+    resource: users
+    audience: admin
+    risk: sensitive
+    approvalRequired: true
+    tenantScope: platform-scoped
+    authorizationPolicy: SuperAdmin
+    apiRoutes: ["DELETE /v1/api/Users/{id}"]
+  - key: Identity.Roles.Read
+    status: active
+    capabilityType: authorization-permission
+    mcpExposure: required
+    action: read
+    resource: roles
+    audience: admin
+    risk: read
+    approvalRequired: false
+    tenantScope: platform-scoped
+    authorizationPolicy: SuperAdmin
+    apiRoutes: ["GET /v1/api/Roles", "GET /v1/api/Roles/{id}"]
+  - key: Identity.Roles.Write
+    status: active
+    capabilityType: authorization-permission
+    mcpExposure: required
+    action: write
+    resource: roles
+    audience: admin
+    risk: write
+    approvalRequired: false
+    tenantScope: platform-scoped
+    authorizationPolicy: SuperAdmin
+    apiRoutes: ["POST /v1/api/Roles", "PUT /v1/api/Roles/{id}"]
+  - key: Identity.Roles.Delete
+    status: active
+    capabilityType: authorization-permission
+    mcpExposure: required
+    action: sensitive
+    resource: roles
+    audience: admin
+    risk: sensitive
+    approvalRequired: true
+    tenantScope: platform-scoped
+    authorizationPolicy: SuperAdmin
+    apiRoutes: ["DELETE /v1/api/Roles/{id}"]
+  - key: Identity.Tenants.Read
+    status: active
+    capabilityType: authorization-permission
+    mcpExposure: required
+    action: read
+    resource: tenants
+    audience: admin
+    risk: read
+    approvalRequired: false
+    tenantScope: platform-scoped
+    authorizationPolicy: SuperAdmin
+    apiRoutes: ["GET /v1/api/Tenants", "GET /v1/api/Tenants/{id}"]
+  - key: Identity.Tenants.Write
+    status: active
+    capabilityType: authorization-permission
+    mcpExposure: required
+    action: write
+    resource: tenants
+    audience: admin
+    risk: write
+    approvalRequired: false
+    tenantScope: platform-scoped
+    authorizationPolicy: SuperAdmin
+    apiRoutes: ["POST /v1/api/Tenants", "PUT /v1/api/Tenants/{id}"]
+  - key: Identity.Tenants.Delete
+    status: active
+    capabilityType: authorization-permission
+    mcpExposure: required
+    action: sensitive
+    resource: tenants
+    audience: admin
+    risk: sensitive
+    approvalRequired: true
+    tenantScope: platform-scoped
+    authorizationPolicy: SuperAdmin
+    apiRoutes: ["DELETE /v1/api/Tenants/{id}"]
+  - key: Identity.Permissions.Read
+    status: active
+    capabilityType: authorization-permission
+    mcpExposure: required
+    action: read
+    resource: permissions
+    audience: admin
+    risk: read
+    approvalRequired: false
+    tenantScope: platform-scoped
+    authorizationPolicy: SuperAdmin
+    apiRoutes: ["GET /v1/api/Permissions", "GET /v1/api/Permissions/{id}"]
+  - key: Identity.Permissions.Write
+    status: active
+    capabilityType: authorization-permission
+    mcpExposure: required
+    action: write
+    resource: permissions
+    audience: admin
+    risk: write
+    approvalRequired: false
+    tenantScope: platform-scoped
+    authorizationPolicy: SuperAdmin
+    apiRoutes: ["POST /v1/api/Permissions", "PUT /v1/api/Permissions/{id}"]
+  - key: Identity.Permissions.Delete
+    status: active
+    capabilityType: authorization-permission
+    mcpExposure: required
+    action: sensitive
+    resource: permissions
+    audience: admin
+    risk: sensitive
+    approvalRequired: true
+    tenantScope: platform-scoped
+    authorizationPolicy: SuperAdmin
+    apiRoutes: ["DELETE /v1/api/Permissions/{id}"]
+  - key: Identity.Scopes.Read
+    status: active
+    capabilityType: authorization-permission
+    mcpExposure: required
+    action: read
+    resource: scopes
+    audience: admin
+    risk: read
+    approvalRequired: false
+    tenantScope: platform-scoped
+    authorizationPolicy: SuperAdmin
+    apiRoutes: ["GET /v1/api/Scopes", "GET /v1/api/Scopes/{id}"]
+  - key: Identity.Scopes.Write
+    status: active
+    capabilityType: authorization-permission
+    mcpExposure: required
+    action: write
+    resource: scopes
+    audience: admin
+    risk: write
+    approvalRequired: false
+    tenantScope: platform-scoped
+    authorizationPolicy: SuperAdmin
+    apiRoutes: ["POST /v1/api/Scopes", "PUT /v1/api/Scopes/{id}"]
+  - key: Identity.Scopes.Delete
+    status: active
+    capabilityType: authorization-permission
+    mcpExposure: required
+    action: sensitive
+    resource: scopes
+    audience: admin
+    risk: sensitive
+    approvalRequired: true
+    tenantScope: platform-scoped
+    authorizationPolicy: SuperAdmin
+    apiRoutes: ["DELETE /v1/api/Scopes/{id}"]
+  - key: Identity.Clients.Read
+    status: active
+    capabilityType: authorization-permission
+    mcpExposure: required
+    action: read
+    resource: clients
+    audience: admin
+    risk: read
+    approvalRequired: false
+    tenantScope: platform-scoped
+    authorizationPolicy: SuperAdmin
+    apiRoutes: ["GET /v1/api/Clients", "GET /v1/api/Clients/{id}"]
+  - key: Identity.Clients.Write
+    status: active
+    capabilityType: authorization-permission
+    mcpExposure: required
+    action: write
+    resource: clients
+    audience: admin
+    risk: write
+    approvalRequired: false
+    tenantScope: platform-scoped
+    authorizationPolicy: SuperAdmin
+    apiRoutes: ["POST /v1/api/Clients", "PUT /v1/api/Clients/{id}"]
+  - key: Identity.UserRoles.Read
+    status: active
+    capabilityType: authorization-permission
+    mcpExposure: required
+    action: read
+    resource: user-roles
+    audience: admin
+    risk: read
+    approvalRequired: false
+    tenantScope: tenant-scoped
+    authorizationPolicy: SuperAdmin
+    apiRoutes: ["GET /v1/api/Users/{userId}/Roles"]
+  - key: Identity.UserRoles.Write
+    status: active
+    capabilityType: authorization-permission
+    mcpExposure: required
+    action: sensitive
+    resource: user-roles
+    audience: admin
+    risk: sensitive
+    approvalRequired: true
+    tenantScope: tenant-scoped
+    authorizationPolicy: SuperAdmin
+    apiRoutes: ["POST /v1/api/Users/{userId}/Roles", "DELETE /v1/api/Users/{userId}/Roles/{roleId}"]
+  - key: Identity.UserTenants.Read
+    status: active
+    capabilityType: authorization-permission
+    mcpExposure: required
+    action: read
+    resource: user-tenants
+    audience: admin
+    risk: read
+    approvalRequired: false
+    tenantScope: tenant-scoped
+    authorizationPolicy: SuperAdmin
+    apiRoutes: ["GET /v1/api/Users/{userId}/Tenants"]
+  - key: Identity.UserTenants.Write
+    status: active
+    capabilityType: authorization-permission
+    mcpExposure: required
+    action: sensitive
+    resource: user-tenants
+    audience: admin
+    risk: sensitive
+    approvalRequired: true
+    tenantScope: tenant-scoped
+    authorizationPolicy: SuperAdmin
+    apiRoutes: ["POST /v1/api/Users/{userId}/Tenants", "DELETE /v1/api/Users/{userId}/Tenants/{tenantId}"]
+  - key: Identity.RolePermissions.Read
+    status: active
+    capabilityType: authorization-permission
+    mcpExposure: required
+    action: read
+    resource: role-permissions
+    audience: admin
+    risk: read
+    approvalRequired: false
+    tenantScope: platform-scoped
+    authorizationPolicy: SuperAdmin
+    apiRoutes: ["GET /v1/api/Roles/{roleId}/Permissions"]
+  - key: Identity.RolePermissions.Write
+    status: active
+    capabilityType: authorization-permission
+    mcpExposure: required
+    action: sensitive
+    resource: role-permissions
+    audience: admin
+    risk: sensitive
+    approvalRequired: true
+    tenantScope: platform-scoped
+    authorizationPolicy: SuperAdmin
+    apiRoutes: ["POST /v1/api/Roles/{roleId}/Permissions", "DELETE /v1/api/Roles/{roleId}/Permissions/{permissionId}"]
+  - key: Identity.ScopePermissions.Read
+    status: active
+    capabilityType: authorization-permission
+    mcpExposure: required
+    action: read
+    resource: scope-permissions
+    audience: admin
+    risk: read
+    approvalRequired: false
+    tenantScope: platform-scoped
+    authorizationPolicy: SuperAdmin
+    apiRoutes: ["GET /v1/api/Scopes/{scopeId}/Permissions"]
+  - key: Identity.ScopePermissions.Write
+    status: active
+    capabilityType: authorization-permission
+    mcpExposure: required
+    action: sensitive
+    resource: scope-permissions
+    audience: admin
+    risk: sensitive
+    approvalRequired: true
+    tenantScope: platform-scoped
+    authorizationPolicy: SuperAdmin
+    apiRoutes: ["POST /v1/api/Scopes/{scopeId}/Permissions", "DELETE /v1/api/Scopes/{scopeId}/Permissions/{permissionId}"]
+  - key: Identity.ClientScopes.Read
+    status: active
+    capabilityType: authorization-permission
+    mcpExposure: required
+    action: read
+    resource: client-scopes
+    audience: admin
+    risk: read
+    approvalRequired: false
+    tenantScope: platform-scoped
+    authorizationPolicy: SuperAdmin
+    apiRoutes: ["GET /v1/api/Clients/{clientId}/Scopes"]
+  - key: Identity.ClientScopes.Write
+    status: active
+    capabilityType: authorization-permission
+    mcpExposure: required
+    action: sensitive
+    resource: client-scopes
+    audience: admin
+    risk: sensitive
+    approvalRequired: true
+    tenantScope: platform-scoped
+    authorizationPolicy: SuperAdmin
+    apiRoutes: ["POST /v1/api/Clients/{clientId}/Scopes", "DELETE /v1/api/Clients/{clientId}/Scopes/{scopeId}"]
+  - key: Identity.RoleUsers.Read
+    status: active
+    capabilityType: authorization-permission
+    mcpExposure: required
+    action: read
+    resource: role-users
+    audience: admin
+    risk: read
+    approvalRequired: false
+    tenantScope: tenant-scoped
+    authorizationPolicy: SuperAdmin
+    apiRoutes: ["GET /v1/api/Roles/{roleId}/Users"]
+  - key: Identity.TenantUsers.Read
+    status: active
+    capabilityType: authorization-permission
+    mcpExposure: required
+    action: read
+    resource: tenant-users
+    audience: admin
+    risk: read
+    approvalRequired: false
+    tenantScope: tenant-scoped
+    authorizationPolicy: SuperAdmin
+    apiRoutes: ["GET /v1/api/Tenants/{tenantId}/Users"]
+  - key: Identity.Token.Refresh
+    status: active
+    capabilityType: protocol-operation
+    mcpExposure: prohibited
+    action: sensitive
+    resource: credential-lifecycle
+    audience: self
+    risk: sensitive
+    approvalRequired: true
+    tenantScope: current-user
+    authorizationPolicy: Anonymous protocol endpoint; MCP raw token output is forbidden
+    apiRoutes: ["POST /v1/api/Identity/Refresh", "POST /token grant_type=refresh_token"]
+  - key: Identity.Token.Logout
+    status: active
+    capabilityType: protocol-operation
+    mcpExposure: prohibited
+    action: sensitive
+    resource: credential-lifecycle
+    audience: self
+    risk: sensitive
+    approvalRequired: true
+    tenantScope: current-user
+    authorizationPolicy: Anonymous protocol endpoint; MCP raw token output is forbidden
+    apiRoutes: ["POST /v1/api/Identity/Logout", "POST /revoke"]
+  - key: Identity.ClientSecrets.Read
+    status: active
+    capabilityType: protocol-operation
+    mcpExposure: prohibited
+    action: sensitive
+    resource: client-secrets
+    audience: self
+    risk: sensitive
+    approvalRequired: true
+    tenantScope: current-user
+    authorizationPolicy: SuperAdmin; MCP raw secret output is forbidden
+    apiRoutes: ["GET /v1/api/Clients/{id}/Secrets"]
+  - key: Identity.ClientSecrets.Write
+    status: active
+    capabilityType: protocol-operation
+    mcpExposure: prohibited
+    action: sensitive
+    resource: client-secrets
+    audience: self
+    risk: sensitive
+    approvalRequired: true
+    tenantScope: current-user
+    authorizationPolicy: SuperAdmin; MCP raw secret output is forbidden
+    apiRoutes: ["POST /v1/api/Clients/{id}/Secrets"]
+  - key: Identity.ClientSecrets.Revoke
+    status: active
+    capabilityType: protocol-operation
+    mcpExposure: prohibited
+    action: sensitive
+    resource: client-secrets
+    audience: self
+    risk: sensitive
+    approvalRequired: true
+    tenantScope: current-user
+    authorizationPolicy: SuperAdmin; MCP raw secret output is forbidden
+    apiRoutes: ["DELETE /v1/api/Clients/{id}/Secrets/{secretId}"]

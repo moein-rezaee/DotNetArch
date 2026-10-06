@@ -1,0 +1,969 @@
+schemaVersion: 0.1.0
+kind: corevia.mcp-source-manifest
+profile: service-mcp-adapter
+standardRef: corevia-standards@0.1.0
+sourceStatus: active
+service:
+  slug: identity-service
+  repository: corevia-identity
+  serviceRoot: .
+  owner: IdentityService team
+adapter:
+  project: IdentityService.Mcp
+  siblingOf: IdentityService.Api
+  entrypoint: IdentityService.Mcp/Program.cs
+applicationBoundary:
+  allowedEntryPoints:
+    - IdentityService.Application/MediatR handlers
+    - IdentityService.Application/use-cases
+    - IdentityService.Domain policies through Application
+  forbiddenDependencies:
+    - IdentityService.Api controllers
+    - IdentityService HTTP API
+    - API Gateway routes
+    - Ocelot routes
+    - EF Core
+    - repositories
+    - SQL
+  transportIndependent: true
+modes: [self, admin, security]
+delegation:
+  supported: true
+  mode: signed-customer-context
+  escalationForbidden: true
+  requiredClaims: [type, actor, subject, tenant, audience, mode, issuedAt, expiresAt, allowedTools, allowedScopes, nonce, signature]
+scopeNamespace: identity.mcp
+scopes:
+  - identity.mcp.profile.read
+  - identity.mcp.profile.write
+  - identity.mcp.sessions.read
+  - identity.mcp.sessions-revoke.sensitive
+  - identity.mcp.sessions-revoke-others.sensitive
+  - identity.mcp.user-access-summary.read
+  - identity.mcp.sessions-admin.sensitive
+  - identity.mcp.users.read
+  - identity.mcp.users.write
+  - identity.mcp.users.sensitive
+  - identity.mcp.roles.read
+  - identity.mcp.roles.write
+  - identity.mcp.roles.sensitive
+  - identity.mcp.tenants.read
+  - identity.mcp.tenants.write
+  - identity.mcp.tenants.sensitive
+  - identity.mcp.permissions.read
+  - identity.mcp.permissions.write
+  - identity.mcp.permissions.sensitive
+  - identity.mcp.scopes.read
+  - identity.mcp.scopes.write
+  - identity.mcp.scopes.sensitive
+  - identity.mcp.clients.read
+  - identity.mcp.clients.write
+  - identity.mcp.user-roles.read
+  - identity.mcp.user-roles.sensitive
+  - identity.mcp.user-tenants.read
+  - identity.mcp.user-tenants.sensitive
+  - identity.mcp.role-permissions.read
+  - identity.mcp.role-permissions.sensitive
+  - identity.mcp.scope-permissions.read
+  - identity.mcp.scope-permissions.sensitive
+  - identity.mcp.client-scopes.read
+  - identity.mcp.client-scopes.sensitive
+  - identity.mcp.role-users.read
+  - identity.mcp.tenant-users.read
+  - identity.mcp.protocol.refresh
+  - identity.mcp.protocol.logout
+  - identity.mcp.protocol.client-secrets.read
+  - identity.mcp.protocol.client-secrets.write
+  - identity.mcp.protocol.client-secrets.revoke
+permissionParity:
+  required: true
+  apiPermissionSource: corevia-identity/.corevia/mcp/identity-api-permissions.yaml
+  apiNamespace: Identity
+  mcpNamespace: identity.mcp
+  grantIsolation: explicit-mcp-grant
+  apiGrantDoesNotImplyMcp: true
+  requireUsableTool: true
+  newApiPermissionPolicy: fail-closed
+  orphanPolicy: fail
+  sameRestrictionsRequired: true
+  mappings:
+    - { apiPermission: Identity.Profile.Get, mcpPermission: identity.mcp.profile.read, action: read, resource: profile, audience: self, risk: read, approvalRequired: false, tenantScope: current-user, toolNames: [identity_get_self_profile], restrictions: { subjectPolicy: current-context, forbiddenInputs: [userId, tenantId, subjectId, actor] } }
+    - { apiPermission: Identity.Profile.Put, mcpPermission: identity.mcp.profile.write, action: write, resource: profile, audience: self, risk: write, approvalRequired: false, tenantScope: current-user, toolNames: [identity_update_self_profile], restrictions: { subjectPolicy: current-context, forbiddenInputs: [userId, tenantId, subjectId, actor] } }
+    - { apiPermission: Identity.Sessions.Get, mcpPermission: identity.mcp.sessions.read, action: read, resource: sessions, audience: self, risk: read, approvalRequired: false, tenantScope: current-user, toolNames: [identity_list_self_sessions], restrictions: { subjectPolicy: current-context, forbiddenInputs: [userId, tenantId, subjectId, actor] } }
+    - { apiPermission: Identity.Sessions.Revoke, mcpPermission: identity.mcp.sessions-revoke.sensitive, action: sensitive, resource: sessions-revoke, audience: self, risk: sensitive, approvalRequired: true, tenantScope: current-user, toolNames: [identity_revoke_self_session], restrictions: { subjectPolicy: current-context, forbiddenInputs: [userId, tenantId, subjectId, actor] } }
+    - { apiPermission: Identity.Sessions.RevokeOthers, mcpPermission: identity.mcp.sessions-revoke-others.sensitive, action: sensitive, resource: sessions-revoke-others, audience: self, risk: sensitive, approvalRequired: true, tenantScope: current-user, toolNames: [identity_revoke_self_other_sessions], restrictions: { subjectPolicy: current-context, forbiddenInputs: [userId, tenantId, subjectId, actor] } }
+    - { apiPermission: Identity.Users.AccessSummary.Get, mcpPermission: identity.mcp.user-access-summary.read, action: read, resource: user-access-summary, audience: admin, risk: read, approvalRequired: false, tenantScope: tenant-scoped, toolNames: [identity_get_user_access_summary], restrictions: { subjectPolicy: authorized-subject, forbiddenInputs: [subjectId, actor] } }
+    - { apiPermission: Identity.Sessions.AdminRevoke, mcpPermission: identity.mcp.sessions-admin.sensitive, action: sensitive, resource: sessions-admin, audience: admin, risk: sensitive, approvalRequired: true, tenantScope: tenant-scoped, toolNames: [identity_revoke_user_sessions], restrictions: { subjectPolicy: authorized-subject, forbiddenInputs: [subjectId, actor, tenantId] } }
+    - { apiPermission: Identity.Users.Read, mcpPermission: identity.mcp.users.read, action: read, resource: users, audience: admin, risk: read, approvalRequired: false, tenantScope: tenant-scoped, toolNames: [identity_admin_users_read], restrictions: { subjectPolicy: authorized-subject, forbiddenInputs: [subjectId, actor] } }
+    - { apiPermission: Identity.Users.Write, mcpPermission: identity.mcp.users.write, action: write, resource: users, audience: admin, risk: write, approvalRequired: false, tenantScope: platform-scoped, toolNames: [identity_admin_users_write], restrictions: { subjectPolicy: authorized-subject, forbiddenInputs: [subjectId, actor] } }
+    - { apiPermission: Identity.Users.Delete, mcpPermission: identity.mcp.users.sensitive, action: sensitive, resource: users, audience: admin, risk: sensitive, approvalRequired: true, tenantScope: platform-scoped, toolNames: [identity_admin_users_delete], restrictions: { subjectPolicy: authorized-subject, forbiddenInputs: [subjectId, actor] } }
+    - { apiPermission: Identity.Roles.Read, mcpPermission: identity.mcp.roles.read, action: read, resource: roles, audience: admin, risk: read, approvalRequired: false, tenantScope: platform-scoped, toolNames: [identity_admin_roles_read], restrictions: { subjectPolicy: authorized-subject, forbiddenInputs: [subjectId, actor] } }
+    - { apiPermission: Identity.Roles.Write, mcpPermission: identity.mcp.roles.write, action: write, resource: roles, audience: admin, risk: write, approvalRequired: false, tenantScope: platform-scoped, toolNames: [identity_admin_roles_write], restrictions: { subjectPolicy: authorized-subject, forbiddenInputs: [subjectId, actor] } }
+    - { apiPermission: Identity.Roles.Delete, mcpPermission: identity.mcp.roles.sensitive, action: sensitive, resource: roles, audience: admin, risk: sensitive, approvalRequired: true, tenantScope: platform-scoped, toolNames: [identity_admin_roles_delete], restrictions: { subjectPolicy: authorized-subject, forbiddenInputs: [subjectId, actor] } }
+    - { apiPermission: Identity.Tenants.Read, mcpPermission: identity.mcp.tenants.read, action: read, resource: tenants, audience: admin, risk: read, approvalRequired: false, tenantScope: platform-scoped, toolNames: [identity_admin_tenants_read], restrictions: { subjectPolicy: authorized-subject, forbiddenInputs: [subjectId, actor] } }
+    - { apiPermission: Identity.Tenants.Write, mcpPermission: identity.mcp.tenants.write, action: write, resource: tenants, audience: admin, risk: write, approvalRequired: false, tenantScope: platform-scoped, toolNames: [identity_admin_tenants_write], restrictions: { subjectPolicy: authorized-subject, forbiddenInputs: [subjectId, actor] } }
+    - { apiPermission: Identity.Tenants.Delete, mcpPermission: identity.mcp.tenants.sensitive, action: sensitive, resource: tenants, audience: admin, risk: sensitive, approvalRequired: true, tenantScope: platform-scoped, toolNames: [identity_admin_tenants_delete], restrictions: { subjectPolicy: authorized-subject, forbiddenInputs: [subjectId, actor] } }
+    - { apiPermission: Identity.Permissions.Read, mcpPermission: identity.mcp.permissions.read, action: read, resource: permissions, audience: admin, risk: read, approvalRequired: false, tenantScope: platform-scoped, toolNames: [identity_admin_permissions_read], restrictions: { subjectPolicy: authorized-subject, forbiddenInputs: [subjectId, actor] } }
+    - { apiPermission: Identity.Permissions.Write, mcpPermission: identity.mcp.permissions.write, action: write, resource: permissions, audience: admin, risk: write, approvalRequired: false, tenantScope: platform-scoped, toolNames: [identity_admin_permissions_write], restrictions: { subjectPolicy: authorized-subject, forbiddenInputs: [subjectId, actor] } }
+    - { apiPermission: Identity.Permissions.Delete, mcpPermission: identity.mcp.permissions.sensitive, action: sensitive, resource: permissions, audience: admin, risk: sensitive, approvalRequired: true, tenantScope: platform-scoped, toolNames: [identity_admin_permissions_delete], restrictions: { subjectPolicy: authorized-subject, forbiddenInputs: [subjectId, actor] } }
+    - { apiPermission: Identity.Scopes.Read, mcpPermission: identity.mcp.scopes.read, action: read, resource: scopes, audience: admin, risk: read, approvalRequired: false, tenantScope: platform-scoped, toolNames: [identity_admin_scopes_read], restrictions: { subjectPolicy: authorized-subject, forbiddenInputs: [subjectId, actor] } }
+    - { apiPermission: Identity.Scopes.Write, mcpPermission: identity.mcp.scopes.write, action: write, resource: scopes, audience: admin, risk: write, approvalRequired: false, tenantScope: platform-scoped, toolNames: [identity_admin_scopes_write], restrictions: { subjectPolicy: authorized-subject, forbiddenInputs: [subjectId, actor] } }
+    - { apiPermission: Identity.Scopes.Delete, mcpPermission: identity.mcp.scopes.sensitive, action: sensitive, resource: scopes, audience: admin, risk: sensitive, approvalRequired: true, tenantScope: platform-scoped, toolNames: [identity_admin_scopes_delete], restrictions: { subjectPolicy: authorized-subject, forbiddenInputs: [subjectId, actor] } }
+    - { apiPermission: Identity.Clients.Read, mcpPermission: identity.mcp.clients.read, action: read, resource: clients, audience: admin, risk: read, approvalRequired: false, tenantScope: platform-scoped, toolNames: [identity_admin_clients_read], restrictions: { subjectPolicy: authorized-subject, forbiddenInputs: [subjectId, actor] } }
+    - { apiPermission: Identity.Clients.Write, mcpPermission: identity.mcp.clients.write, action: write, resource: clients, audience: admin, risk: write, approvalRequired: false, tenantScope: platform-scoped, toolNames: [identity_admin_clients_write], restrictions: { subjectPolicy: authorized-subject, forbiddenInputs: [subjectId, actor] } }
+    - { apiPermission: Identity.UserRoles.Read, mcpPermission: identity.mcp.user-roles.read, action: read, resource: user-roles, audience: admin, risk: read, approvalRequired: false, tenantScope: tenant-scoped, toolNames: [identity_admin_user_roles_read], restrictions: { subjectPolicy: authorized-subject, forbiddenInputs: [subjectId, actor] } }
+    - { apiPermission: Identity.UserRoles.Write, mcpPermission: identity.mcp.user-roles.sensitive, action: sensitive, resource: user-roles, audience: admin, risk: sensitive, approvalRequired: true, tenantScope: tenant-scoped, toolNames: [identity_admin_user_roles_write], restrictions: { subjectPolicy: authorized-subject, forbiddenInputs: [subjectId, actor] } }
+    - { apiPermission: Identity.UserTenants.Read, mcpPermission: identity.mcp.user-tenants.read, action: read, resource: user-tenants, audience: admin, risk: read, approvalRequired: false, tenantScope: tenant-scoped, toolNames: [identity_admin_user_tenants_read], restrictions: { subjectPolicy: authorized-subject, forbiddenInputs: [subjectId, actor] } }
+    - { apiPermission: Identity.UserTenants.Write, mcpPermission: identity.mcp.user-tenants.sensitive, action: sensitive, resource: user-tenants, audience: admin, risk: sensitive, approvalRequired: true, tenantScope: tenant-scoped, toolNames: [identity_admin_user_tenants_write], restrictions: { subjectPolicy: authorized-subject, forbiddenInputs: [subjectId, actor] } }
+    - { apiPermission: Identity.RolePermissions.Read, mcpPermission: identity.mcp.role-permissions.read, action: read, resource: role-permissions, audience: admin, risk: read, approvalRequired: false, tenantScope: platform-scoped, toolNames: [identity_admin_role_permissions_read], restrictions: { subjectPolicy: authorized-subject, forbiddenInputs: [subjectId, actor] } }
+    - { apiPermission: Identity.RolePermissions.Write, mcpPermission: identity.mcp.role-permissions.sensitive, action: sensitive, resource: role-permissions, audience: admin, risk: sensitive, approvalRequired: true, tenantScope: platform-scoped, toolNames: [identity_admin_role_permissions_write], restrictions: { subjectPolicy: authorized-subject, forbiddenInputs: [subjectId, actor] } }
+    - { apiPermission: Identity.ScopePermissions.Read, mcpPermission: identity.mcp.scope-permissions.read, action: read, resource: scope-permissions, audience: admin, risk: read, approvalRequired: false, tenantScope: platform-scoped, toolNames: [identity_admin_scope_permissions_read], restrictions: { subjectPolicy: authorized-subject, forbiddenInputs: [subjectId, actor] } }
+    - { apiPermission: Identity.ScopePermissions.Write, mcpPermission: identity.mcp.scope-permissions.sensitive, action: sensitive, resource: scope-permissions, audience: admin, risk: sensitive, approvalRequired: true, tenantScope: platform-scoped, toolNames: [identity_admin_scope_permissions_write], restrictions: { subjectPolicy: authorized-subject, forbiddenInputs: [subjectId, actor] } }
+    - { apiPermission: Identity.ClientScopes.Read, mcpPermission: identity.mcp.client-scopes.read, action: read, resource: client-scopes, audience: admin, risk: read, approvalRequired: false, tenantScope: platform-scoped, toolNames: [identity_admin_client_scopes_read], restrictions: { subjectPolicy: authorized-subject, forbiddenInputs: [subjectId, actor] } }
+    - { apiPermission: Identity.ClientScopes.Write, mcpPermission: identity.mcp.client-scopes.sensitive, action: sensitive, resource: client-scopes, audience: admin, risk: sensitive, approvalRequired: true, tenantScope: platform-scoped, toolNames: [identity_admin_client_scopes_write], restrictions: { subjectPolicy: authorized-subject, forbiddenInputs: [subjectId, actor] } }
+    - { apiPermission: Identity.RoleUsers.Read, mcpPermission: identity.mcp.role-users.read, action: read, resource: role-users, audience: admin, risk: read, approvalRequired: false, tenantScope: tenant-scoped, toolNames: [identity_admin_role_users_read], restrictions: { subjectPolicy: authorized-subject, forbiddenInputs: [subjectId, actor] } }
+    - { apiPermission: Identity.TenantUsers.Read, mcpPermission: identity.mcp.tenant-users.read, action: read, resource: tenant-users, audience: admin, risk: read, approvalRequired: false, tenantScope: tenant-scoped, toolNames: [identity_admin_tenant_users_read], restrictions: { subjectPolicy: authorized-subject, forbiddenInputs: [subjectId, actor] } }
+    - { apiPermission: Identity.Token.Refresh, mcpPermission: identity.mcp.protocol.refresh, action: sensitive, resource: credential-lifecycle, audience: self, risk: sensitive, approvalRequired: true, tenantScope: current-user, toolNames: [identity_protocol_refresh], restrictions: { subjectPolicy: current-context, forbiddenInputs: [userId, tenantId, subjectId, actor] } }
+    - { apiPermission: Identity.Token.Logout, mcpPermission: identity.mcp.protocol.logout, action: sensitive, resource: credential-lifecycle, audience: self, risk: sensitive, approvalRequired: true, tenantScope: current-user, toolNames: [identity_protocol_logout], restrictions: { subjectPolicy: current-context, forbiddenInputs: [userId, tenantId, subjectId, actor] } }
+    - { apiPermission: Identity.ClientSecrets.Read, mcpPermission: identity.mcp.protocol.client-secrets.read, action: sensitive, resource: client-secrets, audience: self, risk: sensitive, approvalRequired: true, tenantScope: current-user, toolNames: [identity_protocol_client_secrets_read], restrictions: { subjectPolicy: current-context, forbiddenInputs: [userId, tenantId, subjectId, actor] } }
+    - { apiPermission: Identity.ClientSecrets.Write, mcpPermission: identity.mcp.protocol.client-secrets.write, action: sensitive, resource: client-secrets, audience: self, risk: sensitive, approvalRequired: true, tenantScope: current-user, toolNames: [identity_protocol_client_secrets_write], restrictions: { subjectPolicy: current-context, forbiddenInputs: [userId, tenantId, subjectId, actor] } }
+    - { apiPermission: Identity.ClientSecrets.Revoke, mcpPermission: identity.mcp.protocol.client-secrets.revoke, action: sensitive, resource: client-secrets, audience: self, risk: sensitive, approvalRequired: true, tenantScope: current-user, toolNames: [identity_protocol_client_secrets_revoke], restrictions: { subjectPolicy: current-context, forbiddenInputs: [userId, tenantId, subjectId, actor] } }
+tools:
+  - name: identity_get_self_profile
+    version: 0.1.0
+    status: active
+    kind: atomic
+    audience: self
+    mcpPermission: identity.mcp.profile.read
+    risk: read
+    approvalRequired: false
+    requiredScopes: [identity.mcp.profile.read]
+    exposable: true
+    subjectPolicy: current-context
+    forbiddenInputs: [userId, tenantId, subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/Features/Profile/Queries/GetProfile/GetProfileQuery]
+      directDataAccess: false
+    output:
+      contract: IdentityService.Mcp/McpSelfProfileResult
+      redaction: purpose-built-redacted
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_update_self_profile
+    version: 0.1.0
+    status: active
+    kind: atomic
+    audience: self
+    mcpPermission: identity.mcp.profile.write
+    risk: write
+    approvalRequired: false
+    requiredScopes: [identity.mcp.profile.write]
+    exposable: true
+    subjectPolicy: current-context
+    forbiddenInputs: [userId, tenantId, subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/Features/Profile/Commands/UpdateProfile/UpdateProfileCommand]
+      directDataAccess: false
+    output:
+      contract: IdentityService.Mcp/ProfileUpdateResult
+      redaction: purpose-built-redacted
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_list_self_sessions
+    version: 0.1.0
+    status: active
+    kind: atomic
+    audience: self
+    mcpPermission: identity.mcp.sessions.read
+    risk: read
+    approvalRequired: false
+    requiredScopes: [identity.mcp.sessions.read]
+    exposable: true
+    subjectPolicy: current-context
+    forbiddenInputs: [userId, tenantId, subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/Features/Sessions/Queries/GetCurrentUserSessions/GetCurrentUserSessionsQuery]
+      directDataAccess: false
+    output:
+      contract: IdentityService.Mcp/McpSelfSessionResult
+      redaction: purpose-built-redacted
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_revoke_self_session
+    version: 0.1.0
+    status: active
+    kind: atomic
+    audience: self
+    mcpPermission: identity.mcp.sessions-revoke.sensitive
+    risk: sensitive
+    approvalRequired: true
+    requiredScopes: [identity.mcp.sessions-revoke.sensitive]
+    exposable: true
+    subjectPolicy: current-context
+    forbiddenInputs: [userId, tenantId, subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/Features/Sessions/Commands/RevokeSession/RevokeSessionCommand]
+      directDataAccess: false
+    output:
+      contract: IdentityService.Mcp/McpSessionRevocationResult
+      redaction: purpose-built-redacted
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_revoke_self_other_sessions
+    version: 0.1.0
+    status: active
+    kind: atomic
+    audience: self
+    mcpPermission: identity.mcp.sessions-revoke-others.sensitive
+    risk: sensitive
+    approvalRequired: true
+    requiredScopes: [identity.mcp.sessions-revoke-others.sensitive]
+    exposable: true
+    subjectPolicy: current-context
+    forbiddenInputs: [userId, tenantId, subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/Features/Sessions/Commands/RevokeOtherSessions/RevokeOtherSessionsCommand]
+      directDataAccess: false
+    output:
+      contract: IdentityService.Mcp/McpSessionRevocationResult
+      redaction: purpose-built-redacted
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_get_user_access_summary
+    version: 0.1.0
+    status: active
+    kind: business
+    audience: admin
+    mcpPermission: identity.mcp.user-access-summary.read
+    risk: read
+    approvalRequired: false
+    requiredScopes: [identity.mcp.user-access-summary.read]
+    exposable: true
+    subjectPolicy: authorized-subject
+    forbiddenInputs: [subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/Features/Users/Queries/GetUserById/GetUserByIdQuery, IdentityService.Application/Features/UserRoles/Queries/GetUserRoles/GetUserRolesQuery, IdentityService.Application/Features/UserTenants/Queries/GetUserTenants/GetUserTenantsQuery]
+      directDataAccess: false
+      orchestratesUseCases: true
+    output:
+      contract: IdentityService.Mcp/McpUserAccessSummaryResult
+      redaction: purpose-built-redacted
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_revoke_user_sessions
+    version: 0.1.0
+    status: active
+    kind: business
+    audience: admin
+    mcpPermission: identity.mcp.sessions-admin.sensitive
+    risk: sensitive
+    approvalRequired: true
+    requiredScopes: [identity.mcp.sessions-admin.sensitive]
+    exposable: true
+    subjectPolicy: authorized-subject
+    forbiddenInputs: [subjectId, actor, tenantId]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/Features/Sessions/Commands/RevokeSession/RevokeSessionCommand, IdentityService.Application/Features/Sessions/Commands/RevokeOtherSessions/RevokeOtherSessionsCommand]
+      directDataAccess: false
+      orchestratesUseCases: true
+    output:
+      contract: IdentityService.Mcp/McpSessionRevocationResult
+      redaction: purpose-built-redacted
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_admin_users_read
+    version: 0.1.0
+    status: active
+    kind: atomic
+    audience: admin
+    mcpPermission: identity.mcp.users.read
+    risk: read
+    approvalRequired: false
+    requiredScopes: [identity.mcp.users.read]
+    exposable: true
+    subjectPolicy: authorized-subject
+    forbiddenInputs: [subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/Features/Users/Queries/GetUsersPaged/GetUsersPagedQuery, IdentityService.Application/Features/Users/Queries/GetUserById/GetUserByIdQuery]
+      directDataAccess: false
+    output:
+      contract: IdentityService.Application/Features/Users/DTOs
+      redaction: purpose-built-redacted
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_admin_users_write
+    version: 0.1.0
+    status: active
+    kind: atomic
+    audience: admin
+    mcpPermission: identity.mcp.users.write
+    risk: write
+    approvalRequired: false
+    requiredScopes: [identity.mcp.users.write]
+    exposable: true
+    subjectPolicy: authorized-subject
+    forbiddenInputs: [subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/Features/Users/Commands/CreateUser/CreateUserCommand, IdentityService.Application/Features/Users/Commands/UpdateUser/UpdateUserCommand]
+      directDataAccess: false
+    output:
+      contract: IdentityService.Application/Features/Users/DTOs
+      redaction: purpose-built-redacted
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_admin_users_delete
+    version: 0.1.0
+    status: active
+    kind: atomic
+    audience: admin
+    mcpPermission: identity.mcp.users.sensitive
+    risk: sensitive
+    approvalRequired: true
+    requiredScopes: [identity.mcp.users.sensitive]
+    exposable: true
+    subjectPolicy: authorized-subject
+    forbiddenInputs: [subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/Features/Users/Commands/DeleteUser/DeleteUserCommand]
+      directDataAccess: false
+    output:
+      contract: IdentityService.Mcp/DeletionResult
+      redaction: metadata-only
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_admin_roles_read
+    version: 0.1.0
+    status: active
+    kind: atomic
+    audience: admin
+    mcpPermission: identity.mcp.roles.read
+    risk: read
+    approvalRequired: false
+    requiredScopes: [identity.mcp.roles.read]
+    exposable: true
+    subjectPolicy: authorized-subject
+    forbiddenInputs: [subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/Features/Roles/Queries/GetRolesPaged/GetRolesPagedQuery, IdentityService.Application/Features/Roles/Queries/GetRoleById/GetRoleByIdQuery]
+      directDataAccess: false
+    output:
+      contract: IdentityService.Application/Features/Roles/DTOs
+      redaction: purpose-built-redacted
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_admin_roles_write
+    version: 0.1.0
+    status: active
+    kind: atomic
+    audience: admin
+    mcpPermission: identity.mcp.roles.write
+    risk: write
+    approvalRequired: false
+    requiredScopes: [identity.mcp.roles.write]
+    exposable: true
+    subjectPolicy: authorized-subject
+    forbiddenInputs: [subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/Features/Roles/Commands/CreateRole/CreateRoleCommand, IdentityService.Application/Features/Roles/Commands/UpdateRole/UpdateRoleCommand]
+      directDataAccess: false
+    output:
+      contract: IdentityService.Application/Features/Roles/DTOs
+      redaction: purpose-built-redacted
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_admin_roles_delete
+    version: 0.1.0
+    status: active
+    kind: atomic
+    audience: admin
+    mcpPermission: identity.mcp.roles.sensitive
+    risk: sensitive
+    approvalRequired: true
+    requiredScopes: [identity.mcp.roles.sensitive]
+    exposable: true
+    subjectPolicy: authorized-subject
+    forbiddenInputs: [subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/Features/Roles/Commands/DeleteRole/DeleteRoleCommand]
+      directDataAccess: false
+    output:
+      contract: IdentityService.Mcp/DeletionResult
+      redaction: metadata-only
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_admin_tenants_read
+    version: 0.1.0
+    status: active
+    kind: atomic
+    audience: admin
+    mcpPermission: identity.mcp.tenants.read
+    risk: read
+    approvalRequired: false
+    requiredScopes: [identity.mcp.tenants.read]
+    exposable: true
+    subjectPolicy: authorized-subject
+    forbiddenInputs: [subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/Features/Tenants/Queries/GetTenantsPaged/GetTenantsPagedQuery, IdentityService.Application/Features/Tenants/Queries/GetTenantById/GetTenantByIdQuery]
+      directDataAccess: false
+    output:
+      contract: IdentityService.Application/Features/Tenants/DTOs
+      redaction: purpose-built-redacted
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_admin_tenants_write
+    version: 0.1.0
+    status: active
+    kind: atomic
+    audience: admin
+    mcpPermission: identity.mcp.tenants.write
+    risk: write
+    approvalRequired: false
+    requiredScopes: [identity.mcp.tenants.write]
+    exposable: true
+    subjectPolicy: authorized-subject
+    forbiddenInputs: [subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/Features/Tenants/Commands/CreateTenant/CreateTenantCommand, IdentityService.Application/Features/Tenants/Commands/UpdateTenant/UpdateTenantCommand]
+      directDataAccess: false
+    output:
+      contract: IdentityService.Application/Features/Tenants/DTOs
+      redaction: purpose-built-redacted
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_admin_tenants_delete
+    version: 0.1.0
+    status: active
+    kind: atomic
+    audience: admin
+    mcpPermission: identity.mcp.tenants.sensitive
+    risk: sensitive
+    approvalRequired: true
+    requiredScopes: [identity.mcp.tenants.sensitive]
+    exposable: true
+    subjectPolicy: authorized-subject
+    forbiddenInputs: [subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/Features/Tenants/Commands/DeleteTenant/DeleteTenantCommand]
+      directDataAccess: false
+    output:
+      contract: IdentityService.Mcp/DeletionResult
+      redaction: metadata-only
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_admin_permissions_read
+    version: 0.1.0
+    status: active
+    kind: atomic
+    audience: admin
+    mcpPermission: identity.mcp.permissions.read
+    risk: read
+    approvalRequired: false
+    requiredScopes: [identity.mcp.permissions.read]
+    exposable: true
+    subjectPolicy: authorized-subject
+    forbiddenInputs: [subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/Features/Permissions/Queries/GetPermissionsPaged/GetPermissionsPagedQuery, IdentityService.Application/Features/Permissions/Queries/GetPermissionById/GetPermissionByIdQuery]
+      directDataAccess: false
+    output:
+      contract: IdentityService.Application/Features/Roles/DTOs/PermissionDto
+      redaction: purpose-built-redacted
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_admin_permissions_write
+    version: 0.1.0
+    status: active
+    kind: atomic
+    audience: admin
+    mcpPermission: identity.mcp.permissions.write
+    risk: write
+    approvalRequired: false
+    requiredScopes: [identity.mcp.permissions.write]
+    exposable: true
+    subjectPolicy: authorized-subject
+    forbiddenInputs: [subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/Features/Permissions/Commands/CreatePermission/CreatePermissionCommand, IdentityService.Application/Features/Permissions/Commands/UpdatePermission/UpdatePermissionCommand]
+      directDataAccess: false
+    output:
+      contract: IdentityService.Application/Features/Roles/DTOs/PermissionDto
+      redaction: purpose-built-redacted
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_admin_permissions_delete
+    version: 0.1.0
+    status: active
+    kind: atomic
+    audience: admin
+    mcpPermission: identity.mcp.permissions.sensitive
+    risk: sensitive
+    approvalRequired: true
+    requiredScopes: [identity.mcp.permissions.sensitive]
+    exposable: true
+    subjectPolicy: authorized-subject
+    forbiddenInputs: [subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/Features/Permissions/Commands/DeletePermission/DeletePermissionCommand]
+      directDataAccess: false
+    output:
+      contract: IdentityService.Mcp/DeletionResult
+      redaction: metadata-only
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_admin_scopes_read
+    version: 0.1.0
+    status: active
+    kind: atomic
+    audience: admin
+    mcpPermission: identity.mcp.scopes.read
+    risk: read
+    approvalRequired: false
+    requiredScopes: [identity.mcp.scopes.read]
+    exposable: true
+    subjectPolicy: authorized-subject
+    forbiddenInputs: [subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/Features/Scopes/Queries/GetScopesPaged/GetScopesPagedQuery, IdentityService.Application/Features/Scopes/Queries/GetScopeById/GetScopeByIdQuery]
+      directDataAccess: false
+    output:
+      contract: IdentityService.Application/Features/Scopes/DTOs
+      redaction: purpose-built-redacted
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_admin_scopes_write
+    version: 0.1.0
+    status: active
+    kind: atomic
+    audience: admin
+    mcpPermission: identity.mcp.scopes.write
+    risk: write
+    approvalRequired: false
+    requiredScopes: [identity.mcp.scopes.write]
+    exposable: true
+    subjectPolicy: authorized-subject
+    forbiddenInputs: [subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/Features/Scopes/Commands/CreateScope/CreateScopeCommand, IdentityService.Application/Features/Scopes/Commands/UpdateScope/UpdateScopeCommand]
+      directDataAccess: false
+    output:
+      contract: IdentityService.Application/Features/Scopes/DTOs
+      redaction: purpose-built-redacted
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_admin_scopes_delete
+    version: 0.1.0
+    status: active
+    kind: atomic
+    audience: admin
+    mcpPermission: identity.mcp.scopes.sensitive
+    risk: sensitive
+    approvalRequired: true
+    requiredScopes: [identity.mcp.scopes.sensitive]
+    exposable: true
+    subjectPolicy: authorized-subject
+    forbiddenInputs: [subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/Features/Scopes/Commands/DeleteScope/DeleteScopeCommand]
+      directDataAccess: false
+    output:
+      contract: IdentityService.Mcp/DeletionResult
+      redaction: metadata-only
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_admin_clients_read
+    version: 0.1.0
+    status: active
+    kind: atomic
+    audience: admin
+    mcpPermission: identity.mcp.clients.read
+    risk: read
+    approvalRequired: false
+    requiredScopes: [identity.mcp.clients.read]
+    exposable: true
+    subjectPolicy: authorized-subject
+    forbiddenInputs: [subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/Features/Clients/Queries/GetClientsPaged/GetClientsPagedQuery, IdentityService.Application/Features/Clients/Queries/GetClientById/GetClientByIdQuery]
+      directDataAccess: false
+    output:
+      contract: IdentityService.Application/Features/Clients/DTOs
+      redaction: purpose-built-redacted
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_admin_clients_write
+    version: 0.1.0
+    status: active
+    kind: atomic
+    audience: admin
+    mcpPermission: identity.mcp.clients.write
+    risk: write
+    approvalRequired: false
+    requiredScopes: [identity.mcp.clients.write]
+    exposable: true
+    subjectPolicy: authorized-subject
+    forbiddenInputs: [subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/Features/Clients/Commands/CreateClient/CreateClientCommand, IdentityService.Application/Features/Clients/Commands/UpdateClient/UpdateClientCommand]
+      directDataAccess: false
+    output:
+      contract: IdentityService.Application/Features/Clients/DTOs
+      redaction: purpose-built-redacted
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_admin_user_roles_read
+    version: 0.1.0
+    status: active
+    kind: atomic
+    audience: admin
+    mcpPermission: identity.mcp.user-roles.read
+    risk: read
+    approvalRequired: false
+    requiredScopes: [identity.mcp.user-roles.read]
+    exposable: true
+    subjectPolicy: authorized-subject
+    forbiddenInputs: [subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/Features/UserRoles/Queries/GetUserRoles/GetUserRolesQuery]
+      directDataAccess: false
+    output:
+      contract: IdentityService.Application/Features/UserRoles/DTOs
+      redaction: purpose-built-redacted
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_admin_user_roles_write
+    version: 0.1.0
+    status: active
+    kind: atomic
+    audience: admin
+    mcpPermission: identity.mcp.user-roles.sensitive
+    risk: sensitive
+    approvalRequired: true
+    requiredScopes: [identity.mcp.user-roles.sensitive]
+    exposable: true
+    subjectPolicy: authorized-subject
+    forbiddenInputs: [subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/Features/UserRoles/Commands/AddUserRole/AddUserRoleCommand, IdentityService.Application/Features/UserRoles/Commands/RemoveUserRole/RemoveUserRoleCommand]
+      directDataAccess: false
+    output:
+      contract: IdentityService.Application/Features/UserRoles/DTOs
+      redaction: metadata-only
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_admin_user_tenants_read
+    version: 0.1.0
+    status: active
+    kind: atomic
+    audience: admin
+    mcpPermission: identity.mcp.user-tenants.read
+    risk: read
+    approvalRequired: false
+    requiredScopes: [identity.mcp.user-tenants.read]
+    exposable: true
+    subjectPolicy: authorized-subject
+    forbiddenInputs: [subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/Features/UserTenants/Queries/GetUserTenants/GetUserTenantsQuery]
+      directDataAccess: false
+    output:
+      contract: IdentityService.Application/Features/UserTenants/DTOs
+      redaction: purpose-built-redacted
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_admin_user_tenants_write
+    version: 0.1.0
+    status: active
+    kind: atomic
+    audience: admin
+    mcpPermission: identity.mcp.user-tenants.sensitive
+    risk: sensitive
+    approvalRequired: true
+    requiredScopes: [identity.mcp.user-tenants.sensitive]
+    exposable: true
+    subjectPolicy: authorized-subject
+    forbiddenInputs: [subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/Features/UserTenants/Commands/AddUserTenant/AddUserTenantCommand, IdentityService.Application/Features/UserTenants/Commands/RemoveUserTenant/RemoveUserTenantCommand]
+      directDataAccess: false
+    output:
+      contract: IdentityService.Application/Features/UserTenants/DTOs
+      redaction: metadata-only
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_admin_role_permissions_read
+    version: 0.1.0
+    status: active
+    kind: atomic
+    audience: admin
+    mcpPermission: identity.mcp.role-permissions.read
+    risk: read
+    approvalRequired: false
+    requiredScopes: [identity.mcp.role-permissions.read]
+    exposable: true
+    subjectPolicy: authorized-subject
+    forbiddenInputs: [subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/Features/RolePermissions/Queries/GetRolePermissions/GetRolePermissionsQuery]
+      directDataAccess: false
+    output:
+      contract: IdentityService.Application/Features/RolePermissions/DTOs
+      redaction: purpose-built-redacted
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_admin_role_permissions_write
+    version: 0.1.0
+    status: active
+    kind: atomic
+    audience: admin
+    mcpPermission: identity.mcp.role-permissions.sensitive
+    risk: sensitive
+    approvalRequired: true
+    requiredScopes: [identity.mcp.role-permissions.sensitive]
+    exposable: true
+    subjectPolicy: authorized-subject
+    forbiddenInputs: [subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/Features/RolePermissions/Commands/AddRolePermission/AddRolePermissionCommand, IdentityService.Application/Features/RolePermissions/Commands/RemoveRolePermission/RemoveRolePermissionCommand]
+      directDataAccess: false
+    output:
+      contract: IdentityService.Application/Features/RolePermissions/DTOs
+      redaction: metadata-only
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_admin_scope_permissions_read
+    version: 0.1.0
+    status: active
+    kind: atomic
+    audience: admin
+    mcpPermission: identity.mcp.scope-permissions.read
+    risk: read
+    approvalRequired: false
+    requiredScopes: [identity.mcp.scope-permissions.read]
+    exposable: true
+    subjectPolicy: authorized-subject
+    forbiddenInputs: [subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/Features/ScopePermissions/Queries/GetScopePermissions/GetScopePermissionsQuery]
+      directDataAccess: false
+    output:
+      contract: IdentityService.Application/Features/ScopePermissions/DTOs
+      redaction: purpose-built-redacted
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_admin_scope_permissions_write
+    version: 0.1.0
+    status: active
+    kind: atomic
+    audience: admin
+    mcpPermission: identity.mcp.scope-permissions.sensitive
+    risk: sensitive
+    approvalRequired: true
+    requiredScopes: [identity.mcp.scope-permissions.sensitive]
+    exposable: true
+    subjectPolicy: authorized-subject
+    forbiddenInputs: [subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/Features/ScopePermissions/Commands/AddScopePermission/AddScopePermissionCommand, IdentityService.Application/Features/ScopePermissions/Commands/RemoveScopePermission/RemoveScopePermissionCommand]
+      directDataAccess: false
+    output:
+      contract: IdentityService.Application/Features/ScopePermissions/DTOs
+      redaction: metadata-only
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_admin_client_scopes_read
+    version: 0.1.0
+    status: active
+    kind: atomic
+    audience: admin
+    mcpPermission: identity.mcp.client-scopes.read
+    risk: read
+    approvalRequired: false
+    requiredScopes: [identity.mcp.client-scopes.read]
+    exposable: true
+    subjectPolicy: authorized-subject
+    forbiddenInputs: [subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/Features/ClientScopes/Queries/GetClientScopes/GetClientScopesQuery]
+      directDataAccess: false
+    output:
+      contract: IdentityService.Application/Features/ClientScopes/DTOs
+      redaction: purpose-built-redacted
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_admin_client_scopes_write
+    version: 0.1.0
+    status: active
+    kind: atomic
+    audience: admin
+    mcpPermission: identity.mcp.client-scopes.sensitive
+    risk: sensitive
+    approvalRequired: true
+    requiredScopes: [identity.mcp.client-scopes.sensitive]
+    exposable: true
+    subjectPolicy: authorized-subject
+    forbiddenInputs: [subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/Features/ClientScopes/Commands/AddClientScope/AddClientScopeCommand, IdentityService.Application/Features/ClientScopes/Commands/RemoveClientScope/RemoveClientScopeCommand]
+      directDataAccess: false
+    output:
+      contract: IdentityService.Application/Features/ClientScopes/DTOs
+      redaction: metadata-only
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_admin_role_users_read
+    version: 0.1.0
+    status: active
+    kind: atomic
+    audience: admin
+    mcpPermission: identity.mcp.role-users.read
+    risk: read
+    approvalRequired: false
+    requiredScopes: [identity.mcp.role-users.read]
+    exposable: true
+    subjectPolicy: authorized-subject
+    forbiddenInputs: [subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/Features/Users/Queries/GetUsersPaged/GetUsersPagedQuery]
+      directDataAccess: false
+    output:
+      contract: IdentityService.Application/Features/Users/DTOs
+      redaction: purpose-built-redacted
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_admin_tenant_users_read
+    version: 0.1.0
+    status: active
+    kind: atomic
+    audience: admin
+    mcpPermission: identity.mcp.tenant-users.read
+    risk: read
+    approvalRequired: false
+    requiredScopes: [identity.mcp.tenant-users.read]
+    exposable: true
+    subjectPolicy: authorized-subject
+    forbiddenInputs: [subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/Features/Users/Queries/GetUsersPaged/GetUsersPagedQuery]
+      directDataAccess: false
+    output:
+      contract: IdentityService.Application/Features/Users/DTOs
+      redaction: purpose-built-redacted
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_protocol_refresh
+    version: 0.1.0
+    status: deprecated
+    kind: atomic
+    audience: self
+    mcpPermission: identity.mcp.protocol.refresh
+    risk: sensitive
+    approvalRequired: true
+    requiredScopes: [identity.mcp.protocol.refresh]
+    exposable: false
+    subjectPolicy: current-context
+    forbiddenInputs: [userId, tenantId, subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/protocol token lifecycle]
+      directDataAccess: false
+    output:
+      contract: protocol-only; raw access and refresh tokens are never exposed
+      redaction: metadata-only
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_protocol_logout
+    version: 0.1.0
+    status: deprecated
+    kind: atomic
+    audience: self
+    mcpPermission: identity.mcp.protocol.logout
+    risk: sensitive
+    approvalRequired: true
+    requiredScopes: [identity.mcp.protocol.logout]
+    exposable: false
+    subjectPolicy: current-context
+    forbiddenInputs: [userId, tenantId, subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/protocol token lifecycle]
+      directDataAccess: false
+    output:
+      contract: protocol-only; raw access and refresh tokens are never exposed
+      redaction: metadata-only
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_protocol_client_secrets_read
+    version: 0.1.0
+    status: deprecated
+    kind: atomic
+    audience: self
+    mcpPermission: identity.mcp.protocol.client-secrets.read
+    risk: sensitive
+    approvalRequired: true
+    requiredScopes: [identity.mcp.protocol.client-secrets.read]
+    exposable: false
+    subjectPolicy: current-context
+    forbiddenInputs: [userId, tenantId, subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/protocol client-secret lifecycle]
+      directDataAccess: false
+    output:
+      contract: protocol-only; raw client secrets are never exposed
+      redaction: metadata-only
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_protocol_client_secrets_write
+    version: 0.1.0
+    status: deprecated
+    kind: atomic
+    audience: self
+    mcpPermission: identity.mcp.protocol.client-secrets.write
+    risk: sensitive
+    approvalRequired: true
+    requiredScopes: [identity.mcp.protocol.client-secrets.write]
+    exposable: false
+    subjectPolicy: current-context
+    forbiddenInputs: [userId, tenantId, subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/protocol client-secret lifecycle]
+      directDataAccess: false
+    output:
+      contract: protocol-only; raw client secrets are never exposed
+      redaction: metadata-only
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+  - name: identity_protocol_client_secrets_revoke
+    version: 0.1.0
+    status: deprecated
+    kind: atomic
+    audience: self
+    mcpPermission: identity.mcp.protocol.client-secrets.revoke
+    risk: sensitive
+    approvalRequired: true
+    requiredScopes: [identity.mcp.protocol.client-secrets.revoke]
+    exposable: false
+    subjectPolicy: current-context
+    forbiddenInputs: [userId, tenantId, subjectId, actor]
+    applicationBoundary:
+      entryPoints: [IdentityService.Application/protocol client-secret lifecycle]
+      directDataAccess: false
+    output:
+      contract: protocol-only; raw client secrets are never exposed
+      redaction: metadata-only
+      forbiddenFields: [accessToken, refreshToken, clientSecret, otp, jwtSigningMaterial, databaseCredential]
+transports:
+  default: http
+  stdioDevelopmentOnly: true
+  profiles: [local-stdio, local-loopback-http, customer-server-https, customer-private-http, managed-connector]
+  localLoopback:
+    enabled: true
+    allowedBindAddresses: [127.0.0.1, '::1']
+    authenticationRequired: true
+    publicForwardingForbidden: true
+    hostOriginValidation: true
+  customerServer:
+    httpsRequiredForPublic: true
+    privateNetworkEquivalentAllowed: true
+  gatewayDependency:
+    current: none
+    futureOptional: true
+    relay: outbound-secure-connector
+  cloudClient:
+    localConnectorRequired: true
+    directOfflineAccess: false
+    consentAndEgressPolicyRequired: true
+authorization:
+  actorSource: validated-authentication-context
+  subjectSource: [server-resolved-self, server-resolved-admin, signed-delegation-context]
+  promptAuthorizationForbidden: true
+  enforcementLayers: [authentication, authorization, tool-policy, application-domain-policy, audit]
+audit:
+  required: true
+  fields: [actor, subject, tenant, mode, tool-name, tool-version, required-scopes, effective-scopes, authorization-decision, approval-id, approval-status, result-status, correlation-id]
+  rawSecretsForbidden: true
+redaction:
+  required: true
+  forbiddenOutputs: [access-token, refresh-token, client-secret, otp-code, jwt-signing-material, database-credential, private-key, unredacted-sensitive-payload]
+  rawPayloadsForbidden: true
+migration:
+  pattern: mcp-source.migrate-or-adopt
+  state: verified
+  compatibilityRequired: true
+  rollbackRequired: true
+tests:
+  genericAcceptance: [A01, A02, A03, A04, A05, A06, A07, A08, A09, A10, A11, A12, A13, A14, A15, A16]
+  securityNegative: true
+  serviceSpecific:
+    - identity-mcp-sibling-boundary
+    - identity-mcp-api-mcp-permission-parity
+    - identity-mcp-active-permission-tool-usability
+    - identity-mcp-self-authorization
+    - identity-mcp-admin-tenant-boundary
+    - identity-mcp-delegation
+    - identity-mcp-tool-allowlist
+    - identity-mcp-sensitive-approval
+    - identity-mcp-redaction
+    - identity-mcp-local-and-customer-server-transport
+evidence:
+  required: [source-inventory, api-permission-catalog, permission-parity-matrix, manifest-validation, tool-policy-matrix, security-negative-tests, transport-tests, redacted-audit-review]
+  redacted: true
+  implementationStatus: verified

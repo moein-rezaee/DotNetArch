@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <!-- SQLite in-memory is a relational stand-in for LINQ/handler behaviour only. Provider-specific behaviour
+         (Postgres/SqlServer selection and connection strings) is covered in IdentityService.Infrastructure.Tests. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\IdentityService.Api\IdentityService.Api.csproj" />
+    <ProjectReference Include="..\IdentityService.Infrastructure.Database\IdentityService.Infrastructure.Database.csproj" />
+  </ItemGroup>
+
+</Project>

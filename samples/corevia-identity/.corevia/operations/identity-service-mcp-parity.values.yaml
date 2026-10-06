@@ -1,0 +1,19 @@
+pattern: mcp-permission-parity.validate
+manifest: corevia-identity/.corevia/mcp/identity-service.yaml
+apiPermissionSource: corevia-identity/.corevia/mcp/identity-api-permissions.yaml
+expectedProfile: service-mcp-adapter
+contract:
+  apiNamespace: Identity
+  mcpNamespace: identity.mcp
+  grantIsolation: explicit-mcp-grant
+  apiGrantDoesNotImplyMcp: true
+  newApiPermissionPolicy: fail-closed
+  orphanPolicy: fail
+  sameRestrictionsRequired: true
+  requireUsableTool: true
+safety:
+  readOnly: true
+  noRawSecrets: true
+evidence:
+  required: [api-catalog, parity-matrix, usable-tools, explicit-grant-isolation, fail-closed-drift]
+  redacted: true

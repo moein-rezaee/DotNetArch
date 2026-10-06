@@ -1,0 +1,48 @@
+---
+name: corevia-identity
+version: 0.1.0
+repo:
+  kind: service
+  name: Identity
+  source_of_truth: corevia-identity
+capabilities:
+- Identity
+owners:
+- platform-engineering
+dependencies:
+  corevia-kit:
+    role: shared-runtime-packages
+    strategy: nexus-package-reference
+    note: Corevia.Kit.* packages are restored as versioned PackageReferences from the Nexus NuGet feed (NuGet.config); no sibling checkout or Directory.Build.props stopgap remains.
+package_policy:
+  split_rules: []
+  packages: []
+  boundary_matrix: []
+contracts:
+  http_api:
+    prefix: v1/api
+    routes:
+    - POST /v1/api/Identity/Send
+    - POST /v1/api/Identity/Verify
+    - POST /v1/api/Identity/Refresh
+    - POST /v1/api/Identity/Logout
+    - OIDC (root-level routes) /authorize, /token, /introspect, /revoke, /userinfo, /.well-known/openid-configuration, /.well-known/jwks.json
+    - CRUD /v1/api/{Users,Roles,Permissions,Scopes,Tenants,Clients,Sessions,Profile} plus relation routes
+    detail: docs/specs/contracts.md
+  mcp:
+    manifest: .corevia/mcp/identity-service.yaml
+    api_permission_catalog: .corevia/mcp/identity-api-permissions.yaml
+    namespace: identity.mcp
+    transport_default: http
+    stdio: development-only
+    detail: docs/specs/contracts.md
+  own_storage_port:
+    provider_default: postgres
+    provider_alternate: sqlserver
+    adapter: IdentityService.Infrastructure.Database
+docs:
+  bilingual_index: docs/specs/README.md
+  scope: Identity only; other services own their specs in their own repositories.
+secret_refs:
+  policy: secret-refs-only
+  vault_path: vault://corevia/identity/secrets

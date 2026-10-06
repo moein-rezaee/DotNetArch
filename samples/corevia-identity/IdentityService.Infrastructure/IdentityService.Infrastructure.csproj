@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\IdentityService.Domain\IdentityService.Domain.csproj" />
+    <ProjectReference Include="..\IdentityService.Infrastructure.Database\IdentityService.Infrastructure.Database.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Corevia.Kit.* via published Nexus packages (see NuGet.config). -->
+    <PackageReference Include="Corevia.Kit.ErrorHandling.Abstractions" Version="2.0.0" />
+    <PackageReference Include="Corevia.Kit.ServiceDiscovery.Providers.Consul" Version="1.0.0" />
+    <PackageReference Include="Corevia.Kit.Http.Core" Version="1.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="9.0.1" />
+  </ItemGroup>
+
+</Project>

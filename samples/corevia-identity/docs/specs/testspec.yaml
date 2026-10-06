@@ -1,0 +1,39 @@
+---
+name: corevia-identity-tests
+version: 0.1.0
+verification:
+  level: contract
+  testspec_mode: required
+definition_of_verified:
+- No raw secrets in specs or configuration examples.
+- OTP-based login, token issuance/refresh/blacklist, and user storage contracts match
+  IdentityService.Api's actual routes (/v1/api/Identity/Send|Verify|Refresh|Logout).
+- JWT issuer/audience/secret and Postgres connection fields are documented as Vault/Consul-sourced,
+  never literal values.
+- The default own-database provider is Postgres (SqlServer is the documented non-default
+  alternate path), matching the monorepo's Market default-providers rule.
+test_suites:
+  IdentityService.Application.Tests:
+    covers: handlers (all 56 MediatR handlers incl. token issuance, refresh rotation with ReplacedByTokenId, non-expiring customer refresh tokens, logout), JwtService, request validators, seed service
+    store: SQLite in-memory relational stand-in (no provider claims)
+  IdentityService.Infrastructure.Tests:
+    covers: own-storage Port adapter (EfRepository, UnitOfWork), Postgres/SqlServer provider selection and connection strings via Kit DatabaseConnection, design-time factory, DbInitializer dependency failures, OTP REST client over Kit Http with Kit ErrorHandling mapping
+  IdentityService.Api.Tests:
+    covers: IdentityController (Send 202 queued, Verify, Refresh, Logout) and OidcController (client_credentials, refresh_token grant, revoke, introspect) over the real MediatR pipeline
+  IdentityService.Mcp.Tests:
+    covers: MCP principal resolution, authorization, delegation envelope, approval, tool catalog, transport selection (http default, stdio development-only)
+  values: .corevia/operations/service-tests.values.yaml
+  audit_command: corevia-bridge/bin/connectcore service-tests validate --values corevia-identity/.corevia/operations/service-tests.values.yaml
+known_gaps:
+- Successful Postgres/SQL Server create-database, migrate and seed paths of DbInitializer need a real server; add Testcontainers-based integration tests once CI has a Docker-in-Docker test runner.
+commands:
+  test:
+    run: dotnet test IdentityService.sln
+  validate:
+    run: ruby ../corevia-standards/validators/corevia-standards/validate.rb --target
+      . --check-repo
+evidence:
+  required:
+  - validator-output
+  - spec-diff-review
+  - no-secret-report

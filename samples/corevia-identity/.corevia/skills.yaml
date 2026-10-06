@@ -1,0 +1,6 @@
+---
+skills:
+- name: corevia-run
+  source: corevia-standards/bin/corevia-run
+- name: corevia-repeatable-operation
+  source: corevia-standards/skills/corevia-repeatable-operation

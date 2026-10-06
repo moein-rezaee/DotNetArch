@@ -1,0 +1,7 @@
+---
+corevia_standards: corevia-standards@0.1.0
+ai_workflow: corevia-ai-delivery-workflow@0.5.3
+repeatable_operations: repeatable-operations-catalog@0.4.2
+openspec_schema: service-openspec@0.1.0
+testspec_schema: service-testspec@0.1.0
+roadmap_template: per-service-migration-template@0.1.0

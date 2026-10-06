@@ -1,0 +1,151 @@
+# Phase C item 7 (MCP sibling adapter), scoped to post-extraction corevia-identity.
+#
+# This is the corevia-identity-side counterpart of the already-applied
+# corevia-market/.corevia/operations/identity-service-mcp-create-or-migrate.values.yaml
+# (IdentityService.Mcp + IdentityService.Mcp.Tests already exist and are fully
+# built out inside the monorepo today -- see that file and
+# corevia-market/.corevia/mcp/identity-service.yaml). Step 2
+# (monorepo-extraction) copies IdentityService/IdentityService.Mcp,
+# IdentityService/IdentityService.Mcp.Tests, and
+# IdentityService/.corevia/mcp/identity-api-permissions.yaml into
+# corevia-identity unchanged (flattened to repo root, since
+# service-repo.provision's monorepo-extract target_path is "."). This file
+# re-points every path at that new, flattened location so the same, already-
+# validated MCP contract and permission-parity set can be re-verified in its
+# new home rather than re-authored from scratch.
+#
+# `request.action: auto` (not `migrate`) is kept to match the already-
+# established value in the monorepo source file: the Facade's own discovery
+# step decides create-vs-migrate at run time, and should discover an existing
+# MCP project/manifest here (since step 2 already copied them) and route to
+# `mcp-source.migrate-or-adopt`, not `mcp-source.create-or-update`.
+#
+# OPEN ITEM (not silently assumed): `roadmap.path`/`roadmap.values` below
+# still point at the monorepo's existing MCP roadmap
+# (corevia-market/docs/roadmaps/services/identity-service-mcp-roadmap.*) and
+# its phase-execution values, because that roadmap's phase history/evidence is
+# real prior work and this values file does not fork or duplicate it
+# speculatively. Whether that roadmap doc itself should be split into
+# corevia-identity's own docs/roadmaps (via repo-agent-context.create-or-update,
+# alongside identity-service-repo-migration-roadmap.md) or stay as a
+# corevia-market-owned design record referenced from corevia-identity is an
+# explicit decision for a human to make before `apply` -- flagged in the
+# migration report rather than guessed here.
+pattern: mcp-service.create-or-migrate
+request:
+  outcome: Re-verify and finish migrating the IdentityService MCP sibling into its own corevia-identity repository after Phase C extraction, per the pinned Corevia MCP Standard.
+  action: auto
+service:
+  repository: corevia-identity
+  name: IdentityService
+  serviceRoot: corevia-identity
+  apiProject: corevia-identity/IdentityService.Api
+  applicationProjects:
+    - corevia-identity/IdentityService.Application
+  domainProjects:
+    - corevia-identity/IdentityService.Domain
+  infrastructureProjects:
+    - corevia-identity/IdentityService.Infrastructure
+    - corevia-identity/IdentityService.Infrastructure.Database
+mcp:
+  manifest: corevia-identity/.corevia/mcp/identity-service.yaml
+  project: corevia-identity/IdentityService.Mcp
+  siblingOf: corevia-identity/IdentityService.Api
+  discovery: auto
+  sourceSecrets: inventory-only-redacted
+roadmap:
+  path: corevia-market/docs/roadmaps/services/identity-service-mcp-roadmap.fa.md
+  language: fa
+  bilingualRequired: true
+  values: corevia-market/.corevia/operations/identity-service-mcp-roadmap.values.yaml
+contract:
+  standardRef: corevia-standards@0.1.0
+  scopeNamespace: identity.mcp
+  modes: [self, admin, security]
+  delegation: signed-customer-context
+  toolKinds: [atomic, business]
+  applicationDirect: true
+  forbiddenGenericProxy: true
+  requiredSecurity:
+    - server-owned-actor-subject
+    - tenant-scoped-authorization
+    - signed-delegation-anti-replay
+    - exact-sensitive-approval
+    - redacted-audit-and-output
+permissionParity:
+  required: true
+  apiPermissionSource: corevia-identity/.corevia/mcp/identity-api-permissions.yaml
+  apiNamespace: Identity
+  mcpNamespace: identity.mcp
+  grantIsolation: explicit-mcp-grant
+  apiGrantDoesNotImplyMcp: true
+  requireUsableTool: true
+  newApiPermissionPolicy: fail-closed
+  orphanPolicy: fail
+  sameRestrictionsRequired: true
+securityPolicy:
+  actorSource: validated-authentication-context
+  subjectSource: server-resolved-only
+  promptAuthorizationForbidden: true
+  selfSelectorInputsForbidden: true
+  adminTenantScoped: true
+  delegationSignedShortLivedBounded: true
+  delegationEscalationForbidden: true
+  securityScopesSeparate: true
+  securityMvpDefault: disabled
+  exactApprovalForSensitiveWrites: true
+  redactedAuditAndOutput: true
+  rawTokensAndSecretsNeverReturned: true
+deployment:
+  profiles:
+    - local-stdio
+    - local-loopback-http
+    - customer-server-https
+    - customer-private-http
+  gatewayCurrentDependency: none
+  localLoopbackSafe: true
+  cloudLocalConnector: true
+  enterpriseFederation: future-optional
+orchestration:
+  detectExisting: true
+  requireRoadmap: true
+  requireContractValidation: true
+  requireApprovalBeforeMutation: true
+  stopOnBlocker: true
+  sequence:
+    - source-inventory
+    - roadmap.create-or-update
+    - mcp-source.create-or-update-or-migrate
+    - mcp-contract.validate
+    - roadmap-phase.execute
+migration:
+  classificationItems:
+    - name: identity-service-mcp-runtime
+      decision: reuse
+      gaps: []
+      target: corevia-identity/IdentityService.Mcp
+    - name: identity-service-mcp-tool-contract
+      decision: extend
+      gaps: [future-self-write-and-security-capabilities-require-separate-approval]
+      target: corevia-identity/.corevia/mcp/identity-service.yaml
+  compatibilityWindow: 0.1.x-tool-contract-transition
+  rollbackOwner: IdentityService team
+  preserveSourceUntilVerified: true
+  noInsecureRestore: true
+safety:
+  noRawSecrets: true
+  noManualMutation: true
+  noGatewayDependency: true
+  noApiMirror: true
+  noDirectDataAccess: true
+  approvalBeforeMutation: true
+evidence:
+  required:
+    - source-discovery-report
+    - selected-child-pattern
+    - roadmap-gate
+    - child-pattern-validation
+    - contract-validation
+    - approval-boundary
+    - no-raw-secrets-report
+  redacted: true

@@ -1,0 +1,39 @@
+# Discovery / health evidence for IdentityService (service-migration.validate check 20).
+# SCOPE (read this first): this record is built ONLY from what was demonstrated by automated tests and a static code scan.
+# It is NOT a live runtime proof: no instance was started against Consul or a real database, and nothing was
+# registered in a real Consul. A live proof is tracked in .corevia/operations/migration-followups.yaml
+# (id: discovery-health-runtime-proof).
+timestamp: "2026-10-05T06:17:17Z"
+live_runtime_proof: false
+health_url: "http://127.0.0.1:<ephemeral-port>/health/ready (in-process Kestrel test host, same AddIdentityHealth/MapIdentityReadiness wiring as Program.cs)"
+health_status: 200
+discovery_registered: true
+discovery_registration_evidence: static   # code registers with Kit ServiceDiscovery; not observed in a live Consul
+demonstrated_by:
+  tests:
+    project: IdentityService.Api.Tests
+    class: HealthEndpointsTests
+    command: dotnet test IdentityService.Api.Tests --filter FullyQualifiedName~HealthEndpointsTests
+    results:
+      - name: Ready_returns_200_when_the_database_is_reachable
+        result: passed
+        asserts: GET /health/ready over HTTP returns 200, status healthy, database check healthy (SQLite in-memory through the real EF can-connect check)
+      - name: Ready_returns_503_when_the_database_check_fails
+        result: passed
+        asserts: GET /health/ready returns 503 with status unhealthy when EF CanConnect fails (unreachable database file)
+      - name: Liveness_stays_cheap_and_returns_200_even_when_the_database_is_down
+        result: passed
+        asserts: GET /health still returns 200 with the original payload shape when the database is down
+  static_scan:
+    discovery_registration:
+      - file: IdentityService.Api/Program.cs
+        registers: builder.Services.AddServiceDiscoveryExtension(builder.Configuration)
+      - file: IdentityService.Mcp/Program.cs
+        registers: AddServiceDiscoveryExtension (HTTP and stdio hosts via ConfigureCommonServices)
+    health_endpoints:
+      - IdentityService.Api/Health/HealthEndpoints.cs (/health, /health/ready)
+      - IdentityService.Mcp/Health/McpHealthEndpoints.cs (/health, /health/ready)
+not_demonstrated:
+  - Consul registration/check of a running instance
+  - /health/ready against a real Postgres or SQL Server
+  - Mcp /health/ready (the Mcp host is covered by the static scan and shares DatabaseReadiness, but has no dedicated HTTP test)

@@ -1,0 +1,83 @@
+# Values for the continuous service-migration.validate gate (see .corevia/validators.yaml, entry `service-migration`).
+# Run from the corevia-identity repository root:
+#   ruby ../corevia-standards/validators/service-migration/validate.rb .corevia/operations/service-migration.values.yaml --workspace ..
+# Paths: `service.root` and the service-relative keys resolve inside corevia-identity; all other paths resolve against the
+# workspace root (`--workspace ..`, the folder holding the sibling corevia-* repos).
+# The baseline is READ from git (`git show <ref>:<path>`), never from the monorepo working tree. baseline.commit is the
+# frozen snapshot the extraction was taken from (corevia-market develop 63cb7d92); check 3 proves IdentityService/ has
+# not changed in corevia-market since then.
+pattern: service-migration.validate
+service:
+  slug: identity
+  name: Identity
+  root: corevia-identity
+baseline:
+  repo: corevia-market
+  ref: origin/develop
+  commit: 63cb7d92        # snapshot the extraction was taken from (docs/evidence/monorepo-extraction-file-diff.md)
+  service_dir: IdentityService
+registry:
+  file: corevia-standards/registries/services.yaml
+bridge:
+  values: corevia-bridge/values/service-repos/corevia-identity.yaml
+extraction:
+  report: docs/evidence/monorepo-extraction-file-diff.md
+own_storage: true
+ports:
+  allowed_layers: [domain]
+kit:
+  root: corevia-kit
+kit_layering:
+  enabled: false           # set true (or pass --scan-kit) to also scan corevia-kit/packages/*/*/*.csproj
+kit_drift:
+  values: .corevia/operations/kit-drift.values.yaml
+behavior:
+  # Shape normalization only: IdentityService.Api/appsettings.example.json now lists Swagger:Documents as a JSON array,
+  # exactly like appsettings.json (the monorepo example used the Consul-flattened object form {"0": {...}}). Both bind to the
+  # same IConfiguration keys (Swagger:Documents:0:*); no runtime key, default or meaning changed.
+  approved_config_changes:
+    - {key: "Swagger:Documents:0:Name", reason: "example shape normalized to array; same bound key"}
+    - {key: "Swagger:Documents:0:Title", reason: "example shape normalized to array; same bound key"}
+    - {key: "Swagger:Documents:0:Version", reason: "example shape normalized to array; same bound key"}
+    - {key: "Swagger:Documents:0:Description", reason: "example shape normalized to array; same bound key"}
+  approved_route_changes: []
+standards:
+  require_continuous_entry: true
+knowledge:
+  graphify_values: corevia-knowledge/.corevia/operations/identity-graphify.values.yaml
+  root: corevia-knowledge
+docs:
+  roadmap: docs/roadmaps/roadmap.md
+mcp:
+  skip_mcp: false
+  contract_values: corevia-identity/.corevia/operations/identity-service-mcp-contract.values.yaml
+  parity_values: corevia-identity/.corevia/operations/identity-service-mcp-parity.values.yaml
+  manifest: corevia-identity/.corevia/mcp/identity-service.yaml
+cicd:
+  file: .gitlab-ci.yml
+  cd_template: .corevia/cicd/deploy.values.example.yaml
+docker:
+  evidence: docs/evidence/docker-build-proof.yaml
+  build_command: [docker, buildx, build, --build-context, "corevia-kit=<workspace>/corevia-kit", -f, IdentityService.Api/Dockerfile, -t, "<tag>", .]
+tests:
+  service_tests_values: corevia-identity/.corevia/operations/service-tests.values.yaml
+  required_layers: [application, infrastructure, api, mcp]
+  testspec: docs/specs/testspec.yaml
+build:
+  solution: IdentityService.sln
+  followups: .corevia/operations/migration-followups.yaml
+version:
+  primary: IdentityService.Api/IdentityService.Api.csproj
+  changelog_en: docs/specs/changelog.md
+  changelog_fa: docs/specs/changelog.fa.md
+discovery:
+  runtime_evidence: docs/evidence/discovery-health-proof.yaml
+catalog:
+  file: docs/roadmaps/services/market-decomposition-status-catalog.md
+  row: corevia-identity
+run:
+  build: false
+  tests: false
+  docker: false
+  live: false
+strict: false

@@ -1,0 +1,19 @@
+pattern: documentation-knowledge.audit
+repository:
+  slug: identity
+  root: corevia-identity
+  docs_root: corevia-identity/docs
+knowledge:
+  root: corevia-knowledge
+  graph_script: corevia-knowledge/scripts/documentation_graph.rb
+  graph_artifact: corevia-knowledge/generated/per-repo/identity.documentation-graph.json
+  obsidian_projection: corevia-knowledge/obsidian/generated/graph/documentation/identity
+quality:
+  fail_on_boilerplate: true
+  fail_on_orphan: true
+  fail_on_disconnected: true
+  fail_on_thin_document: true
+remediation:
+  enabled: true
+  fix_broken_links: true
+  redact_secret_like: true

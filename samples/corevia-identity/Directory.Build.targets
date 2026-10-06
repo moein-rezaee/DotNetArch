@@ -1,0 +1,12 @@
+<Project>
+  <ItemGroup>
+    <None Update=".env" Condition="Exists('$(MSBuildProjectDirectory)/.env')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+    </None>
+    <Content Update=".env" Condition="Exists('$(MSBuildProjectDirectory)/.env')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+</Project>

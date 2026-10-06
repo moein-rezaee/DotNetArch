@@ -1,0 +1,100 @@
+{
+  "Routes": [
+    {
+      "DownstreamPathTemplate": "/token",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [{ "Host": "identity-service", "Port": 5270 }],
+      "UpstreamPathTemplate": "/v1/api/Identity/M2M/Token",
+      "UpstreamHttpMethod": ["POST"],
+      "SwaggerKey": "identity"
+    },
+    {
+      "DownstreamPathTemplate": "/v1/api/Identity/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [{ "Host": "identity-service", "Port": 5270 }],
+      "UpstreamPathTemplate": "/v1/api/auth/{everything}",
+      "UpstreamHttpMethod": ["GET", "POST", "PUT", "DELETE", "PATCH"],
+      "SwaggerKey": "identity"
+    },
+    {
+      "DownstreamPathTemplate": "/v1/api/Identity/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [{ "Host": "identity-service", "Port": 5270 }],
+      "UpstreamPathTemplate": "/v1/api/Identity/{everything}",
+      "UpstreamHttpMethod": ["GET", "POST", "PUT", "DELETE", "PATCH"],
+      "SwaggerKey": "identity"
+    },
+    {
+      "DownstreamPathTemplate": "/v1/api/User/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [{ "Host": "identity-service", "Port": 5270 }],
+      "UpstreamPathTemplate": "/v1/api/User/{everything}",
+      "UpstreamHttpMethod": ["GET", "POST", "PUT", "DELETE", "PATCH"],
+      "SwaggerKey": "identity",
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": [ "identity.write" ]
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/v1/api/Role/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [{ "Host": "identity-service", "Port": 5270 }],
+      "UpstreamPathTemplate": "/v1/api/Role/{everything}",
+      "UpstreamHttpMethod": ["GET", "POST", "PUT", "DELETE", "PATCH"],
+      "SwaggerKey": "identity",
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": [ "identity.write" ]
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/v1/api/Permission/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [{ "Host": "identity-service", "Port": 5270 }],
+      "UpstreamPathTemplate": "/v1/api/Permission/{everything}",
+      "UpstreamHttpMethod": ["GET", "POST", "PUT", "DELETE", "PATCH"],
+      "SwaggerKey": "identity",
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": [ "identity.write" ]
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/v1/api/Scope/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [{ "Host": "identity-service", "Port": 5270 }],
+      "UpstreamPathTemplate": "/v1/api/Scope/{everything}",
+      "UpstreamHttpMethod": ["GET", "POST", "PUT", "DELETE", "PATCH"],
+      "SwaggerKey": "identity",
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": [ "identity.write" ]
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/v1/api/Client/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [{ "Host": "identity-service", "Port": 5270 }],
+      "UpstreamPathTemplate": "/v1/api/Client/{everything}",
+      "UpstreamHttpMethod": ["GET", "POST", "PUT", "DELETE", "PATCH"],
+      "SwaggerKey": "identity",
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": [ "identity.write" ]
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/v1/api/Tenant/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [{ "Host": "identity-service", "Port": 5270 }],
+      "UpstreamPathTemplate": "/v1/api/Tenant/{everything}",
+      "UpstreamHttpMethod": ["GET", "POST", "PUT", "DELETE", "PATCH"],
+      "SwaggerKey": "identity",
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": [ "identity.write" ]
+      }
+    }
+  ]
+}

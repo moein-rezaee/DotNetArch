@@ -1,0 +1,7 @@
+**/bin/
+**/obj/
+.git/
+.ci/
+TestResults/
+**/.env
+docs/

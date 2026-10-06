@@ -1,0 +1,19 @@
+pattern: mcp-contract.validate
+manifest: corevia-identity/.corevia/mcp/identity-service.yaml
+expectedProfile: service-mcp-adapter
+permissionParity:
+  required: true
+  apiPermissionSource: corevia-identity/.corevia/mcp/identity-api-permissions.yaml
+  apiNamespace: Identity
+  mcpNamespace: identity.mcp
+standards:
+  standardRef: corevia-standards@0.1.0
+  sourceSchema: schemas/mcp/mcp-source-manifest.schema.yaml
+  toolSchema: schemas/mcp/mcp-tool-spec.schema.yaml
+  contextSchema: schemas/mcp/mcp-execution-context.schema.yaml
+safety:
+  readOnly: true
+  noRawSecrets: true
+evidence:
+  required: [manifest-sha256, schema-and-structure-check, tool-policy-check, authorization-context-check, transport-safety-check, audit-redaction-check]
+  redacted: true
