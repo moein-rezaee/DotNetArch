@@ -23,6 +23,12 @@ public static class MigrationService
     /// <summary>Build, add an <c>Auto_{entity}_{timestamp}</c> migration and apply it (used after crud/action generation).</summary>
     public static void BuildAddAndApply(SolutionConfig config, string entity)
     {
+        if (ToolHost.SkipMigrations)
+        {
+            ToolHost.Info("Migration skipped.");
+            return;
+        }
+
         var (infraProj, startProj) = EfProjects(config);
         if (!ToolHost.RunCommand("dotnet build", config.SolutionPath))
         {
@@ -43,6 +49,12 @@ public static class MigrationService
     {
         if (!HasMigrations(config))
             return;
+
+        if (ToolHost.SkipMigrations)
+        {
+            ToolHost.Info("Migration skipped.", "Add it later with 'dotnet ef migrations add' (see the solution README).");
+            return;
+        }
 
         if (!SolutionTooling.EnsureEfTool(config.SolutionPath))
         {

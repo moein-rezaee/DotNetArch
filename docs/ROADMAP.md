@@ -73,8 +73,8 @@ Environment: dotnet SDK 8 available (net9 targets cannot be built here; verify n
 - [ ] 6.6 Live verification of provider kits against real servers (Redis, RabbitMQ, MinIO, RustFS) and of `docker build` with kits in the context
 
 ## Phase 7 - MCP (R-A13, R-C1, D-01)
-- [ ] 7.1 `mcp serve` stdio server + tools (contracts.md)
-- [ ] 7.2 `<App>.Mcp` host scaffolding: tools per entity via MediatR, auth, health, Dockerfile, tests
+- [x] 7.1 `DotNetArch.Mcp` layer + `dotnet-arch mcp serve` (stdio, official ModelContextProtocol SDK): 14 tools (`new_solution`, `new_crud`, `new_action`, `new_event`, `new_enum`, `new_constant`, `new_service`, `new_kit`, `add_kit`, `ci_add`, `docker_add`, `git_setup`, `list_entities`, `describe_config`); non-interactive host, results list created/modified files + equivalent CLI command, no destructive tools, logging to stderr; verified over the real stdio protocol (initialize, tools/list, create solution + CRUD) and by `DotNetArch.Mcp.Tests` (12 tests)
+- [ ] 7.2 `<App>.Mcp` host scaffolding for generated projects: tools per entity via MediatR, auth, health, Dockerfile, tests (`new solution --mcp`, `add mcp`)
 
 ## Phase 8 - Documentation completion (R-D1..D5)
 - [ ] 8.1 README (+fa) rewrite for new features; command reference

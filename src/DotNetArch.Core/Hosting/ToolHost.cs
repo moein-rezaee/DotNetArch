@@ -1,7 +1,7 @@
 namespace DotNetArch.Core.Hosting;
 
 /// <summary>The services Core needs from whoever hosts it (console, MCP server, tests).</summary>
-public sealed record HostContext(IPrompter Prompter, IToolOutput Output, IProcessRunner Runner);
+public sealed record HostContext(IPrompter Prompter, IToolOutput Output, IProcessRunner Runner, bool SkipMigrations = false);
 
 /// <summary>
 /// Ambient access to the host (D-18). <see cref="Configure"/> sets the process default; <see cref="Use"/> overrides it
@@ -19,6 +19,9 @@ public static class ToolHost
     public static IToolOutput Output => Current.Output;
 
     public static IProcessRunner Runner => Current.Runner;
+
+    /// <summary>True when the host asked generators not to create EF migrations (they can be added later).</summary>
+    public static bool SkipMigrations => Current.SkipMigrations;
 
     public static void Configure(HostContext context) => _default = context ?? throw new ArgumentNullException(nameof(context));
 

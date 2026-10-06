@@ -32,6 +32,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../DotNetArch.Core/DotNetArch.Core.csproj" />
+    <ProjectReference Include="../DotNetArch.Mcp/DotNetArch.Mcp.csproj" />
   </ItemGroup>
 
 </Project>

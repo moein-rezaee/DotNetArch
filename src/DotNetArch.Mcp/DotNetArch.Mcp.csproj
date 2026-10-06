@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>DotNetArch.Mcp</RootNamespace>
+    <AssemblyName>DotNetArch.Mcp</AssemblyName>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Description>MCP server layer of DotNetArch: exposes the generators as tools for agents.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ModelContextProtocol" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../DotNetArch.Core/DotNetArch.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="DotNetArch.Mcp.Tests" />
+  </ItemGroup>
+
+</Project>

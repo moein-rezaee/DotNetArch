@@ -7,15 +7,24 @@ public sealed class BufferedToolOutput : IToolOutput
 {
     private readonly StringBuilder _text = new();
 
+    /// <summary>Number of error lines (❌ sections and failed sub-steps) written so far.</summary>
+    public int ErrorCount { get; private set; }
+
     public void Section(string emoji, string title, string? description = null)
     {
+        if (emoji == "❌")
+            ErrorCount++;
         _text.AppendLine($"{emoji} {title}");
         if (!string.IsNullOrWhiteSpace(description))
             _text.AppendLine($"   {description}");
     }
 
-    public void SubStep(bool success, string message) =>
+    public void SubStep(bool success, string message)
+    {
+        if (!success)
+            ErrorCount++;
         _text.AppendLine($"   {(success ? "ok" : "fail")}: {message}");
+    }
 
     public void Blank() { }
 

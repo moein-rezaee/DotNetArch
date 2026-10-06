@@ -26,6 +26,10 @@ internal static class Program
 
     private static int Main(string[] args)
     {
+        // The MCP server owns stdout (protocol frames): handle it before any console output can happen.
+        if (args.Length >= 2 && args[0].Equals("mcp", StringComparison.OrdinalIgnoreCase) && args[1].Equals("serve", StringComparison.OrdinalIgnoreCase))
+            return DotNetArch.Mcp.McpServerHost.RunAsync(args[2..]).GetAwaiter().GetResult();
+
         var output = new ConsoleToolOutput();
         ToolHost.Configure(new HostContext(new ConsolePrompter(output), output, new ConsoleProcessRunner()));
 
