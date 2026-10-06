@@ -18,16 +18,19 @@ public static class ExecService
 
         var hasDatabase = !string.Equals(config.DatabaseProvider, "None", StringComparison.OrdinalIgnoreCase);
 
-        // ensure unit of work and repositories exist before syncing project wiring (skip in no-db mode)
-        if (hasDatabase)
-            ApplyUnitOfWork(config);
+        // Legacy layout: keep the generated wiring (unit of work, DI registrations) in sync before running.
+        // Layout v2 wires everything through per-layer DI extensions, so nothing needs patching.
+        if (!config.IsV2)
+        {
+            if (hasDatabase)
+                ApplyUnitOfWork(config);
 
-        // keep project wiring (e.g. IUnitOfWork registration) up to date after updates
-        new ProjectUpdateStep().Execute(config, string.Empty);
+            new ProjectUpdateStep().Execute(config, string.Empty);
 
-        // run unit of work step again to apply registrations if DI files were recreated
-        if (hasDatabase)
-            ApplyUnitOfWork(config);
+            // run unit of work step again to apply registrations if DI files were recreated
+            if (hasDatabase)
+                ApplyUnitOfWork(config);
+        }
 
         // ensure any pending migrations are applied before running (skip in no-db)
         if (hasDatabase)

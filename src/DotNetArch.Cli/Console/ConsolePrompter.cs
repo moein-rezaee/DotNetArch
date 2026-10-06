@@ -41,9 +41,21 @@ public sealed class ConsolePrompter(IToolOutput output) : IPrompter
         if (disabled.Contains(index))
             index = Enumerable.Range(0, options.Length).First(i => !disabled.Contains(i));
 
-        // Piped/redirected input cannot drive an arrow-key menu: take the default.
+        // Piped/redirected input cannot drive an arrow-key menu: read a line instead (option number or text; blank = default).
         if (System.Console.IsInputRedirected)
-            return options[index];
+        {
+            for (var i = 0; i < options.Length; i++)
+                System.Console.WriteLine($"{(i == index ? "➤" : " ")} {i + 1}) {options[i]}");
+
+            var line = System.Console.ReadLine()?.Trim();
+            if (string.IsNullOrEmpty(line))
+                return options[index];
+            if (int.TryParse(line, out var number) && number >= 1 && number <= options.Length && !disabled.Contains(number - 1))
+                return options[number - 1];
+
+            var match = Array.FindIndex(options, option => option.Equals(line, StringComparison.OrdinalIgnoreCase));
+            return match >= 0 && !disabled.Contains(match) ? options[match] : options[index];
+        }
 
         System.Console.CursorVisible = false;
         while (true)

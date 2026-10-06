@@ -11,6 +11,9 @@ public static class EventScaffolder
 {
     public static bool EntityExists(SolutionConfig config, string entity)
     {
+        if (config.IsV2)
+            return V2.EntityGeneration.EntityExists(config, entity);
+
         var solution = config.SolutionName ?? string.Empty;
         var plural = Naming.Pluralize(entity);
         var basePath = string.IsNullOrWhiteSpace(config.SolutionPath) ? Directory.GetCurrentDirectory() : config.SolutionPath;
@@ -20,6 +23,9 @@ public static class EventScaffolder
 
     public static string[] ListEvents(SolutionConfig config, string entity)
     {
+        if (config.IsV2)
+            return V2.EntityGeneration.ListEvents(config, entity);
+
         var solution = config.SolutionName ?? string.Empty;
         var plural = Naming.Pluralize(entity);
         var basePath = string.IsNullOrWhiteSpace(config.SolutionPath) ? Directory.GetCurrentDirectory() : config.SolutionPath;
@@ -35,6 +41,9 @@ public static class EventScaffolder
 
     public static bool GenerateEvent(SolutionConfig config, string entity, string eventName)
     {
+        if (config.IsV2)
+            return V2.EntityGeneration.GenerateEvent(config, entity, eventName);
+
         Identifier.RequireIfPresent(entity, "entity name");
         Identifier.RequireIfPresent(eventName, "event name");
         if (string.IsNullOrWhiteSpace(config.SolutionName) || string.IsNullOrWhiteSpace(entity) || string.IsNullOrWhiteSpace(eventName))
@@ -76,6 +85,9 @@ public class {eventClass} : INotification
 
     public static bool AddSubscriber(SolutionConfig config, string eventEntity, string eventName, string subscriberEntity)
     {
+        if (config.IsV2)
+            return V2.EntityGeneration.AddSubscriber(config, eventEntity, eventName, subscriberEntity);
+
         Identifier.RequireIfPresent(eventEntity, "entity name");
         Identifier.RequireIfPresent(eventName, "event name");
         Identifier.RequireIfPresent(subscriberEntity, "subscriber entity name");

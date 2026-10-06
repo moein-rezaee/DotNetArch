@@ -15,6 +15,17 @@ public static class ActionScaffolder
         Identifier.RequireIfPresent(action, "action name");
         if (!new[] { "GET", "POST", "PUT", "DELETE", "PATCH" }.Contains(httpMethod, StringComparer.OrdinalIgnoreCase))
             throw new ArgumentException($"'{httpMethod}' is not a supported HTTP method (GET, POST, PUT, DELETE, PATCH).", nameof(httpMethod));
+        if (config.IsV2)
+        {
+            if (crudStyle)
+            {
+                ToolHost.Error("Give the action a name (--action=Archive). Standard CRUD operations come from 'new crud'.");
+                return;
+            }
+
+            V2.ActionV2Generator.Generate(config, entity, action, httpMethod);
+            return;
+        }
         if (string.IsNullOrWhiteSpace(config.SolutionName) || string.IsNullOrWhiteSpace(entity) || string.IsNullOrWhiteSpace(action))
         {
             ToolHost.Error("Solution, entity and action names are required.");

@@ -34,7 +34,9 @@ internal static class CrudV2Generator
             ("GetPagedQuery", $"{feature}/Queries/Get{names.Plural}/Get{names.Plural}Query.cs"),
             ("GetPagedHandler", $"{feature}/Queries/Get{names.Plural}/Get{names.Plural}QueryHandler.cs"),
             ("GetPagedValidator", $"{feature}/Queries/Get{names.Plural}/Get{names.Plural}QueryValidator.cs"),
-            ("Controller", $"{names.ApiProject}/Controllers/{names.Plural}/{names.Plural}Controller.cs"),
+            config.ApiStyle.Equals("fast", StringComparison.OrdinalIgnoreCase)
+                ? ("Endpoints", $"{names.ApiProject}/Endpoints/{names.Plural}/{names.Plural}Endpoints.cs")
+                : ("Controller", $"{names.ApiProject}/Controllers/{names.Plural}/{names.Plural}Controller.cs"),
         };
 
         foreach (var (template, output) in files)

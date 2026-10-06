@@ -8,6 +8,9 @@ public static class EnumScaffolder
 {
     public static bool EntityExists(SolutionConfig config, string entity)
     {
+        if (config.IsV2)
+            return V2.EntityGeneration.EntityExists(config, entity);
+
         var solution = config.SolutionName;
         var plural = Naming.Pluralize(entity);
         var featureDir = Path.Combine(config.SolutionPath, $"{solution}.Core", "Features", plural);
@@ -16,6 +19,9 @@ public static class EnumScaffolder
 
     public static bool Generate(SolutionConfig config, string? entity, string enumName)
     {
+        if (config.IsV2)
+            return V2.EntityGeneration.GenerateEnum(config, entity, enumName);
+
         Identifier.RequireIfPresent(entity, "entity name");
         Identifier.RequireIfPresent(enumName, "enum name");
         if (string.IsNullOrWhiteSpace(config.SolutionName) ||

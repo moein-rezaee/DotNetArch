@@ -1,25 +1,11 @@
 using DotNetArch.Core.Hosting;
+using DotNetArch.Core.Tests.Support;
 using Xunit;
 
 namespace DotNetArch.Core.Tests;
 
 public class HostTests
 {
-    private sealed class FakeRunner : IProcessRunner
-    {
-        public List<ProcessSpec> Calls { get; } = new();
-        public bool NextSuccess { get; set; } = true;
-        public bool CancelRequested { get; private set; }
-        public void Cancel() => CancelRequested = true;
-        public void ResetCancel() => CancelRequested = false;
-        public int RunInteractive(ProcessSpec spec) { Calls.Add(spec); return 0; }
-        public ProcessResult Run(ProcessSpec spec, bool showProgress)
-        {
-            Calls.Add(spec);
-            return new ProcessResult(NextSuccess, NextSuccess ? 0 : 1, NextSuccess ? "out" : "boom");
-        }
-    }
-
     [Fact]
     public void NonInteractivePrompter_uses_defaults_and_fails_for_free_text()
     {
@@ -33,7 +19,7 @@ public class HostTests
     [Fact]
     public void RunCommand_reports_through_output_and_never_uses_a_shell()
     {
-        var runner = new FakeRunner();
+        var runner = new FakeProcessRunner();
         var output = new BufferedToolOutput();
         using var _ = ToolHost.Use(new HostContext(new NonInteractivePrompter(), output, runner));
 
@@ -52,7 +38,7 @@ public class HostTests
     public void Use_restores_previous_host_on_dispose()
     {
         var before = ToolHost.Current;
-        var custom = new HostContext(new NonInteractivePrompter(), new BufferedToolOutput(), new FakeRunner());
+        var custom = new HostContext(new NonInteractivePrompter(), new BufferedToolOutput(), new FakeProcessRunner());
         using (ToolHost.Use(custom))
             Assert.Same(custom, ToolHost.Current);
         Assert.Same(before, ToolHost.Current);

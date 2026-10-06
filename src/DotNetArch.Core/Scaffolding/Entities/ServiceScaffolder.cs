@@ -14,6 +14,12 @@ public static class ServiceScaffolder
 {
     public static void Generate(SolutionConfig config)
     {
+        if (config.IsV2)
+        {
+            ToolHost.Error("'new service' is not available for layout v2 yet.", "It is being replaced by kit generation (roadmap phase 6).");
+            return;
+        }
+
         var type = ToolHost.AskOption("Select service type", new[] { "Custom", "Cache", "Message Broker", "HttpRequest" });
         var solution = config.SolutionName;
 

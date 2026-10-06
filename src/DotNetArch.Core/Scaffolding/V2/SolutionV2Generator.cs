@@ -63,7 +63,7 @@ public static class SolutionV2Generator
             SolutionPath = solutionDir,
             StartupProject = $"{app}.Api",
             DatabaseProvider = provider,
-            ApiStyle = "controller",
+            ApiStyle = request.ApiStyle.Equals("fast", StringComparison.OrdinalIgnoreCase) ? "fast" : "controller",
             ApiPort = port.ToString(),
             TargetFramework = tfm,
             Layout = SolutionConfig.V2Layout

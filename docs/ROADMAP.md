@@ -3,7 +3,7 @@
 Persian mirror: `ROADMAP.fa.md`. Legend: `[ ]` todo, `[x]` done (note commit). Requirement IDs refer to `docs/specs/requirements.md`.
 
 ## Resume point
-**Current phase:** 1 almost done (only 1.9b remains: static scaffolders to instances; deferred to Phase 2 because Phase 2 rewrites the generators). **Next item:** Phase 2.1. Branch: `claude/exciting-fermi-b41fue`.
+**Current phase:** 2 done except 2.9/2.10 (see notes). **Next item:** Phase 3 (configuration) then 4. Also open: 1.9b (static scaffolders to instances). Branch: `claude/exciting-fermi-b41fue`.
 Environment: dotnet SDK 8 available (net9 targets cannot be built here; verify net9 in CI).
 
 ## Phase 0 - Docs, specs, rules, roadmap (R-E1, R-D1..D5)
@@ -34,13 +34,16 @@ Environment: dotnet SDK 8 available (net9 targets cannot be built here; verify n
 - [x] 1.14 Old root `Main.cs`, `Logger.cs`, `DotNetArch.csproj`, `runtimeconfig.template.json`, `.DS_Store`, root `Scaffolding/` removed (moved into `src/`)
 
 ## Phase 2 - Microservice core template v2 (R-A1..A8, D-10, D-12)
-- [ ] 2.1 `layout: v2` config + legacy detection
-- [ ] 2.2 `src/`+`tests/` skeleton, `Directory.Build.props`, `Directory.Packages.props`, `global.json`
-- [ ] 2.3 Domain template (private setters, behaviours)
-- [ ] 2.4 Application template: Abstractions/ports, Common behaviours, MediatR, FluentValidation, `AddApplication()`
-- [ ] 2.5 Infrastructure template: EF Core persistence, async repository, UoW, `AddInfrastructure()`
-- [ ] 2.6 Api template: split `Program.cs`, controllers per entity folder (and minimal-API variant)
-- [ ] 2.7 `new crud/action/event/enum/constant` emit into `Features/<Entity>/{Commands,Queries,Actions,Events,Dtos}` nested per use case
+- [x] 2.1 `layout: v2` config key (`SolutionConfig.Layout`), legacy layout is the default when the key is absent; `new solution --layout=v2|legacy` (v2 default)
+- [x] 2.2 `src/` skeleton: `Directory.Build.props`, `Directory.Packages.props` (central versions from `PackageCatalog`), `global.json`, `.editorconfig`, `.gitignore`, local `dotnet-ef` tool manifest, README
+- [x] 2.3 Domain template: `Entity` base (identity, audit, domain events), `DomainException`, entities with private setters and behaviour (partial classes)
+- [x] 2.4 Application template: ports (`IRepository`, `IUnitOfWork`, `IDomainEventDispatcher`), MediatR + FluentValidation pipeline, `AddApplication()`
+- [x] 2.5 Infrastructure template: EF Core (SQLite/SqlServer/Postgres), async repository, unit of work, design-time factory, `AddInfrastructure()`
+- [x] 2.6 Api template: short `Program.cs`, `AddApi()`/`UseApi()`, exception handler (problem details), controllers per entity folder, minimal-API variant (`--style=fast`)
+- [x] 2.7 `new crud/action/event/enum/constant` emit nested per-entity slices (`Features/<Plural>/{Commands,Queries,Actions,Events,Dtos}`, `Domain/{Events,Enums,Constants}`)
+- [x] 2.8 Verified: generated solutions (SQLite controller, Postgres fast, SqlServer dotted name) build warning-free in Release; SQLite API served create/validate/list/update/delete/404 end to end; 43 unit tests cover structure and rules
+- [ ] 2.9 net9 target verification (no SDK 9 in this environment; versions in `PackageCatalog` are unverified for net9)
+- [ ] 2.10 `new service` for v2 is blocked with a message until phase 6; `exec --docker` for v2 until phase 4
 
 ## Phase 3 - Configuration (R-A9, A10, D-09)
 - [ ] 3.1 `AddAppConfiguration()` (appsettings + env in one step)

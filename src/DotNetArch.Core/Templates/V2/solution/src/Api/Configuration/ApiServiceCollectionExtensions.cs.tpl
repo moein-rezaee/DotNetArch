@@ -1,3 +1,4 @@
+using {{App}}.Api.Endpoints;
 using {{App}}.Api.Middleware;
 
 namespace {{App}}.Api.Configuration;
@@ -10,6 +11,7 @@ public static class ApiServiceCollectionExtensions
     public static IServiceCollection AddApi(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddControllers();
+        services.AddEndpoints();
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen();
         services.AddProblemDetails();
@@ -42,6 +44,7 @@ public static class ApiServiceCollectionExtensions
 
         app.UseAuthorization();
         app.MapControllers();
+        app.MapEndpoints();
         app.MapHealthChecks("/health");
         return app;
     }

@@ -13,6 +13,7 @@
 
   <ItemGroup Label="Infrastructure">
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="{{EfCoreVersion}}" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="{{EfCoreVersion}}" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="{{EfCoreVersion}}" />
     <PackageVersion Include="{{EfProviderPackageId}}" Version="{{EfProviderPackageVersion}}" />
   </ItemGroup>
