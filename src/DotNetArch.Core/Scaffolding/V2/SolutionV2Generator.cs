@@ -1,3 +1,4 @@
+using DotNetArch.Core.Scaffolding.Ops;
 using DotNetArch.Core.Templating;
 
 namespace DotNetArch.Core.Scaffolding.V2;
@@ -21,7 +22,8 @@ public static class SolutionV2Generator
 
         var gitInstalled = SolutionTooling.IsGitInstalled();
         var gitInitialized = false;
-        var wantGit = ToolHost.AskYesNo("Initialize git repository?", true);
+        var ops = request.Ops ?? new OpsOptions();
+        var wantGit = !ops.NoGit && ToolHost.AskYesNo("Initialize git repository?", true);
         if (wantGit && !gitInstalled)
             ToolHost.Error("Git is not installed.");
 
@@ -66,10 +68,24 @@ public static class SolutionV2Generator
             ApiStyle = request.ApiStyle.Equals("fast", StringComparison.OrdinalIgnoreCase) ? "fast" : "controller",
             ApiPort = port.ToString(),
             TargetFramework = tfm,
-            Layout = SolutionConfig.V2Layout
+            Layout = SolutionConfig.V2Layout,
+            DockerRegistry = ops.DockerRegistry?.Trim() ?? string.Empty,
+            NuGetSource = ops.NuGetSource?.Trim() ?? string.Empty,
+            NuGetSourceName = ops.NuGetSourceName?.Trim() ?? string.Empty,
         };
         ConfigManager.Save(solutionDir, config);
         PathState.Save(solutionDir);
+
+        if (!string.IsNullOrWhiteSpace(ops.GitRemote) || !string.IsNullOrWhiteSpace(ops.GitProvider) || !string.IsNullOrWhiteSpace(ops.GitHost))
+            OpsGenerator.SetupGit(config, ops.GitRemote, ops.GitHost, ops.GitProvider);
+
+        OpsGenerator.AddNuGetConfig(config);
+        if (!ops.NoDocker && ToolHost.AskYesNo("Add Docker support?", true))
+            OpsGenerator.AddDocker(config);
+
+        var ci = OpsGenerator.ResolveCiProvider(config, ops.Ci);
+        if (ci is not null)
+            OpsGenerator.AddCi(config, ci);
 
         if (gitInstalled && gitInitialized)
         {

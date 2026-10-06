@@ -36,6 +36,18 @@ public static class ConfigManager
                 config.TargetFramework = value;
             else if (key.Equals("layout", StringComparison.OrdinalIgnoreCase))
                 config.Layout = value;
+            else if (key.Equals("ci.provider", StringComparison.OrdinalIgnoreCase))
+                config.CiProvider = value;
+            else if (key.Equals("git.host", StringComparison.OrdinalIgnoreCase))
+                config.GitHost = value;
+            else if (key.Equals("git.provider", StringComparison.OrdinalIgnoreCase))
+                config.GitProvider = value;
+            else if (key.Equals("docker.registry", StringComparison.OrdinalIgnoreCase))
+                config.DockerRegistry = value;
+            else if (key.Equals("nuget.source", StringComparison.OrdinalIgnoreCase))
+                config.NuGetSource = value;
+            else if (key.Equals("nuget.sourceName", StringComparison.OrdinalIgnoreCase))
+                config.NuGetSourceName = value;
             else if (key.Equals("docker.image", StringComparison.OrdinalIgnoreCase))
                 config.DockerImage = value;
             else if (key.Equals("docker.container", StringComparison.OrdinalIgnoreCase))
@@ -77,6 +89,18 @@ public static class ConfigManager
             content += $"docker.image: {config.DockerImage}{nl}";
         if (!string.IsNullOrWhiteSpace(config.DockerContainer))
             content += $"docker.container: {config.DockerContainer}{nl}";
+        if (!string.IsNullOrWhiteSpace(config.DockerRegistry))
+            content += $"docker.registry: {config.DockerRegistry}{nl}";
+        if (!string.IsNullOrWhiteSpace(config.CiProvider))
+            content += $"ci.provider: {config.CiProvider}{nl}";
+        if (!string.IsNullOrWhiteSpace(config.GitProvider))
+            content += $"git.provider: {config.GitProvider}{nl}";
+        if (!string.IsNullOrWhiteSpace(config.GitHost))
+            content += $"git.host: {config.GitHost}{nl}";
+        if (!string.IsNullOrWhiteSpace(config.NuGetSource))
+            content += $"nuget.source: {config.NuGetSource}{nl}";
+        if (!string.IsNullOrWhiteSpace(config.NuGetSourceName))
+            content += $"nuget.sourceName: {config.NuGetSourceName}{nl}";
         foreach (var kv in config.Entities)
         {
             var status = kv.Value.HasCrud && kv.Value.HasAction ? "both" : kv.Value.HasCrud ? "crud" : "action";

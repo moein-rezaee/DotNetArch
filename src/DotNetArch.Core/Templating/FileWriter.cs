@@ -28,6 +28,11 @@ public sealed class FileWriter(string root)
 
         Directory.CreateDirectory(Path.GetDirectoryName(full)!);
         File.WriteAllText(full, content.Replace("\r\n", "\n"), new System.Text.UTF8Encoding(false));
+        if (relativePath.EndsWith(".sh", StringComparison.Ordinal) && !OperatingSystem.IsWindows())
+        {
+            File.SetUnixFileMode(full, File.GetUnixFileMode(full) | UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute);
+        }
+
         _created.Add(relativePath);
         return true;
     }

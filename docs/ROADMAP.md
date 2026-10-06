@@ -43,19 +43,20 @@ Environment: dotnet SDK 8 available (net9 targets cannot be built here; verify n
 - [x] 2.7 `new crud/action/event/enum/constant` emit nested per-entity slices (`Features/<Plural>/{Commands,Queries,Actions,Events,Dtos}`, `Domain/{Events,Enums,Constants}`)
 - [x] 2.8 Verified: generated solutions (SQLite controller, Postgres fast, SqlServer dotted name) build warning-free in Release; SQLite API served create/validate/list/update/delete/404 end to end; 43 unit tests cover structure and rules
 - [ ] 2.9 net9 target verification (no SDK 9 in this environment; versions in `PackageCatalog` are unverified for net9)
-- [ ] 2.10 `new service` for v2 is blocked with a message until phase 6; `exec --docker` for v2 until phase 4
+- [ ] 2.10 `new service` for v2 is blocked with a message until phase 6
 
 ## Phase 3 - Configuration (R-A9, A10, D-09)
-- [ ] 3.1 `AddAppConfiguration()` (appsettings + env in one step)
-- [ ] 3.2 Options classes + validation per layer
-- [ ] 3.3 Generate `.env.example`, `appsettings.example.json`; `validate-examples` script
+- [x] 3.1 `AddAppConfiguration()` (appsettings -> appsettings.{Env} -> .env -> .env.{env} -> environment -> command line; one step before options binding)
+- [x] 3.2 Options with validation per layer (`DatabaseOptions` validated on start; secret key `DATABASE_CONNECTION_STRING` overrides, never in appsettings)
+- [x] 3.3 `.env.example`, `appsettings.example.json`, `ConfigurationContract` (secret key inventory with a marker kits append to) and `scripts/validate-examples.sh`; the checking tests are generated in phase 5 (`Category=Configuration`)
 
 ## Phase 4 - Docker, Git, CI, registries (R-A11, A12, A15, D-06, D-07)
-- [ ] 4.1 Dockerfile + compose + `.dockerignore`
-- [ ] 4.2 Git setup incl. personal host/provider
-- [ ] 4.3 CI provider detector + GitHub Actions, GitLab CI, Azure, Bitbucket templates
-- [ ] 4.4 Personal Docker registry + NuGet source (`NuGet.config`, CI vars, compose image)
-- [ ] 4.5 `ci add`, `docker add`, `git setup` commands
+- [x] 4.1 `Dockerfile` (restore-cached multi-stage, non-root), `.dockerignore`, `docker-compose.yml` per database (SQLite volume / Postgres / SQL Server with health checks); compose validated with `docker compose config`
+- [x] 4.2 Git setup incl. personal host/provider (`git setup --remote --git-host --git-provider`, stored as `git.host`/`git.provider`)
+- [x] 4.3 CI provider detection (`GitHosts.Detect`) + GitHub Actions, GitLab CI, Azure Pipelines, Bitbucket Pipelines (+ Gitea Actions) templates; `--ci=auto|provider|none`; YAML validated by parsing
+- [x] 4.4 Personal Docker registry + NuGet source (`--docker-registry`, `--nuget-source`, `--nuget-source-name`): `NuGet.config` without credentials (credentials by env/CI secrets), image names, CI login/push job, Dockerfile restore secret
+- [x] 4.5 Commands `ci add`, `docker add`, `git setup`; new-solution flags `--no-docker`, `--no-git`; `exec --docker` works for v2
+- [ ] 4.6 Real `docker build` / `docker compose up` verification (no Docker daemon in this environment; only config validation done)
 
 ## Phase 5 - Tests in generated projects (R-A14, D-02)
 - [ ] 5.1 Per-layer test projects with fakes/builders

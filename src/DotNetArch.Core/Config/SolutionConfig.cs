@@ -18,6 +18,23 @@ public class SolutionConfig
     /// <summary>Folder layout: <see cref="LegacyLayout"/> (flat, default when the key is absent) or <see cref="V2Layout"/> (src/ + tests/).</summary>
     public string Layout { get; set; } = LegacyLayout;
 
+    /// <summary>CI provider id (github, gitlab, azure, bitbucket) or empty when none was generated.</summary>
+    public string CiProvider { get; set; } = "";
+
+    /// <summary>Base URL of a personal/self-hosted git server (empty for the public hosts).</summary>
+    public string GitHost { get; set; } = "";
+
+    /// <summary>Git server flavour: github, gitlab, gitea, azure, bitbucket.</summary>
+    public string GitProvider { get; set; } = "";
+
+    /// <summary>Private container registry host (e.g. registry.example.com/team); empty for local images only.</summary>
+    public string DockerRegistry { get; set; } = "";
+
+    /// <summary>Private NuGet feed URL added next to nuget.org; credentials are never stored.</summary>
+    public string NuGetSource { get; set; } = "";
+
+    public string NuGetSourceName { get; set; } = "";
+
     public const string LegacyLayout = "legacy";
     public const string V2Layout = "v2";
 

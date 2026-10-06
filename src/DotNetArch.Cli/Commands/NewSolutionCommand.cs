@@ -14,6 +14,16 @@ internal sealed class NewSolutionCommand : ICommand
         var noDatabase = parsed.Has("no-database");
         var layout = parsed.Get("layout") ?? SolutionConfig.V2Layout;
         var provider = parsed.Get("database");
+        var ops = new OpsOptions(
+            Ci: parsed.Get("ci"),
+            GitRemote: parsed.Get("git-remote"),
+            GitHost: parsed.Get("git-host"),
+            GitProvider: parsed.Get("git-provider"),
+            DockerRegistry: parsed.Get("docker-registry"),
+            NuGetSource: parsed.Get("nuget-source"),
+            NuGetSourceName: parsed.Get("nuget-source-name"),
+            NoDocker: parsed.Has("no-docker"),
+            NoGit: parsed.Has("no-git"));
 
         if (string.IsNullOrWhiteSpace(solutionName))
             solutionName = ToolHost.Ask("Enter solution name");
@@ -38,7 +48,7 @@ internal sealed class NewSolutionCommand : ICommand
         if (string.IsNullOrWhiteSpace(style))
             style = "controller";
 
-        SolutionGenerator.Generate(new SolutionRequest(solutionName, outputPath!, startup!, style!, noDatabase ? "None" : provider, layout));
+        SolutionGenerator.Generate(new SolutionRequest(solutionName, outputPath!, startup!, style!, noDatabase ? "None" : provider, layout, ops));
         return 0;
     }
 }

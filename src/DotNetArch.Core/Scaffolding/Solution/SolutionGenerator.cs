@@ -8,7 +8,8 @@ public sealed record SolutionRequest(
     string StartupProject,
     string ApiStyle,
     string? ProviderOverride = null,
-    string Layout = SolutionConfig.V2Layout);
+    string Layout = SolutionConfig.V2Layout,
+    Ops.OpsOptions? Ops = null);
 
 /// <summary>Creates a new solution (<c>new solution</c>): layout v2 by default, flat legacy layout on request.</summary>
 public static class SolutionGenerator

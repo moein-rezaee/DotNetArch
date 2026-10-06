@@ -86,7 +86,14 @@ public static class ExecService
             return;
         }
 
-        DockerSupport.RefreshCompose(solutionPath, config.SolutionName, config.StartupProject, config.ApiPort, env);
+        // Layout v2 ships its own compose file (docker add); only the legacy layout regenerates it per environment.
+        if (!config.IsV2)
+            DockerSupport.RefreshCompose(solutionPath, config.SolutionName, config.StartupProject, config.ApiPort, env);
+        else if (!File.Exists(Path.Combine(solutionPath, "docker-compose.yml")))
+        {
+            ToolHost.Error("docker-compose.yml not found.", "Run 'dotnet-arch docker add' first.");
+            return;
+        }
 
         var runCleanup = false;
         var cleaned = false;

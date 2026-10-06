@@ -15,6 +15,9 @@ internal static class Program
         new NewServiceCommand(),
         new ExecCommand(),
         new RemoveMigrationCommand(),
+        new CiAddCommand(),
+        new DockerAddCommand(),
+        new GitSetupCommand(),
         new NewSolutionCommand(),
         new InteractiveSolutionCommand(), // fallback, must stay last
     };
