@@ -25,8 +25,9 @@ Applies to the whole repository except `samples/` (read-only references; never e
 
 ## Tool-code Rule (this repo)
 - Run child processes with argument lists, never composed shell strings. Validate every user-supplied identifier before use or file/path creation.
-- Keep files small and one responsibility per class; new commands go in `src/Commands`, templates in `src/Templates`.
-- The tool repo has no unit-test project (D-02). Verify with `scripts/smoke.sh`. Do not claim a build/test passed unless it was run.
+- Keep files small and one responsibility per class; new commands go in `src/DotNetArch.Cli/Commands` (parsing only) with logic in `src/DotNetArch.Core`; templates in `src/DotNetArch.Core/Templates`.
+- Layers (D-17): Core = implementation, Cli = commands/console, Mcp = MCP tools. Core must not reference Cli/Mcp nor use `Console`/shell directly (use `ToolHost`, D-18).
+- Tests live in `tests/` per layer where needed. Do not claim a build/test passed unless it was run.
 
 ## Documentation Governance Rule
 - Keep `.md` + `.fa.md` pairs synchronized. Update `docs/ROADMAP.md` checkboxes in the same commit as the work.

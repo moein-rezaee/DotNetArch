@@ -8,7 +8,7 @@
 
 ## فازها
 - **۰ مستندات:** requirements، decisions، معماری و درخت‌ها، contracts، acceptance، AGENTS.md، roadmap ✔؛ بعدی: openspec/testspec، تلاش نصب SDK.
-- **۱ سخت‌سازی ابزار:** اعتبارسنجی نام‌ها، ProcessRunner بدون shell، رفع env ویندوز، شکستن `Main.cs`، `MigrationRunner` مشترک، حذف `.DS_Store`، `scripts/smoke.sh`.
+- **۱ بازساخت ابزار به Cli / Mcp / Core و سخت‌سازی:** رفع crash اسپینر در حالت غیر TTY، snapshot پایه (golden)، اسکلت `src/` و `tests/`، `ToolHost` و انتزاع‌های prompt/process/output، انتقال به Core، شکستن `Main.cs` به Commands، ProcessRunner بدون shell، اعتبارسنجی نام‌ها، `MigrationRunner`، تست‌های Core و Cli، `scripts/smoke.sh`.
 - **۲ قالب میکروسرویس v2:** `layout: v2`، اسکلت `src/`+`tests/`، Domain با رفتار، Application (پورت‌ها، MediatR، FluentValidation)، Infrastructure (EF، repository async، UoW)، Api (Program کوتاه، controller به‌ازای entity)، دستورهای crud/action/event/enum/constant تودرتو.
 - **۳ پیکربندی:** `AddAppConfiguration()`، options با validation، تولید فایل‌های example و اسکریپت اعتبارسنجی.
 - **۴ Docker و Git و CI و registry:** Dockerfile/compose، git با host شخصی، تشخیص CI و قالب‌های GitHub/GitLab/Azure/Bitbucket، registry شخصی Docker و NuGet، دستورهای `ci add`، `docker add`، `git setup`.

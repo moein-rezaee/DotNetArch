@@ -14,14 +14,19 @@ Environment: dotnet SDK 8 available (net9 targets cannot be built here; verify n
 - [x] 0.5 dotnet SDK 8.0.131 installed via Microsoft apt repo (`packages.microsoft.com` and NuGet are reachable; SDK 9 is NOT available via apt, `builds.dotnet.microsoft.com` is blocked). Tool builds on net8.0.
 - [x] 0.6 Fix: `DotNetArch.csproj` compiled `samples/**` (3508 errors); excluded samples/kits/tests
 
-## Phase 1 - Tool hardening and restructure (R-E4, D-10, D-13)
-- [ ] 1.1 Validate all identifiers (solution, entity, event, area, provider)
-- [ ] 1.2 Replace `bash -c`/`cmd /c` string runner with `ProcessRunner` (argument lists, env map, cross-platform)
-- [ ] 1.3 Fix Windows `ASPNETCORE_ENVIRONMENT=...` prefix via process environment
-- [ ] 1.4 Split `Main.cs` into `Commands/*`, `Config/*`, `Infrastructure/*` (behaviour-preserving)
-- [ ] 1.5 Shared `MigrationRunner` (dedupe Crud/Action scaffolders)
-- [ ] 1.6 Remove `.DS_Store`; extend `.gitignore`
-- [ ] 1.7 `scripts/smoke.sh` (+ps1)
+## Phase 1 - Tool restructure into Cli / Mcp / Core + hardening (R-E4, D-10, D-13, D-17, D-18)
+- [ ] 1.1 Fix spinner crash when console is not a TTY/width 0 (found: `new solution` non-interactive crashes at `ShowSpinner`)
+- [ ] 1.2 Golden baseline: generate `new solution` with the old tool (non-interactive) and store file-tree snapshot for regression comparison
+- [ ] 1.3 Solution skeleton: `src/DotNetArch.{Core,Cli,Mcp}`, `tests/`, `Directory.Build.props`, `Directory.Packages.props`; Cli packs as tool `DotNetArch` / `dotnet-arch`
+- [ ] 1.4 `ToolHost` + `IPrompter`/`IProcessRunner`/`IToolOutput` in Core; Console implementations in Cli; non-interactive prompter
+- [ ] 1.5 Move scaffolders/config/steps into Core (namespaces `DotNetArch.Core.*`), remove `Program.*` coupling
+- [ ] 1.6 Split `Main.cs` into Cli `Commands/*` (parsing only) calling Core operations
+- [ ] 1.7 `ProcessRunner` with argument lists (no `bash -c`/`cmd /c`), env map (fixes Windows `ASPNETCORE_ENVIRONMENT=` prefix)
+- [ ] 1.8 Identifier/path validation (solution, entity, event, area, provider) in Core.Validation
+- [ ] 1.9 Shared `MigrationRunner` (dedupe Crud/Action); track migration of static scaffolders to injected instances
+- [ ] 1.10 `DotNetArch.Core.Tests` (validation, config round-trip, golden tree) and `DotNetArch.Cli.Tests` (arg parsing)
+- [ ] 1.11 Remove `.DS_Store`, extend `.gitignore`, add `scripts/smoke.sh`
+- [ ] 1.12 Update README build/run instructions for the new layout
 
 ## Phase 2 - Microservice core template v2 (R-A1..A8, D-10, D-12)
 - [ ] 2.1 `layout: v2` config + legacy detection

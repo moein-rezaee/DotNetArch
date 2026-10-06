@@ -1,5 +1,5 @@
 testspec: 1
-policy: "Tool repo has no unit-test project (D-02). Verification is the smoke script; generated projects carry their own tests."
+policy: "Tool tests per layer where needed (D-17): Core.Tests, Cli.Tests, Mcp.Tests. Plus smoke script. Generated projects carry their own tests."
 smoke:
   script: scripts/smoke.sh
   requires: [dotnet-sdk-8-or-9]

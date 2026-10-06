@@ -2,36 +2,33 @@
 
 Satisfies R-A1..A8, R-B3..B8, R-E5. Names in `<>` are substituted at generation time.
 
-## 1. DotNetArch tool repository (target)
+## 1. DotNetArch tool repository (target, D-17)
 
 ```text
 DotNetArch/
-├── AGENTS.md                         rules for agents (tool repo)
-├── README.md / README.fa.md
-├── DotNetArch.csproj / .sln          single global tool `dotnet-arch` (D-13)
-├── global.json
+├── AGENTS.md  README.md  README.fa.md  DotNetArch.sln  global.json  Directory.Build.props  Directory.Packages.props
 ├── scripts/                          run.sh run.ps1 smoke.sh
-├── docs/
-│   ├── ROADMAP.md / ROADMAP.fa.md    phased plan, ticked; resume point
-│   ├── decisions/decisions(.fa).md
-│   └── specs/                        requirements overview architecture contracts acceptance changelog
-│                                     openspec.yaml testspec.yaml (each with .fa.md pair where prose)
-├── samples/                          read-only references: MediaStorage, corevia-identity
-└── src/                              (folders inside the single project)
-    ├── Program.cs                    entry only: parse -> dispatch
-    ├── Commands/                     one class per CLI command (new solution|crud|action|event|enum|constant|service|kit, exec, remove migration, mcp serve)
-    ├── Config/                       dotnet-arch.yml model, load/save, validation
-    ├── Infrastructure/               ProcessRunner (no shell), FileWriter, GitDetector, Prompts, Logger
-    ├── Mcp/                          MCP server (stdio): tools wrapping Commands
-    ├── Scaffolding/
-    │   ├── Solution/                 layers, DI, config, Program split
-    │   ├── Entity/                   crud, action, event, enum, constant
-    │   ├── Kits/                     abstractions, core, providers, docs, ci job
-    │   ├── Tests/                    per-layer test projects (generated projects only)
-    │   ├── Docker/ Git/ Ci/          docker files, git init/host, ci providers + registries
-    │   └── McpHost/                  <App>.Mcp host scaffolding
-    └── Templates/                    text templates (embedded resources) per area
+├── docs/                             ROADMAP(.fa).md, decisions/, specs/ (requirements overview architecture contracts acceptance changelog openspec testspec)
+├── samples/                          read-only references: MediaStorage, corevia-identity (never compiled)
+├── src/
+│   ├── DotNetArch.Core/              IMPLEMENTATION layer (class library; references nothing of Cli/Mcp)
+│   │   ├── Hosting/                  ToolHost, IPrompter, IProcessRunner, IToolOutput (+ default process runner, non-interactive prompter)
+│   │   ├── Config/                   dotnet-arch.yml model, load/save, PathState
+│   │   ├── Validation/               identifier/path validation, Naming
+│   │   ├── Scaffolding/              Solution/ Entity/ (crud action event enum constant) Services/ Kits/ Docker/ Git/ Ci/ Tests/ McpHost/
+│   │   └── Templates/                text templates (embedded resources)
+│   ├── DotNetArch.Mcp/               MCP LAYER (class library): server bootstrap + tools; non-interactive host
+│   └── DotNetArch.Cli/               COMMAND LAYER (exe, PackAsTool, command `dotnet-arch`, package id `DotNetArch`)
+│       ├── Program.cs                entry only
+│       ├── Commands/                 one class per command; arg parsing -> Core requests
+│       └── Console/                  ConsolePrompter, ConsoleOutput, spinner (TTY only)
+└── tests/                            per layer where needed (D-02/D-17)
+    ├── DotNetArch.Core.Tests/        validation, config round-trip, golden generated-tree tests (fake host)
+    ├── DotNetArch.Cli.Tests/         argument parsing
+    └── DotNetArch.Mcp.Tests/         tool catalogue and non-interactive behaviour
 ```
+
+Dependency rule: `Cli -> Core`, `Mcp -> Core`, `Cli -> Mcp`; Core references neither. Core never uses `Console`/shell directly (D-18).
 
 ## 2. Generated microservice (layout v2)
 

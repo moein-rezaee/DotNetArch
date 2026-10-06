@@ -8,10 +8,9 @@ under the owner's rules are marked **Proposed** and stay open to change. Persian
 host (`<App>.Mcp`): tools mirror the project's controllers/services and dispatch through the same MediatR
 commands/queries. Reason: R-C1 and R-A13 are different audiences. Consequence: two separate roadmap phases.
 
-## D-02 Tests only for generated projects (Owner)
-The DotNetArch tool repo has no unit-test project. Generated projects get a test project per layer. Kits get none by
-default (opt-in `--with-tests`). Consequence/risk: refactors of the tool are verified by a smoke script
-(`scripts/smoke.sh`: generate a solution, build it, run its tests), not unit tests. Needs dotnet SDK in the environment.
+## D-02 Test layer only where needed (Owner, revised by D-17)
+Generated projects get a test project per layer. Kits get none by default (opt-in `--with-tests`). The tool itself gets a test
+project only for the layers that need one (see D-17). `scripts/smoke.sh` stays as the end-to-end check (generate, build, test).
 
 ## D-03 Reference microservice is `samples/corevia-identity`, reference kit is `samples/MediaStorage` (Owner)
 Samples are read-only references (see D-10).
@@ -62,9 +61,8 @@ must build with public NuGet only (plus the user's own registry). Each kit ships
 New solutions use `src/` + `tests/` layout and `layout: v2` in `dotnet-arch.yml`. Absence of the key means legacy
 layout; legacy commands (`new crud` etc.) keep working on legacy solutions.
 
-## D-13 Single tool package (Proposed)
-One global tool `dotnet-arch`, MCP server is a sub-command (`dotnet-arch mcp serve`), not a second package.
-Source stays one project, organised by folders (Commands, Config, Infrastructure, Mcp, Scaffolding/<Area>, Templates).
+## D-13 One installable tool package (Proposed; layering superseded by D-17)
+One global tool `dotnet-arch` (package id `DotNetArch`); MCP server is a sub-command (`dotnet-arch mcp serve`), not a second package.
 
 ## D-14 Kit naming prefix (Proposed)
 `<Prefix>` = `--kit-prefix` or the solution/organisation name from `dotnet-arch.yml`. Package ids
@@ -75,3 +73,17 @@ Generated code targets net8.0 or net9.0 as selected; `global.json` pinned with `
 
 ## D-16 Process (Owner)
 Docs/specs/rules/roadmap first, then phases; commit + push per phase; roadmap checkboxes are the resume state.
+
+## D-17 Standard multi-layer tool structure (Owner)
+The tool is split into layers, each its own project under `src/`: **Cli** (command layer: argument parsing, interactive prompts,
+console output, packaged as the global tool), **Mcp** (MCP server layer: tools that call Core with a non-interactive host), **Core**
+(all implementation: config, scaffolding, templates, process/file abstractions). Dependency rule: `Cli -> Core`, `Mcp -> Core`,
+`Cli -> Mcp` (only to host `mcp serve`); Core references neither. A test project exists per layer that needs one under `tests/`
+(`Core.Tests` golden-tree/validation/config tests, `Cli.Tests` argument parsing, `Mcp.Tests` tool catalogue). Replaces the
+single-project layout of D-13.
+
+## D-18 Host abstraction for Core (Proposed)
+Core never touches `Console` or spawns shells directly. It uses `ToolHost` (ambient, swappable per run) exposing `IPrompter`,
+`IProcessRunner`, `IToolOutput`. Cli installs console implementations; Mcp installs a non-interactive prompter (defaults or explicit
+"missing option" error) and a stderr/JSON output; tests install fakes. Scaffolders stay static for now; migrating them to injected
+instances is a later, tracked item (roadmap 1.9).
