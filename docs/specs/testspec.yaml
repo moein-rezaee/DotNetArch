@@ -1,0 +1,15 @@
+testspec: 1
+policy: "Tool repo has no unit-test project (D-02). Verification is the smoke script; generated projects carry their own tests."
+smoke:
+  script: scripts/smoke.sh
+  requires: [dotnet-sdk-8-or-9]
+  steps:
+    - generate: "new solution Smoke --layout v2 --mcp --ci auto --no-git"
+    - build: "dotnet build"
+    - test: "dotnet test"
+    - checks: [no-sync-over-async, no-iqueryable-in-repository-port, no-allow-any-origin-default, no-console-stacktrace, examples-in-sync]
+    - kit: "new kit --area Cache --providers Redis,InMemory && dotnet build kits/Cache"
+generated_project_tests:
+  per_layer: [Domain, Application, Infrastructure, Api, Mcp]
+  ci_job: test
+acceptance_map: docs/specs/acceptance.md

@@ -1,0 +1,19 @@
+# Roadmap (نسخهٔ فارسی)
+
+مرجع اصلی با تیک‌ها: `ROADMAP.md`. این فایل خلاصهٔ هم‌شناسه است و در هر commit با آن همگام می‌شود.
+
+## نقطهٔ ادامه
+فاز فعلی: ۰ (مستندات پایه commit شده). مورد بعدی: ۱.۱. branch: `claude/exciting-fermi-b41fue`.
+ریسک محیط: `dotnet` در container نصب نیست؛ موارد تأییدِ build/test تیک نمی‌خورند تا SDK نصب یا جای دیگر اجرا شود.
+
+## فازها
+- **۰ مستندات:** requirements، decisions، معماری و درخت‌ها، contracts، acceptance، AGENTS.md، roadmap ✔؛ بعدی: openspec/testspec، تلاش نصب SDK.
+- **۱ سخت‌سازی ابزار:** اعتبارسنجی نام‌ها، ProcessRunner بدون shell، رفع env ویندوز، شکستن `Main.cs`، `MigrationRunner` مشترک، حذف `.DS_Store`، `scripts/smoke.sh`.
+- **۲ قالب میکروسرویس v2:** `layout: v2`، اسکلت `src/`+`tests/`، Domain با رفتار، Application (پورت‌ها، MediatR، FluentValidation)، Infrastructure (EF، repository async، UoW)، Api (Program کوتاه، controller به‌ازای entity)، دستورهای crud/action/event/enum/constant تودرتو.
+- **۳ پیکربندی:** `AddAppConfiguration()`، options با validation، تولید فایل‌های example و اسکریپت اعتبارسنجی.
+- **۴ Docker و Git و CI و registry:** Dockerfile/compose، git با host شخصی، تشخیص CI و قالب‌های GitHub/GitLab/Azure/Bitbucket، registry شخصی Docker و NuGet، دستورهای `ci add`، `docker add`، `git setup`.
+- **۵ تست در پروژهٔ تولیدشده:** پروژهٔ تست هر لایه، job تست در CI، `testspec.yaml`.
+- **۶ Kitها:** scaffolder کیت (Abstractions/Core/Providers + docs)، recipeهای MediaStorage و Cache و MessageBroker، `new service` با پرسش منطق کسب‌وکار، `add kit`، jobهای CI و انتشار در NuGet شخصی.
+- **۷ MCP:** `mcp serve` و tools؛ host ‏`<App>.Mcp` برای پروژه.
+- **۸ مستندات نهایی:** README، قالب docs/specs/AGENTS پروژه و kit، mirrorهای فارسی، اسکریپت بررسی جفت‌های دو زبانه.
+- **۹ راستی‌آزمایی و انتشار:** اجرای smoke (نیاز به SDK)، نسخه و changelog.

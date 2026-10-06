@@ -1,0 +1,47 @@
+# DotNetArch - نیازمندی‌ها (مرجع اصلی)
+
+نسخهٔ انگلیسی: `requirements.md`. شناسه‌ها یکسان‌اند. هر چیزی که مالک گفته با شناسهٔ ثابت اینجا ثبت شده و حذف یا ضعیف کردنش فقط با ثبت در `docs/decisions/decisions.fa.md` مجاز است.
+
+## الف. میکروسرویس تولیدشده
+- R-A1. Clean Architecture با لایه‌های جدا (پروژهٔ جدا).
+- R-A2. Ports و Adapters: پورت‌ها (interface) مال Application/Domain، آداپتورها مال Infrastructure/Api.
+- R-A3. ترکیب Vertical Slice و CQRS و Unit of Work و Repository.
+- R-A4. Query و Command و Action به‌صورت تودرتو داخل پوشهٔ همان entity.
+- R-A5. CQRS با MediatR مثل sample.
+- R-A6. رعایت Clean Architecture و Clean Code و SOLID.
+- R-A7. wiring درست: هر لایه وابستگی‌های خودش را با DI extension خودش ثبت می‌کند.
+- R-A8. پکیج‌های NuGet هم همین‌طور: هر لایه فقط پکیج‌های لازمِ خودش را دارد.
+- R-A9. پیکربندی: environment برای secret و مقادیر runtime، appsettings برای مقادیر غیرحساس؛ هر دو هنگام load پروژه در یک `IConfiguration` بارگذاری می‌شوند.
+- R-A10. تولید `.env.example` و `appsettings.example.json` و همگام نگه داشتن با کد.
+- R-A11. پشتیبانی Docker.
+- R-A12. پشتیبانی Git (init، gitignore، commit اولیه، تنظیم remote/host).
+- R-A13. پشتیبانی MCP در پروژهٔ تولیدشده: tools مطابق controller و service ها بدون تکرار منطق.
+- R-A14. پشتیبانی تست: فقط برای پروژهٔ تولیدشده (نه خود ابزار).
+- R-A15. پشتیبانی CI: خود ابزار گزینهٔ مناسب را انتخاب کند؛ git شخصی/self-hosted؛ registry شخصی برای Docker و NuGet.
+
+## ب. `new service`
+- R-B1. حالت داخلی (دارای logic) همان رفتار فعلی (درست است).
+- R-B2. حالت خارجی (بدون logic): رفتار فعلی اشتباه است و با تولید Kit جایگزین می‌شود.
+- R-B3. Kit شامل Abstractions و Core و N پکیج Provider است (کم و زیاد می‌شود).
+- R-B4. نام Kit بر اساس قابلیت است نه محصول: Cache، MessageBroker، MediaStorage. نه Redis و نه RabbitMQ.
+- R-B5. الگوی kit همان `samples/MediaStorage` است.
+- R-B6. Kitها کاملاً مستقل‌اند: نسخه‌بندی جدا، build در CI، انتشار در NuGet registry شخصی.
+- R-B7. همهٔ Kitها در یک پوشه (`kits/`) و دسته‌بندی بر اساس حوزه.
+- R-B8. افزودن kit به سرویس: Abstractions در Application، و Core + Providers فقط در composition root.
+
+## ج. خود ابزار به‌عنوان MCP
+- R-C1. حالت MCP برای استفادهٔ agent از کتابخانه/ابزار (ساخت solution، entity، crud، action، event، enum، constant، service/kit). جدا از R-A13.
+
+## د. مستندات
+- R-D1. مستندات کامل ابزار، پروژهٔ تولیدشده و kit.
+- R-D2. Spec-driven: specها در ابزار، پروژه و kit؛ تغییر رفتار = تغییر spec در همان تغییر.
+- R-D3. Agent-driven: `AGENTS.md` با قواعد و best practice در هر سه.
+- R-D4. جفت‌های دو زبانه `.md` و `.fa.md` همگام.
+- R-D5. قواعد best practice طبق توضیح مالک، نه کپی کورکورانهٔ sample.
+
+## هـ. فرایند
+- R-E1. اول مستندات و spec و قواعد و roadmap؛ هیچ تصمیم و نکته‌ای از دست نرود.
+- R-E2. roadmap داخل پروژه، فازبندی‌شده و تیک‌خورده؛ با تمام شدن credit نقطهٔ ادامه مشخص باشد.
+- R-E3. فاز به فاز، با commit و push روی `claude/exciting-fermi-b41fue`.
+- R-E4. ایرادهای sample اصلاح شوند، کپی نشوند.
+- R-E5. درخت نهایی به مالک نمایش داده شود (`docs/specs/architecture.md`).

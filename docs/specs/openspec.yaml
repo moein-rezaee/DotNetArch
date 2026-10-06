@@ -1,0 +1,28 @@
+openspec: 1
+name: dotnet-arch
+version: 1.2.0
+status: baseline-planning
+requirements: docs/specs/requirements.md
+decisions: docs/decisions/decisions.md
+commands:
+  - {name: "new solution", status: exists, changes: [layout-v2, ci, git-host, registries, mcp, tests]}
+  - {name: "new crud", status: exists, changes: [nested-feature-folders]}
+  - {name: "new action", status: exists, changes: [nested-feature-folders]}
+  - {name: "new event", status: exists}
+  - {name: "new enum", status: exists}
+  - {name: "new constant", status: exists}
+  - {name: "new service", status: exists, changes: [external-mode-generates-kit]}
+  - {name: "new kit", status: planned}
+  - {name: "add kit", status: planned}
+  - {name: "ci add", status: planned}
+  - {name: "docker add", status: planned}
+  - {name: "git setup", status: planned}
+  - {name: "mcp serve", status: planned}
+  - {name: "exec", status: exists}
+  - {name: "remove migration", status: exists}
+layouts: {legacy: default-when-key-absent, v2: default-for-new-solutions}
+ci_providers: [github, gitlab, azure, bitbucket, none]
+kit_areas_builtin:
+  MediaStorage: [Minio, RustFs]
+  Cache: [Redis, InMemory]
+  MessageBroker: [RabbitMq]
