@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <PackageId>Corevia.Kit.MediaStorage.Core</PackageId>
+    <RootNamespace>Corevia.Kit.MediaStorage.Core</RootNamespace>
+    <AssemblyName>Corevia.Kit.MediaStorage.Core</AssemblyName>
+    <Version>1.0.0</Version>
+    <PackageVersion>1.0.0</PackageVersion>
+    <Authors>Platform Engineering</Authors>
+    <Description>Corevia Kit media storage core: options, provider selection, S3-compatible implementation and DI entry point.</Description>
+    <RepositoryUrl>https://gitlab.getcorevia.ir/corevia/corevia-kit</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://gitlab.getcorevia.ir/corevia/corevia-kit</PackageProjectUrl>
+    <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <PackageTags>corevia;kit;shared-runtime</PackageTags>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="../../../LICENSE.txt" Pack="true" PackagePath="/" />
+    <None Include="../../../README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="**/*.cs" Exclude="bin/**;obj/**" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Corevia.Kit.MediaStorage.Abstractions/Corevia.Kit.MediaStorage.Abstractions.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="AWSSDK.S3" Version="4.0.104.1" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.0" />
+  </ItemGroup>
+</Project>
