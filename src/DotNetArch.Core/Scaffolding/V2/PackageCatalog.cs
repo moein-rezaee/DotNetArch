@@ -20,6 +20,8 @@ public static class PackageCatalog
 
     public static string ExtOptionsConfiguration(int major) => major >= 9 ? "9.0.20" : "8.0.0";
 
+    public static string ExtConfigurationJson(int major) => major >= 9 ? "9.0.20" : "8.0.1";
+
     public static string ExtHostingAbstractions(int major) => major >= 9 ? "9.0.20" : "8.0.1";
 
     public static string EfProviderVersion(string provider, int major) => provider switch

@@ -9,10 +9,10 @@ COPY kits/ kits/
 COPY src/{{App}}.Domain/{{App}}.Domain.csproj src/{{App}}.Domain/
 COPY src/{{App}}.Application/{{App}}.Application.csproj src/{{App}}.Application/
 COPY src/{{App}}.Infrastructure/{{App}}.Infrastructure.csproj src/{{App}}.Infrastructure/
-COPY src/{{App}}.Api/{{App}}.Api.csproj src/{{App}}.Api/
+COPY src/{{App}}.{{Host}}/{{App}}.{{Host}}.csproj src/{{App}}.{{Host}}/
 {{RestoreInstruction}}
 COPY src/ src/
-RUN dotnet publish src/{{App}}.Api/{{App}}.Api.csproj -c Release -o /app/publish --no-restore /p:UseAppHost=false
+RUN dotnet publish src/{{App}}.{{Host}}/{{App}}.{{Host}}.csproj -c Release -o /app/publish --no-restore /p:UseAppHost=false
 
 FROM mcr.microsoft.com/dotnet/aspnet:${DOTNET_VERSION} AS final
 WORKDIR /app
@@ -23,4 +23,4 @@ RUN mkdir -p /data && chown $APP_UID /data
 USER $APP_UID
 ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080
-ENTRYPOINT ["dotnet", "{{App}}.Api.dll"]
+ENTRYPOINT ["dotnet", "{{App}}.{{Host}}.dll"]

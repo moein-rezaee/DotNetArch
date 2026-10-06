@@ -16,10 +16,6 @@ public static class OpsGenerator
         var tokens = Tokens(config);
         var writer = new FileWriter(config.SolutionPath);
 
-        tokens["RestoreInstruction"] = string.IsNullOrWhiteSpace(config.NuGetSource)
-            ? $"RUN dotnet restore src/{config.SolutionName}.Api/{config.SolutionName}.Api.csproj"
-            : $"RUN --mount=type=secret,id=nuget_config,target=/root/.nuget/NuGet/NuGet.Config dotnet restore src/{config.SolutionName}.Api/{config.SolutionName}.Api.csproj";
-        tokens["NuGetConfigCopy"] = string.IsNullOrWhiteSpace(config.NuGetSource) ? string.Empty : "NuGet.config ";
 
         var compose = config.DatabaseProvider switch
         {
@@ -34,7 +30,7 @@ public static class OpsGenerator
             _ => "# SQLite needs no variables."
         };
 
-        writer.Write($"src/{config.SolutionName}.Api/Dockerfile", TemplateRenderer.RenderTemplate("V2/ops/Dockerfile.tpl", tokens));
+        writer.Write($"src/{config.SolutionName}.Api/Dockerfile", RenderDockerfile(config, "Api"));
         writer.Write(".dockerignore", TemplateRenderer.Load("V2/ops/dockerignore.tpl"));
         writer.Write("docker-compose.yml", TemplateRenderer.RenderTemplate($"V2/ops/compose.{compose}.yml.tpl", tokens));
         writer.Write(".env.example", TemplateRenderer.RenderTemplate("V2/ops/root.env.example.tpl", tokens));
@@ -43,6 +39,19 @@ public static class OpsGenerator
         config.DockerContainer = tokens["ContainerName"];
         ConfigManager.Save(config.SolutionPath, config);
         ToolHost.Success($"Docker support added ({writer.Created.Count} files).");
+    }
+
+    /// <summary>Dockerfile for one host project (<c>Api</c> or <c>Mcp</c>) of the solution.</summary>
+    internal static string RenderDockerfile(SolutionConfig config, string host)
+    {
+        var tokens = Tokens(config);
+        tokens["Host"] = host;
+        var csproj = $"src/{config.SolutionName}.{host}/{config.SolutionName}.{host}.csproj";
+        tokens["RestoreInstruction"] = string.IsNullOrWhiteSpace(config.NuGetSource)
+            ? $"RUN dotnet restore {csproj}"
+            : $"RUN --mount=type=secret,id=nuget_config,target=/root/.nuget/NuGet/NuGet.Config dotnet restore {csproj}";
+        tokens["NuGetConfigCopy"] = string.IsNullOrWhiteSpace(config.NuGetSource) ? string.Empty : "NuGet.config ";
+        return TemplateRenderer.RenderTemplate("V2/ops/Dockerfile.tpl", tokens);
     }
 
     // --- nuget -------------------------------------------------------------------------------------------------------
@@ -195,6 +204,7 @@ public static class OpsGenerator
         return new Dictionary<string, string>
         {
             ["App"] = app,
+            ["Host"] = "Api",
             ["DotnetMajor"] = PackageVersionResolver.ResolveTargetMajor(config.TargetFramework).ToString(),
             ["Port"] = string.IsNullOrWhiteSpace(config.ApiPort) ? "8080" : config.ApiPort,
             ["ImageName"] = registry.Length == 0 ? imageBase : $"{registry}/{imageBase}",

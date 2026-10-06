@@ -41,6 +41,9 @@ public class SolutionConfig
     /// <summary>Kits wired into this solution: area name to its selected providers.</summary>
     public Dictionary<string, string> Kits { get; set; } = new();
 
+    /// <summary>True when the solution has an MCP host (<c>src/&lt;App&gt;.Mcp</c>); new entities then get MCP tools too.</summary>
+    public bool McpEnabled { get; set; }
+
     public const string LegacyLayout = "legacy";
     public const string V2Layout = "v2";
 

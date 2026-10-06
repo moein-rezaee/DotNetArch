@@ -37,12 +37,13 @@ public sealed class DotNetArchTools(IProcessRunner runner)
         [Description("Name of the private NuGet feed.")] string? nugetSourceName = null,
         [Description("Skip Dockerfile/compose.")] bool noDocker = false,
         [Description("Skip git init.")] bool noGit = false,
-        [Description("Skip the generated test projects.")] bool noTests = false) =>
+        [Description("Skip the generated test projects.")] bool noTests = false,
+        [Description("Also generate an MCP host (src/<App>.Mcp) whose tools mirror every entity.")] bool mcp = false) =>
         Run($"dotnet-arch new solution {name} --output={outputPath} --database={database} --style={apiStyle} --layout={layout} --ci={ci}",
             Path.Combine(outputPath, name),
             () =>
             {
-                var ops = new OpsOptions(ci, gitRemote, gitHost, gitProvider, dockerRegistry, nugetSource, nugetSourceName, noDocker, noGit, noTests);
+                var ops = new OpsOptions(ci, gitRemote, gitHost, gitProvider, dockerRegistry, nugetSource, nugetSourceName, noDocker, noGit, noTests, mcp);
                 var startup = $"{name}.{(layout.Equals("legacy", StringComparison.OrdinalIgnoreCase) ? "API" : "Api")}";
                 var provider = layout.Equals("legacy", StringComparison.OrdinalIgnoreCase) && database.Equals("None", StringComparison.OrdinalIgnoreCase) ? "None" : database;
                 SolutionGenerator.Generate(new SolutionRequest(name, outputPath, startup, apiStyle, provider, layout, ops));
@@ -155,6 +156,11 @@ public sealed class DotNetArchTools(IProcessRunner runner)
     [Description("Wire an existing kit (kits/<Area>) into the solution.")]
     public Task<ToolResult> AddKit(string solutionPath, string area) =>
         InSolution($"dotnet-arch add kit {area} --output={solutionPath}", solutionPath, true, config => KitWiring.WireFromDisk(config, KitGenerator.NormalizeArea(area)));
+
+    [McpServerTool(Name = "add_mcp", Destructive = false)]
+    [Description("Add an MCP host (src/<App>.Mcp) to a layout v2 solution; existing and future entities and actions get tools that run the same use cases as the API.")]
+    public Task<ToolResult> AddMcp(string solutionPath) =>
+        InSolution($"dotnet-arch add mcp --output={solutionPath}", solutionPath, true, config => McpV2Generator.Add(config));
 
     [McpServerTool(Name = "ci_add", Destructive = false)]
     [Description("Add a CI pipeline for the git provider (auto-detected from the remote when 'auto').")]

@@ -59,6 +59,9 @@ internal static class ActionV2Generator
         config.Entities[entity] = state;
         ConfigManager.Save(config.SolutionPath, config);
 
+        if (config.McpEnabled)
+            McpV2Generator.AddActionTool(config, entity, actionName, isQuery);
+
         ToolHost.Success($"Action {actionName} for {entity} generated ({writer.Created.Count} files).");
         return true;
     }

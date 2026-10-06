@@ -106,8 +106,8 @@ public sealed class V2GenerationTests : IDisposable
         var settings = Read("src/Acme.Api/appsettings.json");
         Assert.DoesNotContain("ConnectionString", settings);
         Assert.Contains("DATABASE_CONNECTION_STRING", Read("src/Acme.Api/.env.example"));
-        Assert.Contains("AddEnvironmentVariables", Read("src/Acme.Api/Configuration/AppConfigurationExtensions.cs"));
-        Assert.Contains("EnvFile.Read", Read("src/Acme.Api/Configuration/AppConfigurationExtensions.cs"));
+        Assert.Contains("AddEnvironmentVariables", Read("src/Acme.Infrastructure/Configuration/AppConfigurationExtensions.cs"));
+        Assert.Contains("EnvFile.Read", Read("src/Acme.Infrastructure/Configuration/AppConfigurationExtensions.cs"));
         Assert.Contains(".env", Read(".gitignore"));
     }
 

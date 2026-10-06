@@ -100,6 +100,9 @@ public static class SolutionV2Generator
         if (ci is not null)
             OpsGenerator.AddCi(config, ci);
 
+        if (ops.Mcp)
+            McpV2Generator.Add(config);
+
         if (gitInstalled && gitInitialized)
         {
             Run("git add .");
@@ -130,6 +133,7 @@ public static class SolutionV2Generator
             ["AspNetVersion"] = PackageCatalog.AspNet(major),
             ["ExtDependencyInjectionVersion"] = PackageCatalog.ExtDependencyInjection(major),
             ["ExtOptionsConfigurationVersion"] = PackageCatalog.ExtOptionsConfiguration(major),
+            ["ExtConfigurationJsonVersion"] = PackageCatalog.ExtConfigurationJson(major),
             ["ExtHostingAbstractionsVersion"] = PackageCatalog.ExtHostingAbstractions(major),
             // Infrastructure tests run against in-memory SQLite; avoid a duplicate entry when SQLite is the app's own provider.
             ["TestSqlitePackageLine"] = provider == DatabaseProviders.Sqlite

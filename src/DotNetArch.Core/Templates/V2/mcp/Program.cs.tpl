@@ -1,24 +1,23 @@
-using {{App}}.Api.Configuration;
 using {{App}}.Application;
-using {{App}}.Infrastructure.Configuration;
 using {{App}}.Infrastructure;
+using {{App}}.Infrastructure.Configuration;
+using {{App}}.Mcp.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// One configuration-load step: appsettings (non-sensitive) + .env file + environment (secrets / run-time values).
+// Same configuration-load step as the Api: appsettings (non-sensitive) + .env + environment (secrets).
 builder.Configuration.AddAppConfiguration(builder.Environment.ContentRootPath, builder.Environment.EnvironmentName, args);
 
-// Each layer registers its own dependencies; the composition root only calls them.
+// Each layer registers its own dependencies; the MCP host adds only what is specific to MCP.
 builder.Services
     .AddApplication()
     .AddInfrastructure(builder.Configuration)
-    .AddApi(builder.Configuration)
-    .AddKits(builder.Configuration);
+    .AddMcpHost(builder.Configuration);
 
 var app = builder.Build();
 
 await app.Services.InitializeInfrastructureAsync();
-app.UseApi();
+app.UseMcpHost();
 
 await app.RunAsync();
 

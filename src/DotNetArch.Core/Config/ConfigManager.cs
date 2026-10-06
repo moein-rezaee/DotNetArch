@@ -36,6 +36,8 @@ public static class ConfigManager
                 config.TargetFramework = value;
             else if (key.Equals("layout", StringComparison.OrdinalIgnoreCase))
                 config.Layout = value;
+            else if (key.Equals("mcp", StringComparison.OrdinalIgnoreCase))
+                config.McpEnabled = value.Equals("true", StringComparison.OrdinalIgnoreCase);
             else if (key.Equals("kit.prefix", StringComparison.OrdinalIgnoreCase))
                 config.KitPrefix = value;
             else if (key.StartsWith("kit.", StringComparison.OrdinalIgnoreCase))
@@ -105,6 +107,8 @@ public static class ConfigManager
             content += $"nuget.source: {config.NuGetSource}{nl}";
         if (!string.IsNullOrWhiteSpace(config.NuGetSourceName))
             content += $"nuget.sourceName: {config.NuGetSourceName}{nl}";
+        if (config.McpEnabled)
+            content += $"mcp: true{nl}";
         if (!string.IsNullOrWhiteSpace(config.KitPrefix))
             content += $"kit.prefix: {config.KitPrefix}{nl}";
         foreach (var kit in config.Kits)

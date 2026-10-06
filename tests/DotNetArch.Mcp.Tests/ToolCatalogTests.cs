@@ -20,7 +20,7 @@ public class ToolCatalogTests
         Assert.Equal(
             new[]
             {
-                "add_kit", "ci_add", "describe_config", "docker_add", "git_setup", "list_entities", "new_action", "new_constant",
+                "add_kit", "add_mcp", "ci_add", "describe_config", "docker_add", "git_setup", "list_entities", "new_action", "new_constant",
                 "new_crud", "new_enum", "new_event", "new_kit", "new_service", "new_solution"
             },
             Tools.Select(entry => entry.Tool.Name!).Order(StringComparer.Ordinal).ToArray());

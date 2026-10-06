@@ -21,12 +21,16 @@
   <ItemGroup Label="Microsoft.Extensions">
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="{{ExtDependencyInjectionVersion}}" />
     <PackageVersion Include="Microsoft.Extensions.Configuration" Version="{{ExtOptionsConfigurationVersion}}" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.CommandLine" Version="{{ExtOptionsConfigurationVersion}}" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="{{ExtOptionsConfigurationVersion}}" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="{{ExtConfigurationJsonVersion}}" />
     <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="{{ExtOptionsConfigurationVersion}}" />
     <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="{{ExtHostingAbstractionsVersion}}" />
   </ItemGroup>
 
   <ItemGroup Label="Api">
     <PackageVersion Include="Swashbuckle.AspNetCore" Version="{{SwashbuckleVersion}}" />
+    <PackageVersion Include="ModelContextProtocol.AspNetCore" Version="2.2.0" />
   </ItemGroup>
 
   <ItemGroup Label="Tests">

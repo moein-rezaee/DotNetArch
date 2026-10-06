@@ -65,6 +65,9 @@ internal static class CrudV2Generator
         else
             ToolHost.Success($"Generated {writer.Created.Count} files for {entity} ({writer.Skipped.Count} already existed).");
 
+        if (config.McpEnabled)
+            McpV2Generator.AddEntityTools(config, entity);
+
         MigrationService.AddMigration(config, $"Auto_{entity}");
 
         if (!config.Entities.TryGetValue(entity, out var state))

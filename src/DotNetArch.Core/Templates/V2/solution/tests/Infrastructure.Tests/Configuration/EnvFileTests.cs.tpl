@@ -1,6 +1,6 @@
-using {{App}}.Api.Configuration;
+using {{App}}.Infrastructure.Configuration;
 
-namespace {{App}}.Api.Tests.Configuration;
+namespace {{App}}.Infrastructure.Tests.Configuration;
 
 public sealed class EnvFileTests : IDisposable
 {

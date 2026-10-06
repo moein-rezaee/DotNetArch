@@ -1,4 +1,4 @@
-namespace {{App}}.Api.Configuration;
+namespace {{App}}.Infrastructure.Configuration;
 
 /// <summary>
 /// Minimal <c>.env</c> reader: <c>KEY=value</c> lines, <c>#</c> comments, optional quotes. <c>__</c> in a key means a

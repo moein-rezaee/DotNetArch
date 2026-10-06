@@ -3,7 +3,7 @@
 Persian mirror: `ROADMAP.fa.md`. Legend: `[ ]` todo, `[x]` done (note commit). Requirement IDs refer to `docs/specs/requirements.md`.
 
 ## Resume point
-**Current phase:** phases 0-6 done (open: 1.9b, 2.9, 4.6, 5.4, 6.6). **Next item:** Phase 7 (MCP). Branch: `claude/exciting-fermi-b41fue`.
+**Current phase:** phases 0-7 done (open: 1.9b, 2.9, 4.6, 5.4, 6.6). **Next item:** Phase 8 (documentation completion). Branch: `claude/exciting-fermi-b41fue`.
 Environment: dotnet SDK 8 available (net9 targets cannot be built here; verify net9 in CI).
 
 ## Phase 0 - Docs, specs, rules, roadmap (R-E1, R-D1..D5)
@@ -74,7 +74,8 @@ Environment: dotnet SDK 8 available (net9 targets cannot be built here; verify n
 
 ## Phase 7 - MCP (R-A13, R-C1, D-01)
 - [x] 7.1 `DotNetArch.Mcp` layer + `dotnet-arch mcp serve` (stdio, official ModelContextProtocol SDK): 14 tools (`new_solution`, `new_crud`, `new_action`, `new_event`, `new_enum`, `new_constant`, `new_service`, `new_kit`, `add_kit`, `ci_add`, `docker_add`, `git_setup`, `list_entities`, `describe_config`); non-interactive host, results list created/modified files + equivalent CLI command, no destructive tools, logging to stderr; verified over the real stdio protocol (initialize, tools/list, create solution + CRUD) and by `DotNetArch.Mcp.Tests` (12 tests)
-- [ ] 7.2 `<App>.Mcp` host scaffolding for generated projects: tools per entity via MediatR, auth, health, Dockerfile, tests (`new solution --mcp`, `add mcp`)
+- [x] 7.2 `<App>.Mcp` host for generated projects (`new solution --mcp`, `add mcp`, MCP tool `add_mcp`): stateless streamable-HTTP MCP server, bearer-token auth (`MCP_AUTH_TOKEN`, constant-time compare), health, Dockerfile + compose override, config via the shared `AddAppConfiguration`; per-entity tools (`product_list|get|create|update|delete`) and per-action tools send the same MediatR requests as the controllers; tests generated (endpoint auth, handshake, tools). Verified live: create/list through MCP over HTTP; 6 generated MCP tests pass
+- [x] 7.3 Config loading moved to Infrastructure (`AddAppConfiguration(IConfigurationBuilder)`) so Api and Mcp share it
 
 ## Phase 8 - Documentation completion (R-D1..D5)
 - [ ] 8.1 README (+fa) rewrite for new features; command reference

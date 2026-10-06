@@ -17,6 +17,7 @@ internal static class Program
         new RemoveMigrationCommand(),
         new NewKitCommand(),
         new AddKitCommand(),
+        new AddMcpCommand(),
         new CiAddCommand(),
         new DockerAddCommand(),
         new GitSetupCommand(),
