@@ -14,7 +14,7 @@ Applies to the whole repository except `samples/` (read-only references; never e
 - Layers: Domain <- Application <- Infrastructure; Api/Mcp are composition roots. No upward references.
 - Ports (interfaces) live in Application (or Domain for pure domain contracts); adapters live in Infrastructure.
 - Each layer registers itself via its own `DependencyInjection` extension and references only its own packages.
-- One entity = one `Features/<Entity>/` folder; Commands, Queries, Actions, Events, Dtos nested inside it, one subfolder per use case.
+- One entity = one `Features/<Plural>/` folder; Commands, Queries, Actions, Events, Dtos nested inside it, one subfolder per use case.
 - CQRS with MediatR 12.x; Unit of Work + Repository; repositories return materialised results through async methods; never expose `IQueryable` from ports.
 - No sync-over-async, no `Console.WriteLine` for diagnostics, no hard-coded secrets, endpoints or CORS-any defaults.
 - Kits: `Providers.* -> Core -> Abstractions`; Core never references a provider; services see Abstractions only (Application) and Core+Providers only in the composition root.

@@ -18,6 +18,16 @@ public static class SolutionTooling
 
     public static bool EnsureEfTool(string? workingDir = null)
     {
+        // Solutions with a local tool manifest (layout v2) pin dotnet-ef themselves: just restore it.
+        if (!string.IsNullOrWhiteSpace(workingDir) && File.Exists(Path.Combine(workingDir, ".config", "dotnet-tools.json")))
+        {
+            if (ToolHost.RunCommand("dotnet tool restore", workingDir))
+                return ToolHost.RunCommand("dotnet ef --version", workingDir, print: false);
+
+            ToolHost.Error("Failed to restore local tools (dotnet-ef). Run 'dotnet tool restore' in the solution directory.");
+            return false;
+        }
+
         if (ToolHost.RunCommand("dotnet ef --version", workingDir, print: false))
             return true;
 

@@ -14,6 +14,10 @@ public static class Naming
         return name + "s";
     }
 
+    /// <summary>PascalCase to kebab-case (<c>OrderItems</c> becomes <c>order-items</c>), used for routes.</summary>
+    public static string ToKebabCase(string name) =>
+        System.Text.RegularExpressions.Regex.Replace(name, "(?<!^)([A-Z])", "-$1").ToLowerInvariant();
+
     static bool IsVowel(char c) => "aeiou".IndexOf(c) >= 0;
 }
 

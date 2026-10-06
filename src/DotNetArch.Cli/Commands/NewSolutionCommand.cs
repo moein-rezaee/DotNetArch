@@ -12,6 +12,8 @@ internal sealed class NewSolutionCommand : ICommand
         var startup = parsed.Get("startup");
         var style = parsed.Get("style");
         var noDatabase = parsed.Has("no-database");
+        var layout = parsed.Get("layout") ?? SolutionConfig.V2Layout;
+        var provider = parsed.Get("database");
 
         if (string.IsNullOrWhiteSpace(solutionName))
             solutionName = ToolHost.Ask("Enter solution name");
@@ -36,7 +38,7 @@ internal sealed class NewSolutionCommand : ICommand
         if (string.IsNullOrWhiteSpace(style))
             style = "controller";
 
-        SolutionGenerator.Generate(new SolutionRequest(solutionName, outputPath!, startup!, style!, noDatabase ? "None" : null));
+        SolutionGenerator.Generate(new SolutionRequest(solutionName, outputPath!, startup!, style!, noDatabase ? "None" : provider, layout));
         return 0;
     }
 }

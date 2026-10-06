@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using DotNetArch.Core.Config;
 using DotNetArch.Core.Hosting;
 using DotNetArch.Core.Scaffolding.Solution;
 using Xunit;
@@ -28,7 +29,7 @@ public class GoldenSolutionTests : IDisposable
         Directory.CreateDirectory(_root);
         var output = new BufferedToolOutput();
         using (ToolHost.Use(new HostContext(new NonInteractivePrompter(), output, new DefaultProcessRunner())))
-            SolutionGenerator.Generate(new SolutionRequest("Acme", _root, "Acme.API", "controller", ProviderOverride: "None"));
+            SolutionGenerator.Generate(new SolutionRequest("Acme", _root, "Acme.API", "controller", ProviderOverride: "None", Layout: SolutionConfig.LegacyLayout));
 
         var expected = ReadTree(Path.Combine(AppContext.BaseDirectory, "Golden", "legacy-controller-none"));
         var actual = ReadTree(Path.Combine(_root, "Acme"));

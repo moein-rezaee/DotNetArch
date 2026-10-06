@@ -10,6 +10,12 @@ public static class CrudScaffolder
     public static void Generate(SolutionConfig config, string entityName)
     {
         Identifier.RequireIfPresent(entityName, "entity name");
+        if (config.IsV2 && !string.IsNullOrWhiteSpace(entityName))
+        {
+            V2.CrudV2Generator.Generate(config, entityName);
+            return;
+        }
+
         if (string.IsNullOrWhiteSpace(config.SolutionName) || string.IsNullOrWhiteSpace(entityName))
         {
             ToolHost.Error("Solution and entity names are required.");

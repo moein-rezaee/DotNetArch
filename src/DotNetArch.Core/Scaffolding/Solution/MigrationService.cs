@@ -11,13 +11,19 @@ public static class MigrationService
         && !config.DatabaseProvider.Equals("None", StringComparison.OrdinalIgnoreCase);
 
     private static (string Infra, string Startup) Projects(SolutionConfig config) =>
-        ($"{config.SolutionName}.Infrastructure/{config.SolutionName}.Infrastructure.csproj",
-         $"{config.StartupProject}/{config.StartupProject}.csproj");
+        (config.ProjectFile($"{config.SolutionName}.Infrastructure"), config.ProjectFile(config.StartupProject));
+
+    /// <summary>EF tooling startup project: v2 solutions keep design-time wiring in Infrastructure, so no Design package leaks into the Api.</summary>
+    private static (string Infra, string Startup) EfProjects(SolutionConfig config)
+    {
+        var (infra, startup) = Projects(config);
+        return (infra, config.IsV2 ? infra : startup);
+    }
 
     /// <summary>Build, add an <c>Auto_{entity}_{timestamp}</c> migration and apply it (used after crud/action generation).</summary>
     public static void BuildAddAndApply(SolutionConfig config, string entity)
     {
-        var (infraProj, startProj) = Projects(config);
+        var (infraProj, startProj) = EfProjects(config);
         if (!ToolHost.RunCommand("dotnet build", config.SolutionPath))
         {
             ToolHost.Error("Build failed; skipping migrations.");
@@ -27,6 +33,46 @@ public static class MigrationService
         var migName = $"Auto_{entity}_{DateTime.UtcNow:yyyyMMddHHmmss}";
         if (ToolHost.RunCommand($"dotnet ef migrations add {migName} --project {infraProj} --startup-project {startProj} --output-dir {PathConstants.MigrationsRelativePath}", config.SolutionPath))
             ToolHost.RunCommand($"dotnet ef database update --project {infraProj} --startup-project {startProj}", config.SolutionPath);
+    }
+
+    /// <summary>
+    /// Build and add a <c>{prefix}_{timestamp}</c> migration without touching the database (layout v2: the database is
+    /// updated by <c>Database:MigrateOnStartup</c> or <c>exec</c>, so generation works without a running server).
+    /// </summary>
+    public static void AddMigration(SolutionConfig config, string prefix)
+    {
+        if (!HasMigrations(config))
+            return;
+
+        if (!SolutionTooling.EnsureEfTool(config.SolutionPath))
+        {
+            ToolHost.Error("dotnet-ef is not available; skipping migration.");
+            return;
+        }
+
+        if (!ToolHost.RunCommand("dotnet build", config.SolutionPath))
+        {
+            ToolHost.Error("Build failed; skipping migrations.");
+            return;
+        }
+
+        var (infraProj, startProj) = EfProjects(config);
+        var migName = UniqueMigrationName(config, infraProj, prefix);
+        ToolHost.RunCommand($"dotnet ef migrations add {migName} --project {infraProj} --startup-project {startProj} --output-dir {PathConstants.MigrationsRelativePath} --no-build", config.SolutionPath);
+    }
+
+    /// <summary>EF prepends its own timestamp, so the name only needs to be unique among existing migrations.</summary>
+    private static string UniqueMigrationName(SolutionConfig config, string infraProj, string prefix)
+    {
+        var folder = Path.Combine(config.SolutionPath, Path.GetDirectoryName(infraProj)!, PathConstants.MigrationsRelativePath);
+        var existing = Directory.Exists(folder)
+            ? Directory.EnumerateFiles(folder, "*.cs").Select(Path.GetFileNameWithoutExtension).ToList()
+            : new List<string?>();
+
+        var name = prefix;
+        for (var n = 2; existing.Any(file => file is not null && file.EndsWith("_" + name, StringComparison.Ordinal)); n++)
+            name = $"{prefix}_{n}";
+        return name;
     }
 
     /// <summary>Build, add an <c>Auto_{timestamp}</c> migration when the model changed, and update the database (used by <c>exec</c>).</summary>
@@ -47,7 +93,7 @@ public static class MigrationService
             return;
         }
 
-        var (infraProj, startProj) = Projects(config);
+        var (infraProj, startProj) = EfProjects(config);
         var migName = $"Auto_{DateTime.UtcNow:yyyyMMddHHmmss}";
         var (success, output) = ToolHost.RunCommandCapture($"dotnet ef migrations add {migName} --project {infraProj} --startup-project {startProj} --output-dir {PathConstants.MigrationsRelativePath}", basePath);
         var proceed = true;
@@ -108,7 +154,7 @@ public static class MigrationService
         if (!SolutionTooling.EnsureEfTool(basePath))
             return false;
 
-        var (infraProj, startProj) = Projects(config);
+        var (infraProj, startProj) = EfProjects(config);
         var migrations = ListMigrations(infraProj, startProj, basePath);
         if (migrations.Length == 0)
         {

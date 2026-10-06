@@ -4,7 +4,7 @@ Verification: per-layer tests under `tests/` (D-17) plus `scripts/smoke.sh`, whi
 Nothing is claimed verified unless the script ran; when the SDK is unavailable the item stays unticked in the roadmap.
 
 - AC-1 (R-A1..A8) Generated v2 solution builds; project references match the dependency rule in `architecture.md`; Application has no reference to Infrastructure or Kit Core/Providers; each layer csproj lists only its needed packages.
-- AC-2 (R-A4) `new crud Product` creates `Features/Product/{Commands,Queries,Actions?,Dtos}/<Name>/...`; `new action` adds under `Actions/<Name>/` of the same entity folder.
+- AC-2 (R-A4) `new crud Product` creates `Features/Products/{Commands,Queries,Actions?,Dtos}/<Name>/...`; `new action` adds under `Actions/<Name>/` of the same entity folder.
 - AC-3 (R-A9,A10) Setting a secret only in env and a non-sensitive value only in appsettings both appear in `IConfiguration`; examples contain every key used by options; validate script passes.
 - AC-4 (R-A11,A12) `docker compose build` works for the Api; git repo initialised with initial commit unless `--no-git`.
 - AC-5 (R-A13) Generated `<App>.Mcp` lists one tool per controller action, calls MediatR, and a unit test proves tool == controller result.

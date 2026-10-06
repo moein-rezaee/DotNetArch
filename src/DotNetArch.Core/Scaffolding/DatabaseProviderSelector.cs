@@ -4,6 +4,18 @@ namespace DotNetArch.Core.Scaffolding;
 
 public static class DatabaseProviderSelector
 {
+    /// <summary>Provider choice for v2 solutions: every supported engine is enabled, SQLite is the default.</summary>
+    public static string ChooseV2()
+    {
+        var option = ToolHost.AskOption("Select database provider", new[] { "SQLite", "SQL Server", "PostgreSQL" }, 0);
+        return option switch
+        {
+            "SQL Server" => V2.DatabaseProviders.SqlServer,
+            "PostgreSQL" => V2.DatabaseProviders.Postgres,
+            _ => V2.DatabaseProviders.Sqlite
+        };
+    }
+
     public static string Choose()
     {
         var option = ToolHost.AskOption(

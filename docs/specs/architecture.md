@@ -48,7 +48,7 @@ Dependency rule: `Cli -> Core`, `Mcp -> Core`, `Cli -> Mcp`; Core references nei
 │   ├── <App>.Application/            refs: Domain. packages: MediatR, FluentValidation, Logging/Options abstractions
 │   │   ├── Abstractions/             ports: IUnitOfWork, IRepository<T>, IClock, external ports (Kit abstractions referenced here)
 │   │   ├── Common/                   Behaviors (validation, logging), Pagination, Results
-│   │   ├── Features/<Entity>/        vertical slice for one entity
+│   │   ├── Features/<Plural>/        vertical slice for one entity
 │   │   │   ├── Commands/<Name>/      <Name>Command, <Name>Handler, <Name>Validator
 │   │   │   ├── Queries/<Name>/       <Name>Query, <Name>Handler, <Name>Validator
 │   │   │   ├── Actions/<Name>/       domain actions (state transitions) command + handler
@@ -60,7 +60,7 @@ Dependency rule: `Cli -> Core`, `Mcp -> Core`, `Cli -> Mcp`; Core references nei
 │   │   ├── Services/                 adapters for ports
 │   │   └── DependencyInjection.cs    AddInfrastructure(configuration) (+ Kit Add*())
 │   ├── <App>.Api/                    refs: Application, Infrastructure (composition root). packages: AspNetCore, Swagger, Auth
-│   │   ├── Controllers/<Entity>/<Entity>Controller.cs   (or Endpoints/<Entity>/ for minimal API)
+│   │   ├── Controllers/<Plural>/<Entity>Controller.cs   (or Endpoints/<Entity>/ for minimal API)
 │   │   ├── Configuration/            AddAppConfiguration(), options binding, ServiceCollectionExtensions per concern
 │   │   ├── Program.cs                short: calls extension methods only
 │   │   ├── appsettings.json  appsettings.example.json  .env.example  Dockerfile

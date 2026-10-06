@@ -7,4 +7,12 @@
     <Description>Implementation layer of DotNetArch: scaffolding, configuration, host abstractions.</Description>
   </PropertyGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Templates/**/*.tpl" WithCulture="false" LogicalName="Templates/$([System.String]::Copy('%(RecursiveDir)').Replace('\','/'))%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="DotNetArch.Core.Tests" />
+  </ItemGroup>
+
 </Project>

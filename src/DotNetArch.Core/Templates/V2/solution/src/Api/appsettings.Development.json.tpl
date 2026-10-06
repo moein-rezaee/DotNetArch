@@ -1,0 +1,5 @@
+{
+  "Database": {
+    "MigrateOnStartup": true
+  }
+}

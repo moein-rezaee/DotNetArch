@@ -7,13 +7,23 @@ public sealed record SolutionRequest(
     string OutputPath,
     string StartupProject,
     string ApiStyle,
-    string? ProviderOverride = null);
+    string? ProviderOverride = null,
+    string Layout = SolutionConfig.V2Layout);
 
-/// <summary>Creates a new legacy-layout solution (<c>new solution</c>).</summary>
+/// <summary>Creates a new solution (<c>new solution</c>): layout v2 by default, flat legacy layout on request.</summary>
 public static class SolutionGenerator
 {
     public static void Generate(SolutionRequest request)
     {
+        if (request.Layout.Equals(SolutionConfig.V2Layout, StringComparison.OrdinalIgnoreCase))
+        {
+            V2.SolutionV2Generator.Generate(request);
+            return;
+        }
+
+        if (!request.Layout.Equals(SolutionConfig.LegacyLayout, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException($"Unknown layout '{request.Layout}'. Use '{SolutionConfig.V2Layout}' or '{SolutionConfig.LegacyLayout}'.");
+
         var solutionName = Identifier.RequireSolutionName(request.Name);
         Identifier.RequirePath(request.OutputPath, "output path");
         var startupProject = request.StartupProject;

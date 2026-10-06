@@ -68,7 +68,7 @@ public static class ExecService
 
     private static void RunLocally(SolutionConfig config)
     {
-        var project = $"{config.StartupProject}/{config.StartupProject}.csproj";
+        var project = config.ProjectFile(config.StartupProject);
         ToolHost.Runner.RunInteractive(new ProcessSpec("dotnet", new[] { "run", "--project", project }, config.SolutionPath));
     }
 
