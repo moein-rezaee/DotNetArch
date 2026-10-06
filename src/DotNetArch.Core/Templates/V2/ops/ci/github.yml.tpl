@@ -24,4 +24,4 @@ jobs:
       - run: dotnet build --configuration Release
       - run: dotnet test --configuration Release --no-build --filter "Category!=Integration"
       - run: bash scripts/validate-examples.sh
-{{DockerJob}}
+{{DockerJob}}{{KitsJob}}

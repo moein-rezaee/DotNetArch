@@ -145,8 +145,13 @@ public static class OpsGenerator
         tokens["RegistryHost"] = RegistryHost(config.DockerRegistry);
         tokens["NuGetEnv"] = NuGetEnv(config, family);
         tokens["NuGetExport"] = NuGetExport(config);
-        tokens["DockerJob"] = withDocker
-            ? TemplateRenderer.RenderTemplate($"V2/ops/ci/{family}.docker.yml.tpl", tokens).TrimEnd('\n') + "\n"
+        var withKits = !string.IsNullOrWhiteSpace(config.NuGetSource);
+        string Snippet(string name) => TemplateRenderer.RenderTemplate($"V2/ops/ci/{family}.{name}.yml.tpl", tokens).TrimEnd('\n') + "\n";
+
+        tokens["DockerJob"] = withDocker ? Snippet("docker") : string.Empty;
+        tokens["KitsJob"] = withKits ? Snippet("kits") : string.Empty;
+        tokens["MainBranchSteps"] = family == GitHosts.Bitbucket && (withDocker || withKits)
+            ? "  branches:\n    main:\n      - step: *build-test\n" + (withDocker ? Snippet("docker") : string.Empty) + (withKits ? Snippet("kits") : string.Empty)
             : string.Empty;
 
         var output = provider switch
@@ -205,6 +210,8 @@ public static class OpsGenerator
             ["NuGetEnv"] = string.Empty,
             ["NuGetExport"] = string.Empty,
             ["DockerJob"] = string.Empty,
+            ["KitsJob"] = string.Empty,
+            ["MainBranchSteps"] = string.Empty,
         };
     }
 

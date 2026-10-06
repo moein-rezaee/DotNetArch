@@ -1,6 +1,3 @@
-  branches:
-    main:
-      - step: *build-test
       - step:
           name: Build and push image
           services: [docker]

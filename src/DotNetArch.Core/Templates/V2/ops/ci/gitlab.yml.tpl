@@ -18,4 +18,4 @@ test:
   script:
     - dotnet test --configuration Release --filter "Category!=Integration"
     - bash scripts/validate-examples.sh
-{{DockerJob}}
+{{DockerJob}}{{KitsJob}}

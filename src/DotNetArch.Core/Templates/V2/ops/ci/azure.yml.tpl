@@ -21,4 +21,4 @@ steps:
     displayName: Test
   - script: bash scripts/validate-examples.sh
     displayName: Validate configuration examples
-{{DockerJob}}
+{{DockerJob}}{{KitsJob}}

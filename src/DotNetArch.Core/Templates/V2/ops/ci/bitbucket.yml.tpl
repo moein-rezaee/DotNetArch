@@ -13,4 +13,4 @@ definitions:
 pipelines:
   default:
     - step: *build-test
-{{DockerJob}}
+{{MainBranchSteps}}

@@ -3,7 +3,7 @@
 Persian mirror: `ROADMAP.fa.md`. Legend: `[ ]` todo, `[x]` done (note commit). Requirement IDs refer to `docs/specs/requirements.md`.
 
 ## Resume point
-**Current phase:** phases 0-5 done (open: 1.9b, 2.9, 2.10, 4.6, 5.4). **Next item:** Phase 6 (kits, `new service`). Branch: `claude/exciting-fermi-b41fue`.
+**Current phase:** phases 0-6 done (open: 1.9b, 2.9, 4.6, 5.4, 6.6). **Next item:** Phase 7 (MCP). Branch: `claude/exciting-fermi-b41fue`.
 Environment: dotnet SDK 8 available (net9 targets cannot be built here; verify net9 in CI).
 
 ## Phase 0 - Docs, specs, rules, roadmap (R-E1, R-D1..D5)
@@ -43,7 +43,7 @@ Environment: dotnet SDK 8 available (net9 targets cannot be built here; verify n
 - [x] 2.7 `new crud/action/event/enum/constant` emit nested per-entity slices (`Features/<Plural>/{Commands,Queries,Actions,Events,Dtos}`, `Domain/{Events,Enums,Constants}`)
 - [x] 2.8 Verified: generated solutions (SQLite controller, Postgres fast, SqlServer dotted name) build warning-free in Release; SQLite API served create/validate/list/update/delete/404 end to end; 43 unit tests cover structure and rules
 - [ ] 2.9 net9 target verification (no SDK 9 in this environment; versions in `PackageCatalog` are unverified for net9)
-- [ ] 2.10 `new service` for v2 is blocked with a message until phase 6
+- [x] 2.10 `new service` for v2 (done in phase 6)
 
 ## Phase 3 - Configuration (R-A9, A10, D-09)
 - [x] 3.1 `AddAppConfiguration()` (appsettings -> appsettings.{Env} -> .env -> .env.{env} -> environment -> command line; one step before options binding)
@@ -65,11 +65,12 @@ Environment: dotnet SDK 8 available (net9 targets cannot be built here; verify n
 - [ ] 5.4 `testspec.yaml` generation for generated projects (phase 8 templates)
 
 ## Phase 6 - Kits (R-B1..B8, D-05, D-08, D-11, D-14)
-- [ ] 6.1 Kit scaffolder (Abstractions, Core, Providers) with docs/specs/AGENTS per kit
-- [ ] 6.2 Built-in kit recipes: MediaStorage (Minio, RustFs), Cache (Redis, InMemory), MessageBroker (RabbitMq)
-- [ ] 6.3 `new service`: ask business-logic question; internal unchanged, external -> kit
-- [ ] 6.4 `add kit` wiring (Abstractions->Application, Core+Providers->composition root, config keys, examples)
-- [ ] 6.5 Kit CI jobs + pack/push to personal NuGet registry, per-kit versioning
+- [x] 6.1 Kit generator: `kits/<Area>/` with Abstractions, Core, one package per provider, own `Directory.Build.props` / `Directory.Packages.props` / `.sln`, `kit.json` metadata, README (+fa), AGENTS.md, specs (+fa), `scripts/pack.sh`; optional tests (`--with-tests`); no private package dependency (D-11)
+- [x] 6.2 Built-in recipes verified by building (Release, warning-free) and running their tests: Cache (InMemory, Redis; 15 tests), MessageBroker (RabbitMq; 12 tests), MediaStorage (Minio, RustFs, ported from the sample; 16 tests). Custom areas get a generic skeleton. Redis/RabbitMQ/MinIO/RustFS were NOT verified against live servers
+- [x] 6.3 `new service`: asks "Does this service contain business logic?" - yes: Application service (feature or common folder, DI registered via marker); no: kit generation + wiring. Flags for scripts/agents: `--logic --name --entity --lifetime` / `--area --providers --with-tests`. Legacy layout keeps the old flow
+- [x] 6.4 `new kit` / `add kit`: Application references Abstractions only; Api composition root references Core + providers and registers them (`KitRegistrations`); appsettings(+example), `.env.example` and `ConfigurationContract` extended; idempotent; kit projects added to the solution file
+- [x] 6.5 Kits in CI: `scripts/pack-kits.sh` + a `kits` job (all CI providers) pushing to the configured NuGet feed when `--nuget-source` is set; each kit has its own version and CI-friendly `scripts/pack.sh` (build, test, pack, push)
+- [ ] 6.6 Live verification of provider kits against real servers (Redis, RabbitMQ, MinIO, RustFS) and of `docker build` with kits in the context
 
 ## Phase 7 - MCP (R-A13, R-C1, D-01)
 - [ ] 7.1 `mcp serve` stdio server + tools (contracts.md)

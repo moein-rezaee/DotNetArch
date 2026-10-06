@@ -16,7 +16,7 @@ public static class ServiceScaffolder
     {
         if (config.IsV2)
         {
-            ToolHost.Error("'new service' is not available for layout v2 yet.", "It is being replaced by kit generation (roadmap phase 6).");
+            V2.ServiceV2Generator.Run(config);
             return;
         }
 
