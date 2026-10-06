@@ -1,0 +1,7 @@
+solution: Acme
+path: /tmp/claude-0/-home-user-DotNetArch/36f1a7ab-1902-5c5f-a9d9-43a4e40d4d81/scratchpad/base/Acme
+startup: Acme.API
+style: controller
+port: 5196
+framework: net8.0
+database: None

@@ -1,0 +1,129 @@
+using System;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using DotNetArch.Core.Scaffolding;
+
+namespace DotNetArch.Core.Scaffolding.Entities;
+
+public static class EventScaffolder
+{
+    public static bool EntityExists(SolutionConfig config, string entity)
+    {
+        var solution = config.SolutionName ?? string.Empty;
+        var plural = Naming.Pluralize(entity);
+        var basePath = string.IsNullOrWhiteSpace(config.SolutionPath) ? Directory.GetCurrentDirectory() : config.SolutionPath;
+        var featureDir = Path.Combine(basePath, $"{solution}.Application", "Features", plural);
+        return Directory.Exists(featureDir);
+    }
+
+    public static string[] ListEvents(SolutionConfig config, string entity)
+    {
+        var solution = config.SolutionName ?? string.Empty;
+        var plural = Naming.Pluralize(entity);
+        var basePath = string.IsNullOrWhiteSpace(config.SolutionPath) ? Directory.GetCurrentDirectory() : config.SolutionPath;
+        var eventsDir = Path.Combine(basePath, $"{solution}.Application", "Features", plural, "Events");
+        if (!Directory.Exists(eventsDir))
+            return Array.Empty<string>();
+        return Directory.GetFiles(eventsDir, $"{entity}*Event.cs")
+            .Select(Path.GetFileNameWithoutExtension)
+            .Where(n => !string.IsNullOrEmpty(n) && n!.StartsWith(entity) && n.EndsWith("Event"))
+            .Select(n => n!.Substring(entity.Length, n.Length - entity.Length - "Event".Length))
+            .ToArray();
+    }
+
+    public static bool GenerateEvent(SolutionConfig config, string entity, string eventName)
+    {
+        if (string.IsNullOrWhiteSpace(config.SolutionName) || string.IsNullOrWhiteSpace(entity) || string.IsNullOrWhiteSpace(eventName))
+        {
+            ToolHost.Error("Solution, entity and event names are required.");
+            return false;
+        }
+        eventName = Upper(eventName);
+        var solution = config.SolutionName ?? string.Empty;
+        var plural = Naming.Pluralize(entity);
+        var basePath = string.IsNullOrWhiteSpace(config.SolutionPath) ? Directory.GetCurrentDirectory() : config.SolutionPath;
+        var appDir = Path.Combine(basePath, $"{solution}.Application");
+        var featureDir = Path.Combine(appDir, "Features", plural);
+        if (!Directory.Exists(featureDir))
+            return false;
+        var eventsDir = Path.Combine(featureDir, "Events");
+        Directory.CreateDirectory(eventsDir);
+        var eventClass = $"{entity}{eventName}Event";
+        var file = Path.Combine(eventsDir, eventClass + ".cs");
+        if (File.Exists(file))
+        {
+            ToolHost.Error($"Event '{eventName}' already exists for entity '{entity}'.");
+            return false;
+        }
+
+        var content = $@"using MediatR;
+using {solution}.Core.Features.{plural}.Entities;
+
+namespace {solution}.Application.Features.{plural}.Events;
+
+public class {eventClass} : INotification
+{{
+    public {entity} {entity} {{ get; }}
+    public {eventClass}({entity} {LowerFirst(entity)}) => {entity} = {LowerFirst(entity)};
+}}";
+        File.WriteAllText(file, content);
+        return true;
+    }
+
+    public static bool AddSubscriber(SolutionConfig config, string eventEntity, string eventName, string subscriberEntity)
+    {
+        var solution = config.SolutionName ?? string.Empty;
+        var subscriberPlural = Naming.Pluralize(subscriberEntity);
+        var basePath2 = string.IsNullOrWhiteSpace(config.SolutionPath) ? Directory.GetCurrentDirectory() : config.SolutionPath;
+        var subFeatureDir = Path.Combine(basePath2, $"{solution}.Application", "Features", subscriberPlural);
+        if (!Directory.Exists(subFeatureDir))
+        {
+            ToolHost.Error($"Subscriber entity '{subscriberEntity}' does not exist.");
+            return false;
+        }
+
+        var handlersDir = Path.Combine(subFeatureDir, "EventHandlers");
+        Directory.CreateDirectory(handlersDir);
+        eventName = Upper(eventName);
+        var handlerClass = $"{eventEntity}{eventName}EventHandler";
+        var file = Path.Combine(handlersDir, handlerClass + ".cs");
+
+        var eventPlural = Naming.Pluralize(eventEntity);
+        var eventsDir = Path.Combine(basePath2, $"{solution}.Application", "Features", eventPlural, "Events");
+        var eventFile = Path.Combine(eventsDir, $"{eventEntity}{eventName}Event.cs");
+        if (!File.Exists(eventFile))
+        {
+            ToolHost.Error($"Event '{eventName}' for entity '{eventEntity}' does not exist.");
+            return false;
+        }
+
+        if (File.Exists(file))
+        {
+            ToolHost.Error($"Subscriber '{subscriberEntity}' already exists for {eventEntity}{eventName}Event.");
+            return false;
+        }
+
+        var content = $@"using System.Threading;
+using System.Threading.Tasks;
+using MediatR;
+using {solution}.Application.Features.{eventPlural}.Events;
+
+namespace {solution}.Application.Features.{subscriberPlural}.EventHandlers;
+
+public class {handlerClass} : INotificationHandler<{eventEntity}{eventName}Event>
+{{
+    public Task Handle({eventEntity}{eventName}Event notification, CancellationToken cancellationToken)
+    {{
+        // TODO: Add handling logic
+        return Task.CompletedTask;
+    }}
+}}";
+        File.WriteAllText(file, content);
+        return true;
+    }
+
+    static string LowerFirst(string text) => string.IsNullOrEmpty(text) ? text : char.ToLower(text[0]) + text.Substring(1);
+    static string Upper(string text) => string.IsNullOrEmpty(text) ? text : char.ToUpper(text[0]) + text.Substring(1);
+}

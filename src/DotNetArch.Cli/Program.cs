@@ -1,0 +1,45 @@
+using DotNetArch.Cli.Commands;
+using DotNetArch.Cli.Console;
+
+namespace DotNetArch.Cli;
+
+internal static class Program
+{
+    private static readonly ICommand[] Commands =
+    {
+        new NewCrudCommand(),
+        new NewEventCommand(),
+        new NewEnumCommand(),
+        new NewConstantCommand(),
+        new NewActionCommand(),
+        new NewServiceCommand(),
+        new ExecCommand(),
+        new RemoveMigrationCommand(),
+        new NewSolutionCommand(),
+        new InteractiveSolutionCommand(), // fallback, must stay last
+    };
+
+    private static int Main(string[] args)
+    {
+        var output = new ConsoleToolOutput();
+        ToolHost.Configure(new HostContext(new ConsolePrompter(output), output, new ConsoleProcessRunner()));
+
+        if (!SolutionTooling.EnsureDotnetSdk())
+            return 2;
+
+        try
+        {
+            return Commands.First(command => command.Matches(args)).Run(args);
+        }
+        catch (MissingInputException ex)
+        {
+            ToolHost.Error(ex.Message);
+            return 1;
+        }
+        catch (ArgumentException ex)
+        {
+            ToolHost.Error(ex.Message);
+            return 1;
+        }
+    }
+}

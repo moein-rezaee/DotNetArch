@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>DotNetArch.Cli</RootNamespace>
+    <AssemblyName>DotNetArch</AssemblyName>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Global tool packaging -->
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>dotnet-arch</ToolCommandName>
+    <PackageId>DotNetArch</PackageId>
+    <Description>A CLI tool for creating Clean Architecture solutions.</Description>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <PackageTags>dotnet;cli;clean-architecture;scaffold;dotnetarch</PackageTags>
+    <PackageIcon>assets/icon.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="../../assets/icon.png" Pack="true" PackagePath="assets/" />
+    <None Include="../../README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../DotNetArch.Core/DotNetArch.Core.csproj" />
+  </ItemGroup>
+
+</Project>

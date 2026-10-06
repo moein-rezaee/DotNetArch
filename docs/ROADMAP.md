@@ -3,7 +3,7 @@
 Persian mirror: `ROADMAP.fa.md`. Legend: `[ ]` todo, `[x]` done (note commit). Requirement IDs refer to `docs/specs/requirements.md`.
 
 ## Resume point
-**Current phase:** 0 done. **Next item:** Phase 1.1. Branch: `claude/exciting-fermi-b41fue`.
+**Current phase:** 1 (restructure done; remaining 1.8, 1.9b, 1.10, 1.11b, 1.12). **Next item:** 1.8 then 1.10 (tests). Branch: `claude/exciting-fermi-b41fue`.
 Environment: dotnet SDK 8 available (net9 targets cannot be built here; verify net9 in CI).
 
 ## Phase 0 - Docs, specs, rules, roadmap (R-E1, R-D1..D5)
@@ -15,17 +15,19 @@ Environment: dotnet SDK 8 available (net9 targets cannot be built here; verify n
 - [x] 0.6 Fix: `DotNetArch.csproj` compiled `samples/**` (3508 errors); excluded samples/kits/tests
 
 ## Phase 1 - Tool restructure into Cli / Mcp / Core + hardening (R-E4, D-10, D-13, D-17, D-18)
-- [ ] 1.1 Fix spinner crash when console is not a TTY/width 0 (found: `new solution` non-interactive crashes at `ShowSpinner`)
-- [ ] 1.2 Golden baseline: generate `new solution` with the old tool (non-interactive) and store file-tree snapshot for regression comparison
-- [ ] 1.3 Solution skeleton: `src/DotNetArch.{Core,Cli,Mcp}`, `tests/`, `Directory.Build.props`, `Directory.Packages.props`; Cli packs as tool `DotNetArch` / `dotnet-arch`
-- [ ] 1.4 `ToolHost` + `IPrompter`/`IProcessRunner`/`IToolOutput` in Core; Console implementations in Cli; non-interactive prompter
-- [ ] 1.5 Move scaffolders/config/steps into Core (namespaces `DotNetArch.Core.*`), remove `Program.*` coupling
-- [ ] 1.6 Split `Main.cs` into Cli `Commands/*` (parsing only) calling Core operations
-- [ ] 1.7 `ProcessRunner` with argument lists (no `bash -c`/`cmd /c`), env map (fixes Windows `ASPNETCORE_ENVIRONMENT=` prefix)
-- [ ] 1.8 Identifier/path validation (solution, entity, event, area, provider) in Core.Validation
-- [ ] 1.9 Shared `MigrationRunner` (dedupe Crud/Action); track migration of static scaffolders to injected instances
+- [x] 1.1 Fix spinner crash when console is not a TTY/width 0 (found: `new solution` non-interactive crashes at `ShowSpinner`)
+- [x] 1.2 Golden baseline of the old tool stored in `tests/DotNetArch.Core.Tests/Golden/legacy-controller-none` (random ports/GUIDs must be normalised); new Cli output verified identical (24 files, only random ports differ)
+- [x] 1.3 Skeleton for `src/DotNetArch.{Core,Cli}`, `Directory.Build.props`, new `DotNetArch.sln`; Cli packs as tool `DotNetArch` / `dotnet-arch`. (Mcp project is created in 7.1, test projects in 1.10, `Directory.Packages.props` when the first package is added)
+- [x] 1.4 `ToolHost` + `IPrompter`/`IProcessRunner`/`IToolOutput` in Core; Console implementations in Cli; non-interactive prompter
+- [x] 1.5 Move scaffolders/config/steps into Core (namespaces `DotNetArch.Core.*`), remove `Program.*` coupling
+- [x] 1.6 Split `Main.cs` into Cli `Commands/*` (parsing only) calling Core operations
+- [x] 1.7 `ProcessRunner` with argument lists (no `bash -c`/`cmd /c`), env map (fixes Windows `ASPNETCORE_ENVIRONMENT=` prefix)
+- [ ] 1.8 Identifier/path validation in Core.Validation: `Identifier` exists and the Cli validates solution names; still to do: enforce inside Core entry points (so MCP is covered), validate output paths, event/enum/constant/action names
+- [x] 1.9 Shared `MigrationService` (dedupe Crud/Action/exec/remove; no more `SetCurrentDirectory`)
+- [ ] 1.9b Migrate static scaffolders (`CrudScaffolder` ...) to injected instances (D-18 follow-up)
 - [ ] 1.10 `DotNetArch.Core.Tests` (validation, config round-trip, golden tree) and `DotNetArch.Cli.Tests` (arg parsing)
-- [ ] 1.11 Remove `.DS_Store`, extend `.gitignore`, add `scripts/smoke.sh`
+- [x] 1.11a `.DS_Store` removed from the repo
+- [ ] 1.11b extend `.gitignore` (.DS_Store, rider/vscode), add `scripts/smoke.sh`
 - [ ] 1.12 Update README build/run instructions for the new layout
 
 ## Phase 2 - Microservice core template v2 (R-A1..A8, D-10, D-12)

@@ -84,3 +84,8 @@ $RECYCLE.BIN/
 # JetBrains Rider
 .idea/
 *.sln.iml
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/

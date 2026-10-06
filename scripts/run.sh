@@ -8,5 +8,5 @@ if [[ "$major" -ge 9 ]]; then
   tfm="net9.0"
 fi
 
-exec dotnet run -f "$tfm" -- "$@"
+exec dotnet run --project src/DotNetArch.Cli -f "$tfm" -- "$@"
 

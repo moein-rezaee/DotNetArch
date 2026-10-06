@@ -1,0 +1,26 @@
+<Project>
+
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <Version>1.2.0</Version>
+    <Authors>Moein Rezaee</Authors>
+    <RepositoryUrl>https://github.com/moein-rezaee/DotNetArch.git</RepositoryUrl>
+  </PropertyGroup>
+
+  <!-- Anything but Release: single framework for quick iteration (Configuration may be unset at this point) -->
+  <PropertyGroup Condition="'$(Configuration)' != 'Release'">
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+
+  <!-- Release: multi-targeted so the tool package works on both SDK lines -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
+  </PropertyGroup>
+
+  <!-- Samples and kits are read-only references; they must never compile into the tool. -->
+  <ItemGroup>
+    <Compile Remove="$(MSBuildThisFileDirectory)samples/**;$(MSBuildThisFileDirectory)kits/**" />
+  </ItemGroup>
+
+</Project>

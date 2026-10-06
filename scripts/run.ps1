@@ -8,5 +8,5 @@ if (-not $sdkVersion) { throw "dotnet SDK not found" }
 $major = [int]($sdkVersion.Split('.')[0])
 $tfm = if ($major -ge 9) { 'net9.0' } else { 'net8.0' }
 
-dotnet run -f $tfm -- $ArgsPassThru
+dotnet run --project src/DotNetArch.Cli -f $tfm -- $ArgsPassThru
 

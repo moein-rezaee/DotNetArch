@@ -1,0 +1,15 @@
+# env-hash:E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: acme.api:0.0.0
+    container_name: acme-api
+    ports:
+      - "5196:5196"
+    environment:
+      - ASPNETCORE_URLS=http://+:5196
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-development}
+    env_file:
+      - Acme.API/config/env/.env.${ASPNETCORE_ENVIRONMENT:-development}

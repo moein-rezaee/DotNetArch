@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>DotNetArch.Core</RootNamespace>
+    <AssemblyName>DotNetArch.Core</AssemblyName>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Description>Implementation layer of DotNetArch: scaffolding, configuration, host abstractions.</Description>
+  </PropertyGroup>
+
+</Project>
