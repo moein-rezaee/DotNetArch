@@ -207,4 +207,46 @@ public sealed class V2GenerationTests : IDisposable
         Assert.DoesNotMatch(@"IQueryable<\w", Read("src/Acme.Application/Abstractions/Persistence/IRepository.cs"));
         Assert.DoesNotContain("{ get; set; }", Read("src/Acme.Domain/Entities/Product.cs"));
     }
+
+    [Fact]
+    public void Every_layer_gets_a_test_project_and_each_crud_slice_gets_tests()
+    {
+        var config = Generate();
+        using var _ = Host();
+        CrudScaffolder.Generate(config, "Product");
+
+        foreach (var layer in new[] { "Domain", "Application", "Infrastructure", "Api" })
+            Assert.True(File.Exists(Path_($"tests/Acme.{layer}.Tests/Acme.{layer}.Tests.csproj")), $"missing {layer} tests");
+
+        Assert.True(File.Exists(Path_("tests/Acme.Domain.Tests/Entities/ProductTests.cs")));
+        Assert.True(File.Exists(Path_("tests/Acme.Application.Tests/Features/Products/ProductHandlerTests.cs")));
+        Assert.True(File.Exists(Path_("tests/Acme.Infrastructure.Tests/Persistence/ProductPersistenceTests.cs")));
+        Assert.True(File.Exists(Path_("tests/Acme.Api.Tests/Features/ProductsApiTests.cs")));
+        Assert.Contains("[Trait(\"Category\", \"Configuration\")]", Read("tests/Acme.Api.Tests/Configuration/ConfigurationExamplesTests.cs"));
+        Assert.Contains("tests/Acme.Domain.Tests", string.Join("\n", _runner.Calls.Select(call => string.Join(' ', call.Arguments))));
+    }
+
+    [Fact]
+    public void API_tests_that_need_a_real_database_are_only_generated_for_sqlite()
+    {
+        var config = Generate("Postgres");
+        using var _ = Host();
+        CrudScaffolder.Generate(config, "Product");
+
+        Assert.True(File.Exists(Path_("tests/Acme.Application.Tests/Features/Products/ProductHandlerTests.cs")));
+        Assert.False(File.Exists(Path_("tests/Acme.Api.Tests/Features/ProductsApiTests.cs")));
+    }
+
+    [Fact]
+    public void No_tests_flag_skips_test_projects_and_slice_tests()
+    {
+        using (var _ = Host())
+            SolutionGenerator.Generate(new SolutionRequest("Acme", _root, "Acme.Api", "controller", "SQLite",
+                Ops: new DotNetArch.Core.Scaffolding.Ops.OpsOptions(Ci: "none", NoGit: true, NoDocker: true, NoTests: true)));
+        var config = ConfigManager.Load(Path_(""))!;
+        using var __ = Host();
+        CrudScaffolder.Generate(config, "Product");
+
+        Assert.False(Directory.Exists(Path_("tests")));
+    }
 }

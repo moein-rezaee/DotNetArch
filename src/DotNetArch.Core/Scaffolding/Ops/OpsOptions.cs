@@ -10,4 +10,5 @@ public sealed record OpsOptions(
     string? NuGetSource = null,
     string? NuGetSourceName = null,
     bool NoDocker = false,
-    bool NoGit = false);
+    bool NoGit = false,
+    bool NoTests = false);

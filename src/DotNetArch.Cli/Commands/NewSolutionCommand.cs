@@ -23,7 +23,8 @@ internal sealed class NewSolutionCommand : ICommand
             NuGetSource: parsed.Get("nuget-source"),
             NuGetSourceName: parsed.Get("nuget-source-name"),
             NoDocker: parsed.Has("no-docker"),
-            NoGit: parsed.Has("no-git"));
+            NoGit: parsed.Has("no-git"),
+            NoTests: parsed.Has("no-tests"));
 
         if (string.IsNullOrWhiteSpace(solutionName))
             solutionName = ToolHost.Ask("Enter solution name");

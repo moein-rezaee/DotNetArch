@@ -3,7 +3,7 @@
 Persian mirror: `ROADMAP.fa.md`. Legend: `[ ]` todo, `[x]` done (note commit). Requirement IDs refer to `docs/specs/requirements.md`.
 
 ## Resume point
-**Current phase:** 2 done except 2.9/2.10 (see notes). **Next item:** Phase 3 (configuration) then 4. Also open: 1.9b (static scaffolders to instances). Branch: `claude/exciting-fermi-b41fue`.
+**Current phase:** phases 0-5 done (open: 1.9b, 2.9, 2.10, 4.6, 5.4). **Next item:** Phase 6 (kits, `new service`). Branch: `claude/exciting-fermi-b41fue`.
 Environment: dotnet SDK 8 available (net9 targets cannot be built here; verify net9 in CI).
 
 ## Phase 0 - Docs, specs, rules, roadmap (R-E1, R-D1..D5)
@@ -59,8 +59,10 @@ Environment: dotnet SDK 8 available (net9 targets cannot be built here; verify n
 - [ ] 4.6 Real `docker build` / `docker compose up` verification (no Docker daemon in this environment; only config validation done)
 
 ## Phase 5 - Tests in generated projects (R-A14, D-02)
-- [ ] 5.1 Per-layer test projects with fakes/builders
-- [ ] 5.2 CI test job; `testspec.yaml` generation
+- [x] 5.1 Per-layer test projects (`Domain/Application/Infrastructure/Api.Tests`) with fakes (`FakeUnitOfWork`, `FixedTimeProvider`), SQLite test database, `ApiFactory` (WebApplicationFactory); `--no-tests` opt-out; added to the solution file
+- [x] 5.2 Per-entity tests generated with every CRUD slice (domain, handlers + validators, persistence round trip, API CRUD flow for SQLite); configuration tests (`Category=Configuration`) keep `.env.example` / `appsettings.example.json` honest; CI templates run `dotnet test`
+- [x] 5.3 Verified by running the generated suites: SQLite solution 69 tests pass (incl. API integration), Postgres solution 40 tests pass; Release build warning-free
+- [ ] 5.4 `testspec.yaml` generation for generated projects (phase 8 templates)
 
 ## Phase 6 - Kits (R-B1..B8, D-05, D-08, D-11, D-14)
 - [ ] 6.1 Kit scaffolder (Abstractions, Core, Providers) with docs/specs/AGENTS per kit

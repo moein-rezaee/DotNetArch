@@ -12,6 +12,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="{{App}}.Application.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="../{{App}}.Domain/{{App}}.Domain.csproj" />
   </ItemGroup>
 

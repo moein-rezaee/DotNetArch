@@ -42,6 +42,24 @@ internal static class CrudV2Generator
         foreach (var (template, output) in files)
             writer.Write(output, TemplateRenderer.RenderTemplate($"V2/crud/{template}.cs.tpl", tokens));
 
+        // Tests ride along with the slice whenever the solution has test projects (generated unless --no-tests).
+        if (Directory.Exists(Path.Combine(config.SolutionPath, "tests", $"{config.SolutionName}.Domain.Tests")))
+        {
+            var tests = new List<(string Template, string Output)>
+            {
+                ("DomainTests", $"tests/{config.SolutionName}.Domain.Tests/Entities/{entity}Tests.cs"),
+                ("ApplicationTests", $"tests/{config.SolutionName}.Application.Tests/Features/{names.Plural}/{entity}HandlerTests.cs"),
+                ("InfrastructureTests", $"tests/{config.SolutionName}.Infrastructure.Tests/Persistence/{entity}PersistenceTests.cs"),
+            };
+
+            // API tests drive a real database file: only meaningful (and runnable anywhere) with SQLite.
+            if (config.DatabaseProvider.Equals(DatabaseProviders.Sqlite, StringComparison.OrdinalIgnoreCase))
+                tests.Add(("ApiTests", $"tests/{config.SolutionName}.Api.Tests/Features/{names.Plural}ApiTests.cs"));
+
+            foreach (var (template, output) in tests)
+                writer.Write(output, TemplateRenderer.RenderTemplate($"V2/crud-tests/{template}.cs.tpl", tokens));
+        }
+
         if (writer.Created.Count == 0)
             ToolHost.Info($"Nothing to add for {entity}: all files already exist.");
         else

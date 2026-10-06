@@ -8,6 +8,8 @@ public static class SolutionV2Generator
 {
     private const string Layers = "Domain|Application|Infrastructure|Api";
 
+    internal static readonly string[] TestLayers = { "Domain", "Application", "Infrastructure", "Api" };
+
     public static SolutionConfig Generate(SolutionRequest request)
     {
         var app = Identifier.RequireSolutionName(request.Name);
@@ -38,10 +40,16 @@ public static class SolutionV2Generator
 
         var port = StablePort(app);
         var tokens = BuildTokens(app, tfm, major, provider, port);
+        var withTests = !ops.NoTests;
         var writer = new FileWriter(solutionDir);
 
         foreach (var template in TemplateRenderer.List("V2/solution"))
+        {
+            if (!withTests && template.StartsWith("V2/solution/tests/", StringComparison.Ordinal))
+                continue;
+
             writer.Write(OutputPath(template, app), TemplateRenderer.RenderTemplate(template, tokens));
+        }
 
         if (wantReadme)
             writer.Write("README.md", TemplateRenderer.RenderTemplate("V2/docs/README.md.tpl", tokens));
@@ -58,6 +66,11 @@ public static class SolutionV2Generator
         Run($"dotnet new sln -n {app} --force");
         foreach (var layer in Layers.Split('|'))
             Run($"dotnet sln add src/{app}.{layer}/{app}.{layer}.csproj");
+        if (withTests)
+        {
+            foreach (var layer in TestLayers)
+                Run($"dotnet sln add tests/{app}.{layer}.Tests/{app}.{layer}.Tests.csproj");
+        }
 
         var config = new SolutionConfig
         {
@@ -125,6 +138,8 @@ public static class SolutionV2Generator
             ["EfProviderPackageId"] = DatabaseProviders.PackageId(provider),
             ["EfProviderPackageVersion"] = PackageCatalog.EfProviderVersion(provider, major),
             ["UseProviderStatement"] = DatabaseProviders.UseStatement(provider),
+            // SQLite tests get a private file per factory; other engines never connect in the generated API tests (health/error only).
+            ["TestConnectionExpression"] = provider == DatabaseProviders.Sqlite ? "$\"Data Source={_databaseFile}\"" : "\"" + example + "\"",
             ["DesignTimeConnectionString"] = example,
             ["ExampleConnectionString"] = example,
             ["DevConnectionString"] = example,
@@ -136,6 +151,16 @@ public static class SolutionV2Generator
     {
         var relative = template["V2/solution/".Length..];
         relative = relative.EndsWith(".tpl", StringComparison.Ordinal) ? relative[..^4] : relative;
+
+        if (relative.StartsWith("tests/", StringComparison.Ordinal))
+        {
+            var testParts = relative.Split('/');
+            var project = testParts[1]; // e.g. Domain.Tests
+            testParts[1] = $"{app}.{project}";
+            if (testParts.Length == 3 && testParts[2].Equals($"{project}.csproj", StringComparison.Ordinal))
+                testParts[2] = $"{app}.{project}.csproj";
+            return string.Join('/', testParts);
+        }
 
         if (!relative.StartsWith("src/", StringComparison.Ordinal))
             return relative;

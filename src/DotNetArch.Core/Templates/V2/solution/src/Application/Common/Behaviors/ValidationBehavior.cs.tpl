@@ -12,7 +12,7 @@ public sealed class ValidationBehavior<TRequest, TResponse>(IEnumerable<IValidat
     {
         var validatorList = validators.ToList();
         if (validatorList.Count == 0)
-            return await next();
+            return await next(cancellationToken);
 
         var context = new ValidationContext<TRequest>(request);
         var results = await Task.WhenAll(validatorList.Select(validator => validator.ValidateAsync(context, cancellationToken)));
@@ -20,6 +20,6 @@ public sealed class ValidationBehavior<TRequest, TResponse>(IEnumerable<IValidat
         if (failures.Count != 0)
             throw new ValidationException(failures);
 
-        return await next();
+        return await next(cancellationToken);
     }
 }

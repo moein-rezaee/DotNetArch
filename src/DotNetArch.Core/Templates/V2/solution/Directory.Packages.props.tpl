@@ -20,6 +20,7 @@
 
   <ItemGroup Label="Microsoft.Extensions">
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="{{ExtDependencyInjectionVersion}}" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="{{ExtOptionsConfigurationVersion}}" />
     <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="{{ExtOptionsConfigurationVersion}}" />
     <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="{{ExtHostingAbstractionsVersion}}" />
   </ItemGroup>
