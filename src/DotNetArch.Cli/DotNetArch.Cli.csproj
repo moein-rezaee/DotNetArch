@@ -11,6 +11,10 @@
     <PackageId>DotNetArch</PackageId>
     <Description>A CLI tool for creating Clean Architecture solutions.</Description>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageProjectUrl>https://github.com/moein-rezaee/DotNetArch</PackageProjectUrl>
     <PackageTags>dotnet;cli;clean-architecture;scaffold;dotnetarch</PackageTags>
     <PackageIcon>assets/icon.png</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -19,6 +23,7 @@
   <ItemGroup>
     <None Include="../../assets/icon.png" Pack="true" PackagePath="assets/" />
     <None Include="../../README.md" Pack="true" PackagePath="/" />
+    <None Include="../../LICENSE" Pack="true" PackagePath="/" />
   </ItemGroup>
 
   <ItemGroup>

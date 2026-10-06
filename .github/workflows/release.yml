@@ -1,0 +1,26 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+      - run: dotnet test DotNetArch.sln --configuration Release --filter "Category!=Integration"
+      - run: dotnet pack src/DotNetArch.Cli/DotNetArch.Cli.csproj --configuration Release --output artifacts
+      - name: Push to NuGet (source and key come from repository secrets/variables)
+        env:
+          NUGET_SOURCE: ${{ vars.NUGET_SOURCE || 'https://api.nuget.org/v3/index.json' }}
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: dotnet nuget push "artifacts/*.nupkg" --source "$NUGET_SOURCE" --api-key "$NUGET_API_KEY" --skip-duplicate

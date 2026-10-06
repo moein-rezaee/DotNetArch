@@ -3,7 +3,7 @@
 Persian mirror: `ROADMAP.fa.md`. Legend: `[ ]` todo, `[x]` done (note commit). Requirement IDs refer to `docs/specs/requirements.md`.
 
 ## Resume point
-**Current phase:** 1 (restructure done; remaining 1.8, 1.9b, 1.10, 1.11b, 1.12). **Next item:** 1.8 then 1.10 (tests). Branch: `claude/exciting-fermi-b41fue`.
+**Current phase:** 1 almost done (only 1.9b remains: static scaffolders to instances; deferred to Phase 2 because Phase 2 rewrites the generators). **Next item:** Phase 2.1. Branch: `claude/exciting-fermi-b41fue`.
 Environment: dotnet SDK 8 available (net9 targets cannot be built here; verify net9 in CI).
 
 ## Phase 0 - Docs, specs, rules, roadmap (R-E1, R-D1..D5)
@@ -29,7 +29,9 @@ Environment: dotnet SDK 8 available (net9 targets cannot be built here; verify n
 - [x] 1.10b Fix: `WaitForExit()` hung when orphaned MSBuild nodes kept the pipe open; node reuse disabled for `dotnet` children
 - [x] 1.11a `.DS_Store` removed from the repo
 - [x] 1.11b `.gitignore` extended; `scripts/smoke.sh` (build, unit, golden, generate+build) passes
-- [ ] 1.12 Update README build/run instructions for the new layout
+- [x] 1.12 README run instructions updated; `CONTRIBUTING.md`, `SECURITY.md`
+- [x] 1.13 Modern repo hygiene: `.editorconfig`, `.gitattributes`, analyzers + warnings-as-errors in CI/Release, SourceLink, central package management, snupkg symbols, GitHub Actions (`ci.yml` with 3-OS matrix + smoke + pack, `release.yml`), dependabot, PR/issue templates; installed-tool run verified from the packed nupkg
+- [x] 1.14 Old root `Main.cs`, `Logger.cs`, `DotNetArch.csproj`, `runtimeconfig.template.json`, `.DS_Store`, root `Scaffolding/` removed (moved into `src/`)
 
 ## Phase 2 - Microservice core template v2 (R-A1..A8, D-10, D-12)
 - [ ] 2.1 `layout: v2` config + legacy detection

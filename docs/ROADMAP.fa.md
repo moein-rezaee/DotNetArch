@@ -3,7 +3,7 @@
 مرجع اصلی با تیک‌ها: `ROADMAP.md`. این فایل خلاصهٔ هم‌شناسه است و در هر commit با آن همگام می‌شود.
 
 ## نقطهٔ ادامه
-فاز فعلی: ۱ (بازساخت Core/Cli انجام شد؛ مانده: ۱.۸، ۱.۹b، ۱.۱۰، ۱.۱۱b، ۱.۱۲). مورد بعدی: ۱.۸ سپس ۱.۱۰ (تست‌ها). branch: `claude/exciting-fermi-b41fue`.
+فاز ۱ تقریباً تمام شد (فقط ۱.۹b مانده: تبدیل scaffolderهای static به instance؛ به فاز ۲ موکول شد چون فاز ۲ مولدها را بازنویسی می‌کند). مورد بعدی: ۲.۱. تست‌های Core/Cli، smoke، CI گیت‌هاب، editorconfig، SourceLink و بسته‌بندی ابزار انجام و راستی‌آزمایی شد. branch: `claude/exciting-fermi-b41fue`.
 محیط: dotnet SDK 8 نصب شد (SDK 9 با apt در دسترس نیست؛ net9 باید در CI بررسی شود). باگ csproj که `samples/**` را compile می‌کرد رفع شد.
 
 ## فازها

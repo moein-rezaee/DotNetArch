@@ -77,7 +77,7 @@ public static class SolutionTooling
                 if (Version.TryParse(verStr, out var v)) versions.Add(v);
             }
             if (versions.Count == 0) return "net8.0";
-            var major = Math.Max(8, versions.Max().Major);
+            var major = Math.Max(8, versions.Max(v => v.Major));
             return $"net{major}.0";
         }
         catch (InvalidOperationException) { return "net8.0"; }

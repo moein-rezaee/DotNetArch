@@ -143,7 +143,7 @@ DotNetArch is multi-targeted so you can keep several SDKs installed without fric
 - The tool ships for both `net8.0` and `net9.0`. When running it from the repository, use the helper scripts to pick the best match automatically:
   - macOS/Linux: `./scripts/run.sh -- --help`
   - Windows (PowerShell): `pwsh ./scripts/run.ps1 -- --help`
-  - Prefer manual control? Run `dotnet run -f net8.0 -- --help` (or `net9.0`) instead.
+  - Prefer manual control? Run `dotnet run --project src/DotNetArch.Cli -f net8.0 -- --help` (or `net9.0`) instead.
 - Newly generated solutions include a `global.json` with `rollForward` set to `latestMajor`, so your projects transparently adopt the highest installed .NET 8/9 SDK.
 - During scaffolding DotNetArch inspects `dotnet --list-sdks` and selects the highest supported target framework, ensuring the produced projects match your environment.
 
