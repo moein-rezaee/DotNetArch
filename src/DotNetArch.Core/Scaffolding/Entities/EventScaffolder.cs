@@ -35,6 +35,8 @@ public static class EventScaffolder
 
     public static bool GenerateEvent(SolutionConfig config, string entity, string eventName)
     {
+        Identifier.RequireIfPresent(entity, "entity name");
+        Identifier.RequireIfPresent(eventName, "event name");
         if (string.IsNullOrWhiteSpace(config.SolutionName) || string.IsNullOrWhiteSpace(entity) || string.IsNullOrWhiteSpace(eventName))
         {
             ToolHost.Error("Solution, entity and event names are required.");
@@ -74,6 +76,9 @@ public class {eventClass} : INotification
 
     public static bool AddSubscriber(SolutionConfig config, string eventEntity, string eventName, string subscriberEntity)
     {
+        Identifier.RequireIfPresent(eventEntity, "entity name");
+        Identifier.RequireIfPresent(eventName, "event name");
+        Identifier.RequireIfPresent(subscriberEntity, "subscriber entity name");
         var solution = config.SolutionName ?? string.Empty;
         var subscriberPlural = Naming.Pluralize(subscriberEntity);
         var basePath2 = string.IsNullOrWhiteSpace(config.SolutionPath) ? Directory.GetCurrentDirectory() : config.SolutionPath;

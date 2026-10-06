@@ -16,6 +16,8 @@ public static class ConstantScaffolder
 
     public static bool Generate(SolutionConfig config, string? entity, string constantName)
     {
+        Identifier.RequireIfPresent(entity, "entity name");
+        Identifier.RequireIfPresent(constantName, "constant name");
         if (string.IsNullOrWhiteSpace(config.SolutionName) ||
             string.IsNullOrWhiteSpace(constantName))
         {

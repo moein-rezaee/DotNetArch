@@ -15,6 +15,7 @@ public static class SolutionGenerator
     public static void Generate(SolutionRequest request)
     {
         var solutionName = Identifier.RequireSolutionName(request.Name);
+        Identifier.RequirePath(request.OutputPath, "output path");
         var startupProject = request.StartupProject;
         var solutionDir = Path.Combine(request.OutputPath, solutionName);
         Directory.CreateDirectory(solutionDir);

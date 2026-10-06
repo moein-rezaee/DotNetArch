@@ -9,6 +9,7 @@ public static class CrudScaffolder
 {
     public static void Generate(SolutionConfig config, string entityName)
     {
+        Identifier.RequireIfPresent(entityName, "entity name");
         if (string.IsNullOrWhiteSpace(config.SolutionName) || string.IsNullOrWhiteSpace(entityName))
         {
             ToolHost.Error("Solution and entity names are required.");

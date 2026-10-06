@@ -16,6 +16,8 @@ public static class EnumScaffolder
 
     public static bool Generate(SolutionConfig config, string? entity, string enumName)
     {
+        Identifier.RequireIfPresent(entity, "entity name");
+        Identifier.RequireIfPresent(enumName, "enum name");
         if (string.IsNullOrWhiteSpace(config.SolutionName) ||
             string.IsNullOrWhiteSpace(enumName))
         {

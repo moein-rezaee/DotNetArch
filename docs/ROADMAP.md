@@ -22,12 +22,13 @@ Environment: dotnet SDK 8 available (net9 targets cannot be built here; verify n
 - [x] 1.5 Move scaffolders/config/steps into Core (namespaces `DotNetArch.Core.*`), remove `Program.*` coupling
 - [x] 1.6 Split `Main.cs` into Cli `Commands/*` (parsing only) calling Core operations
 - [x] 1.7 `ProcessRunner` with argument lists (no `bash -c`/`cmd /c`), env map (fixes Windows `ASPNETCORE_ENVIRONMENT=` prefix)
-- [ ] 1.8 Identifier/path validation in Core.Validation: `Identifier` exists and the Cli validates solution names; still to do: enforce inside Core entry points (so MCP is covered), validate output paths, event/enum/constant/action names
+- [x] 1.8 Identifier/path validation in Core.Validation, enforced inside Core entry points (solution, entity, event, enum, constant, action names, HTTP method, output path)
 - [x] 1.9 Shared `MigrationService` (dedupe Crud/Action/exec/remove; no more `SetCurrentDirectory`)
 - [ ] 1.9b Migrate static scaffolders (`CrudScaffolder` ...) to injected instances (D-18 follow-up)
-- [ ] 1.10 `DotNetArch.Core.Tests` (validation, config round-trip, golden tree) and `DotNetArch.Cli.Tests` (arg parsing)
+- [x] 1.10 `DotNetArch.Core.Tests` (validation, command line, config round-trip, host, golden tree as Integration) and `DotNetArch.Cli.Tests` (arg parsing): 36 unit tests + 1 integration test pass
+- [x] 1.10b Fix: `WaitForExit()` hung when orphaned MSBuild nodes kept the pipe open; node reuse disabled for `dotnet` children
 - [x] 1.11a `.DS_Store` removed from the repo
-- [ ] 1.11b extend `.gitignore` (.DS_Store, rider/vscode), add `scripts/smoke.sh`
+- [x] 1.11b `.gitignore` extended; `scripts/smoke.sh` (build, unit, golden, generate+build) passes
 - [ ] 1.12 Update README build/run instructions for the new layout
 
 ## Phase 2 - Microservice core template v2 (R-A1..A8, D-10, D-12)

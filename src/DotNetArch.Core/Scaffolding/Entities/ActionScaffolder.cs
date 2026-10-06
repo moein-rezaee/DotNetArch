@@ -11,6 +11,10 @@ public static class ActionScaffolder
 {
     public static void Generate(SolutionConfig config, string entity, string action, string httpMethod, bool crudStyle)
     {
+        Identifier.RequireIfPresent(entity, "entity name");
+        Identifier.RequireIfPresent(action, "action name");
+        if (!new[] { "GET", "POST", "PUT", "DELETE", "PATCH" }.Contains(httpMethod, StringComparer.OrdinalIgnoreCase))
+            throw new ArgumentException($"'{httpMethod}' is not a supported HTTP method (GET, POST, PUT, DELETE, PATCH).", nameof(httpMethod));
         if (string.IsNullOrWhiteSpace(config.SolutionName) || string.IsNullOrWhiteSpace(entity) || string.IsNullOrWhiteSpace(action))
         {
             ToolHost.Error("Solution, entity and action names are required.");

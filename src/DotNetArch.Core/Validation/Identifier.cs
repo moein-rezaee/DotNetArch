@@ -30,6 +30,21 @@ public static partial class Identifier
         return value!;
     }
 
+    /// <summary>Throws when <paramref name="value"/> is non-blank and not a valid identifier; blank values are left to the caller's own "required" message.</summary>
+    public static void RequireIfPresent(string? value, string what)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+            RequireIdentifier(value, what);
+    }
+
+    /// <summary>Rejects blank paths and paths containing control characters (NUL, newlines) before they reach the file system or a command line.</summary>
+    public static string RequirePath(string? value, string what)
+    {
+        if (string.IsNullOrWhiteSpace(value) || value.Any(char.IsControl))
+            throw new ArgumentException($"'{value}' is not a valid {what}.", nameof(value));
+        return value;
+    }
+
     public static string RequireIdentifier(string? value, string what)
     {
         if (!IsValid(value))
