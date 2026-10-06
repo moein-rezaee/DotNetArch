@@ -36,6 +36,10 @@ public static class ConfigManager
                 config.TargetFramework = value;
             else if (key.Equals("layout", StringComparison.OrdinalIgnoreCase))
                 config.Layout = value;
+            else if (key.Equals("kit.prefix", StringComparison.OrdinalIgnoreCase))
+                config.KitPrefix = value;
+            else if (key.StartsWith("kit.", StringComparison.OrdinalIgnoreCase))
+                config.Kits[key.Substring("kit.".Length)] = value;
             else if (key.Equals("ci.provider", StringComparison.OrdinalIgnoreCase))
                 config.CiProvider = value;
             else if (key.Equals("git.host", StringComparison.OrdinalIgnoreCase))
@@ -101,6 +105,10 @@ public static class ConfigManager
             content += $"nuget.source: {config.NuGetSource}{nl}";
         if (!string.IsNullOrWhiteSpace(config.NuGetSourceName))
             content += $"nuget.sourceName: {config.NuGetSourceName}{nl}";
+        if (!string.IsNullOrWhiteSpace(config.KitPrefix))
+            content += $"kit.prefix: {config.KitPrefix}{nl}";
+        foreach (var kit in config.Kits)
+            content += $"kit.{kit.Key}: {kit.Value}{nl}";
         foreach (var kv in config.Entities)
         {
             var status = kv.Value.HasCrud && kv.Value.HasAction ? "both" : kv.Value.HasCrud ? "crud" : "action";

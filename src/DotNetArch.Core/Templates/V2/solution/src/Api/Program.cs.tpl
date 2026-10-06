@@ -11,7 +11,8 @@ builder.AddAppConfiguration(args);
 builder.Services
     .AddApplication()
     .AddInfrastructure(builder.Configuration)
-    .AddApi(builder.Configuration);
+    .AddApi(builder.Configuration)
+    .AddKits(builder.Configuration);
 
 var app = builder.Build();
 

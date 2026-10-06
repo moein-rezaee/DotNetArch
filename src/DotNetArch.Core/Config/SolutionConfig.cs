@@ -35,6 +35,12 @@ public class SolutionConfig
 
     public string NuGetSourceName { get; set; } = "";
 
+    /// <summary>Package id prefix for generated kits (<c>&lt;Prefix&gt;.Kit.&lt;Area&gt;.*</c>); defaults to the solution name.</summary>
+    public string KitPrefix { get; set; } = "";
+
+    /// <summary>Kits wired into this solution: area name to its selected providers.</summary>
+    public Dictionary<string, string> Kits { get; set; } = new();
+
     public const string LegacyLayout = "legacy";
     public const string V2Layout = "v2";
 

@@ -15,6 +15,8 @@ internal static class Program
         new NewServiceCommand(),
         new ExecCommand(),
         new RemoveMigrationCommand(),
+        new NewKitCommand(),
+        new AddKitCommand(),
         new CiAddCommand(),
         new DockerAddCommand(),
         new GitSetupCommand(),

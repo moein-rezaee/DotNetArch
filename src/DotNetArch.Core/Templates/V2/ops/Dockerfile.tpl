@@ -5,6 +5,7 @@ FROM mcr.microsoft.com/dotnet/sdk:${DOTNET_VERSION} AS build
 WORKDIR /src
 # Restore first (cached layer): only manifests that influence package resolution.
 COPY global.json Directory.Build.props Directory.Packages.props {{NuGetConfigCopy}}./
+COPY kits/ kits/
 COPY src/{{App}}.Domain/{{App}}.Domain.csproj src/{{App}}.Domain/
 COPY src/{{App}}.Application/{{App}}.Application.csproj src/{{App}}.Application/
 COPY src/{{App}}.Infrastructure/{{App}}.Infrastructure.csproj src/{{App}}.Infrastructure/
