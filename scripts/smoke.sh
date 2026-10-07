@@ -18,7 +18,7 @@ echo "==> integration tests (golden generation, MCP protocol)"
 dotnet test DotNetArch.sln --no-build --nologo --filter "Category=Integration"
 
 echo "==> generate with the CLI and build the result"
-dotnet run --no-build --project src/DotNetArch.Cli -- new solution Smoke --output="$work" --style=controller --no-database </dev/null
-dotnet build "$work/Smoke" --nologo -v quiet
+dotnet run --no-build --project src/DotNetArch.Cli -- new solution Smoke --output="$work" --database=SQLite --style=controller --no-git --no-docker </dev/null
+dotnet build "$work/Smoke" -c Release --nologo -v quiet && dotnet test "$work/Smoke" -c Release --nologo -v quiet
 
 echo "smoke: OK"

@@ -3,7 +3,7 @@
 Persian mirror: `ROADMAP.fa.md`. Legend: `[ ]` todo, `[x]` done (note commit). Requirement IDs refer to `docs/specs/requirements.md`.
 
 ## Resume point
-**Current phase:** phases 0-8 done (open: 1.9b, 2.9, 4.6, 5.4, 6.6). **Next item:** 9.1 smoke run, 9.2 final review. Branch: `claude/exciting-fermi-b41fue`.
+**Current phase:** all phases 0-9 done; remaining open verification items: 1.9b, 2.9 (net9), 4.6 (real docker build), 5.4, 6.6 (live providers). Branch: `claude/exciting-fermi-b41fue`.
 Environment: dotnet SDK 8 available (net9 targets cannot be built here; verify net9 in CI).
 
 ## Phase 0 - Docs, specs, rules, roadmap (R-E1, R-D1..D5)
@@ -84,5 +84,5 @@ Environment: dotnet SDK 8 available (net9 targets cannot be built here; verify n
 - [x] 8.4 bilingual-pair check script
 
 ## Phase 9 - Verification and release
-- [ ] 9.1 Run smoke script end to end (needs SDK); fix findings
-- [ ] 9.2 Version bump, changelog, final review
+- [x] 9.1 Run smoke script end to end (needs SDK); fix findings (smoke OK, v1.3.0)
+- [x] 9.2 Version bump, changelog, final review (smoke OK, v1.3.0)
