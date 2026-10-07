@@ -1,178 +1,131 @@
+[فارسی](./README.fa.md)
+
 <img src="assets/icon.png" width="128" height="128" style="vertical-align: middle;"/>
 
 # DotNetArch
 
-A cross-platform .NET global tool that bootstraps opinionated Clean Architecture solutions with Domain-Driven Design in seconds.
+A cross-platform .NET global tool (`dotnet-arch`) that scaffolds opinionated **Clean Architecture microservices**, **independent provider-based kits** and exposes itself as an **MCP server** for agents.
 
 ---
 
 ## Table of Contents
-- [Introduction](#introduction)
-- [Solution Structure](#solution-structure)
-- [Features](#features)
-- [Requirements](#requirements)
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-- [Command Reference](#command-reference)
-  - [new solution](#new-solution)
-  - [new crud](#new-crud)
-  - [new action](#new-action)
-  - [new event](#new-event)
-  - [new enum](#new-enum)
-  - [new constant](#new-constant)
-  - [new service](#new-service)
-  - [exec](#exec)
-  - [remove migration](#remove-migration)
-- [Contributing](#contributing)
-- [Roadmap](#roadmap)
-- [License](#license)
-- [Contact](#contact)
+- [What it generates](#what-it-generates)
+- [Requirements and installation](#requirements-and-installation)
+- [Quick start](#quick-start)
+- [Command reference](#command-reference)
+- [Generated microservice (layout v2)](#generated-microservice-layout-v2)
+- [Configuration model](#configuration-model)
+- [Kits (external services)](#kits-external-services)
+- [Docker, Git, CI and private registries](#docker-git-ci-and-private-registries)
+- [MCP](#mcp)
+- [Tests](#tests)
+- [Legacy layout](#legacy-layout)
+- [Building from source](#building-from-source)
+- [Documentation map](#documentation-map)
+- [Contributing, license, contact](#contributing-license-contact)
 
-## Introduction
-DotNetArch removes the friction of setting up a well-structured .NET application. The tool generates a fully wired solution with clearly separated layers, ready-made infrastructure, and sensible defaults so you can focus on your domain from day one.
+## What it generates
+| You run | You get |
+| --- | --- |
+| `new solution` | Domain / Application / Infrastructure / Api projects, per-layer DI, central package versions, configuration loading, tests per layer, optional Docker, Git, CI, MCP host, agent rules and specs |
+| `new crud`, `new action`, `new event`, `new enum`, `new constant` | a vertical slice per entity (commands, queries, actions, events, DTOs, validators, EF mapping, controller or minimal-API endpoints, tests, MCP tools) |
+| `new service` | an application service when it has business logic, or a **kit** when it is an external capability |
+| `new kit` / `add kit` | `kits/<Area>`: Abstractions + Core + providers, wired into the solution |
+| `mcp serve` | an MCP server (stdio) exposing the generators as tools |
 
-## Solution Structure
+Generated code follows Clean Architecture, ports and adapters, vertical slices with CQRS (MediatR), unit of work and repository, SOLID and Clean Code. It builds warning-free in Release and ships its own tests.
+
+## Requirements and installation
+- [.NET SDK](https://dotnet.microsoft.com/download) 8.0+ (the tool targets `net8.0` and `net9.0`), Git; Docker is optional.
+```bash
+dotnet tool install --global DotNetArch      # or: dotnet tool update --global DotNetArch
+dotnet-arch --help
+```
+
+## Quick start
+```bash
+dotnet-arch new solution Shop --database=Postgres --mcp --ci=auto --git-remote=git@github.com:acme/shop.git
+cd Shop
+dotnet-arch new crud --entity=Product
+dotnet-arch new action --entity=Product --action=Archive --method=POST
+dotnet-arch new event --entity=Product --name=Created
+dotnet-arch new service --logic=false --area=Cache --providers=InMemory,Redis   # an external capability becomes a kit
+cp src/Shop.Api/.env.example src/Shop.Api/.env                                  # secrets and run-time values
+dotnet run --project src/Shop.Api
+```
+Missing options are prompted for (with defaults) when a terminal is attached; with piped input, answer by number or text, blank = default.
+
+## Command reference
+| Command | Purpose |
+| --- | --- |
+| `new solution <Name>` | Create a solution. Options: `--output`, `--database=SQLite|SqlServer|Postgres`, `--style=controller|fast`, `--layout=v2|legacy`, `--tfm` (from installed SDK), `--mcp`, `--ci=auto|none|github|gitlab|azure|bitbucket|gitea`, `--git-remote`, `--git-provider`, `--git-host`, `--docker-registry`, `--nuget-source`, `--nuget-source-name`, `--no-docker`, `--no-git`, `--no-tests` |
+| `new crud --entity=X` | CRUD slice for an entity (`--no-migration` skips creating the EF migration) |
+| `new action --entity=X --action=Name --method=GET|POST|PUT|PATCH|DELETE` | Custom use case |
+| `new event --entity=X --name=Name` | Domain event, then add subscribers interactively |
+| `new enum [--entity=X] --enum=Name` / `new constant [--entity=X] --constant=Name` | Enum / constants scoped to an entity or common |
+| `new service` | Business service, or kit when the service has no business logic. Non-interactive: `--logic=true --name= [--entity=] [--lifetime=]` or `--logic=false --area= [--providers=] [--with-tests]` |
+| `new kit --area=Cache [--providers=A,B] [--kit-prefix=P] [--with-tests]` | Generate an independent kit and wire it in |
+| `add kit <Area>` / `add mcp` | Wire an existing kit / add the MCP host to the solution |
+| `ci add [provider]` / `docker add` / `git setup [--remote=] [--git-provider=] [--git-host=]` | Operations files for an existing solution |
+| `exec [--docker|--docker-detach|--docker-stop]` | Run the API locally or in Docker (applies migrations first) |
+| `remove migration` | Roll back and remove the last migration |
+| `mcp serve` | Start the MCP server over stdio |
+
+Exit codes: `0` success, `1` usage/validation error, `2` missing .NET SDK. All names are validated before they reach the file system or a command line; child processes run without a shell.
+
+## Generated microservice (layout v2)
 ```text
-MyApp/
-├── MyApp.Core/
-├── MyApp.Application/
-├── MyApp.Infrastructure/
-├── MyApp.API/
-│   └── Config/
-│       ├── Env/
-│       │   ├── .env.development
-│       │   ├── .env.test
-│       │   └── .env.production
-│       └── Settings/
-│           ├── appsettings.development.json
-│           ├── appsettings.test.json
-│           └── appsettings.production.json
-├── Dockerfile
-├── docker-compose.yml
-├── dotnet-arch.yml
-└── README.md
+Shop/
+├── src/
+│   ├── Shop.Domain            entities (private setters, behaviour), events, enums, constants
+│   ├── Shop.Application       ports, Features/<Plural>/{Commands,Queries,Actions,Events,Dtos,Services}/<UseCase>/, validators
+│   ├── Shop.Infrastructure    EF Core persistence, repositories, unit of work, configuration loading
+│   ├── Shop.Api               controllers (or minimal-API endpoints), composition root
+│   └── Shop.Mcp               optional MCP host (tools mirror the use cases)
+├── kits/                      independent kits (Abstractions / Core / Providers.*)
+├── tests/                     one test project per layer
+├── docs/                      specs, roadmap, decisions (English + Persian)
+├── AGENTS.md  Directory.Build.props  Directory.Packages.props  global.json
+├── docker-compose.yml  CI pipeline  NuGet.config (when private feed)  dotnet-arch.yml
 ```
-This layout exposes all the moving parts up front—application layers, environment configs, and Docker assets.
+Dependencies point inwards (`Api/Mcp -> Infrastructure -> Application -> Domain`). Every layer registers its own services (`AddApplication`, `AddInfrastructure`, `AddApi`/`AddMcpHost`) and references only its own packages. Repositories are async and never expose `IQueryable`.
 
-## Features
-- **One-command solution scaffolding** with Core, Application, Infrastructure, and API layers—choose **controller** or **fast** minimal APIs.
-- **Git & docs bootstrap**: initializes a repository, adds a `.gitignore`, and drops in a README template.
-- **Docker-friendly**: generates Dockerfile and `docker-compose.yml`; `exec --docker` builds images, starts containers, streams logs, and cleans everything up safely on exit.
-- **Detached Docker lifecycle**: `exec --docker-detach` runs containers in the background with step-by-step logging, and `exec --docker-stop` safely stops and removes them when you're done.
-- **Environment-specific configuration**: prepopulated `.env` and `appsettings` files for development, test, and production under `API/Config`.
-- **Vertical-slice CRUD generation** using MediatR, FluentValidation, and Unit-of-Work based EF Core repositories with pagination helpers.
-- **Unit-of-Work repositories** are created automatically so your data layer is production-ready from the start.
-- **Incremental CRUD generation**: re‑runs complement missing parts (handlers, controllers/endpoints, repositories, UoW, DbContext) instead of failing or duplicating.
-- **Custom action scaffolding** for additional commands or queries without breaking existing slices.
-- **Standard vs. non‑standard actions**: exact, case‑insensitive match to CRUD keywords (Create, Update, Delete, GetById, GetAll, GetList, Patch) triggers full CRUD behavior; any other name is treated as non‑standard.
-- **No‑DB friendly**: even without a database provider, a minimal Core Entity (Id only) is generated so Application code compiles. Handlers are skeletons and repositories contain TODO bodies.
-- **Controller purity**: controllers use Application models only (no Entity usings). GET methods return IActionResult with NotFound/Ok.
-- **Robust controller updates**: existing method detection uses regex (not substring) to avoid false positives (e.g., Update vs UpdateTelegram).
-- **Event scaffolding** to create domain events and interactively wire subscribers across features.
-- **Enum scaffolding** to generate strongly typed enumerations per feature or globally under `Core/Common/Enums`.
-- **Service scaffolder** for custom services, Redis caches, RabbitMQ message brokers, or outbound HTTP clients with resilient `HttpRequest` wrappers and automatic DI registration.
-- **Database provider selection** (SQL Server, SQLite, PostgreSQL, MongoDB, or No Database) stored for reuse across commands.
-- **Idempotent updates**: running commands again augments existing files instead of duplicating them.
-- **Automatic NuGet package and service registration**, including Swagger and startup configuration.
-- **Exec command auto-migrates**: detects property changes, creates missing migrations, applies them, and then runs the API or Docker container.
-- **Cross-platform** and tested on Windows, macOS, and Linux.
-- **Target framework auto-detect (net8/net9)**: picks the highest installed SDK (8+), sets the solution TFM, and generates a `global.json` with `rollForward: latestMajor` for smooth upgrades.
-- **Per-TFM package alignment**: EF Core, OpenAPI, Microsoft.Extensions.* and related packages match the selected TFM (8.x or 9.x) to prevent version mismatches.
+## Configuration model
+- **appsettings.json** - non-sensitive settings (PascalCase, colon keys). **Environment / `.env`** - secrets and run-time values (UPPER_CASE, single underscores; `__` for nesting).
+- Loaded by one step, `AddAppConfiguration()`, before any options binding: appsettings, appsettings.{Env}, `.env`, `.env.{env}`, real environment variables, command line (later wins).
+- `.env.example` and `appsettings.example.json` are generated and checked by tests (`Category=Configuration`, `scripts/validate-examples.sh`); `ConfigurationContract` lists every secret key.
 
-## Requirements
-- [.NET SDK](https://dotnet.microsoft.com/download) **8.0+** (the CLI targets `net8.0` and `net9.0` automatically)
-- Supported OS: Windows 10+, macOS Catalina+, or any modern Linux distribution
-- [Git](https://git-scm.com/) for cloning or contributing
-
-Check your .NET version:
-```bash
-dotnet --version
+## Kits (external services)
+External capabilities are packaged as kits, named by capability (never by product): `MediaStorage` (Minio, RustFs), `Cache` (InMemory, Redis), `MessageBroker` (RabbitMq) or any new area.
+```text
+kits/Cache/
+├── <Prefix>.Kit.Cache.Abstractions     contracts (ICache), no third-party dependencies
+├── <Prefix>.Kit.Cache.Core             options, provider selection, AddCacheKit(configuration)
+├── <Prefix>.Kit.Cache.Providers.Redis  thin: own config section, own secrets, AddRedisCacheProvider()
+├── <Prefix>.Kit.Cache.Providers.InMemory
+├── Directory.Build.props (own version)  README (en/fa)  AGENTS.md  docs/specs  scripts/pack.sh
 ```
+`Providers.* -> Core -> Abstractions`. Application references only the Abstractions; the composition root references Core and the providers. The provider is chosen with `Cache:Provider`. Kits build, pack and publish on their own (`scripts/pack-kits.sh`, CI job when `--nuget-source` is set). Built-in provider implementations are verified against stubs, not against live servers.
 
-## Installation
-Install or update the tool globally from NuGet:
-```bash
-dotnet tool install --global DotNetArch
-# or
- dotnet tool update --global DotNetArch
+## Docker, Git, CI and private registries
+- Dockerfile (restore-cached multi-stage, non-root), `.dockerignore`, `docker-compose.yml` matching the database (SQLite volume, PostgreSQL, SQL Server).
+- CI pipeline for GitHub Actions, GitLab CI, Azure Pipelines, Bitbucket Pipelines or Gitea Actions, chosen automatically from the git remote (`--ci=auto`) or explicitly; personal/self-hosted servers via `--git-provider`/`--git-host`.
+- `--docker-registry` and `--nuget-source` add the private registry/feed to the compose image names, CI login and push jobs, `NuGet.config` and the Dockerfile restore. Credentials are never written to files; CI secrets (`REGISTRY_USER`, `REGISTRY_PASSWORD`, `NUGET_USER`, `NUGET_PASSWORD`, `NUGET_API_KEY`) are referenced by name.
+
+## MCP
+- **Tool server**: `dotnet-arch mcp serve` (stdio) exposes `new_solution`, `new_crud`, `new_action`, `new_event`, `new_enum`, `new_constant`, `new_service`, `new_kit`, `add_kit`, `add_mcp`, `ci_add`, `docker_add`, `git_setup`, `list_entities`, `describe_config`. Non-interactive; each result lists created/modified files and the equivalent CLI command. No destructive tools.
+```json
+{ "mcpServers": { "dotnet-arch": { "command": "dotnet-arch", "args": ["mcp", "serve"] } } }
 ```
+- **Generated MCP host** (`--mcp` / `add mcp`): `src/<App>.Mcp`, streamable HTTP at `/mcp`, bearer token `MCP_AUTH_TOKEN`, tools per entity (`product_list|get|create|update|delete`, one per action) that send the same MediatR requests as the controllers.
 
-## Quick Start
-Generate a new solution, scaffold an entity, and run the API:
-```bash
-dotnet-arch new solution MyApp
-cd MyApp
-# optional: choose API style, startup project, and database provider interactively
-# env and appsettings for dev/test/prod are under ./config
+## Tests
+`dotnet test` in a generated solution runs per-layer tests (domain, handlers/validators with fakes, persistence on in-memory SQLite, API and MCP integration). The tool itself has unit tests for Core, Cli and Mcp plus integration tests (golden generation, MCP protocol) run by `scripts/smoke.sh`.
 
-dotnet-arch new crud --entity Product
-# creates controllers/endpoints, unit-of-work repository, handlers, validators, and migrations
+## Legacy layout
+Solutions created before v1.3 (flat `<App>.Core/Application/Infrastructure/API`, no `layout:` key in `dotnet-arch.yml`) keep working with every command. `new solution --layout=legacy` still creates that shape.
 
-dotnet-arch new event --entity Product --event Created
-# scaffolds ProductCreatedEvent and lets you add subscribers
-
-dotnet-arch new enum --entity Product --enum Status
-# creates Status enum under Core/Features/Products/Enums
-
-dotnet-arch new enum --enum Priority
-# creates Priority enum under Core/Common/Enums
-
-dotnet-arch new constant --entity Product --constant Fields
-# creates Fields class under Core/Features/Products/Constants
-
-dotnet-arch new constant --constant AppSettings
-# creates AppSettings class under Core/Common/Constants
-
-dotnet-arch new service
-# choose "HttpRequest" to generate a typed HTTP client wrapper
-
-dotnet-arch exec --docker
-# builds an image, starts a container, auto-applies migrations, and cleans it up on exit
-
-dotnet-arch exec --docker-detach
-# builds an image, starts a container in the background, logs setup steps, and leaves it running
-
-dotnet-arch exec --docker-stop
-# safely stops and removes the detached container and image
-```
-Missing options are prompted with sane defaults, keeping the experience smooth for newcomers.
-
-## Working with Multiple .NET SDKs
-DotNetArch is multi-targeted so you can keep several SDKs installed without friction.
-
-- The tool ships for both `net8.0` and `net9.0`. When running it from the repository, use the helper scripts to pick the best match automatically:
-  - macOS/Linux: `./scripts/run.sh -- --help`
-  - Windows (PowerShell): `pwsh ./scripts/run.ps1 -- --help`
-  - Prefer manual control? Run `dotnet run --project src/DotNetArch.Cli -f net8.0 -- --help` (or `net9.0`) instead.
-- Newly generated solutions include a `global.json` with `rollForward` set to `latestMajor`, so your projects transparently adopt the highest installed .NET 8/9 SDK.
-- During scaffolding DotNetArch inspects `dotnet --list-sdks` and selects the highest supported target framework, ensuring the produced projects match your environment.
-
-## Command Reference
-### new solution
-```bash
-dotnet-arch new solution <SolutionName> [--output=Path] [--startup=ProjectName] [--style=controller|fast] [--no-database]
-```
-Creates a clean, feature-based solution. Initializes Git, writes a README template, scaffolds `.env` and `appsettings` files for development, test, and production, optionally adds Docker assets, and records choices in `dotnet-arch.yml` for later commands.
-
-Notes
-- If `--no-database` is supplied, the scaffold skips EF Core setup and migrations. A minimal Core Entity (Id only) is still generated so the Application layer compiles.
-- The target framework is detected from installed SDKs (8+). A `global.json` with `rollForward: latestMajor` is added, and package versions are aligned to the selected TFM.
-
-### new crud
-```bash
-dotnet-arch new crud --entity=EntityName [--output=Path]
-```
-Generates a full vertical slice for an entity with CQRS handlers, validators, Unit‑of‑Work repositories, API endpoints, and migrations.
-
-Notes
-- Re‑runs are incremental: missing parts are added; existing code is left intact.
-- In no‑DB mode a minimal Entity with `Id` is still created so Application code compiles; repository methods are generated with TODO bodies.
-- Standard CRUD endpoints/actions created:
-  - Commands: Create, Update, Delete
-  - Queries: GetById, GetAll, GetList
-  - Update command includes `Id`; controllers send `command with { Id = id }`.
-
-### new action
+#### new action
 ```bash
 dotnet-arch new action --entity=EntityName [--action=ActionName] --method=METHOD [--output=Path]
 ```
@@ -190,25 +143,25 @@ Validation
 - The method/action conflict check only applies to exact keywords (case‑insensitive). Examples:
   - POST + Create → allowed; POST + Update → error; POST + UpdateTelegram → allowed.
 
-### new event
+#### new event
 ```bash
 dotnet-arch new event --entity=EntityName [--event=EventName] [--output=Path]
 ```
 Creates a domain event for an entity and interactively adds subscribers from other slices.
 
-### new enum
+#### new enum
 ```bash
 dotnet-arch new enum [--entity=EntityName] --enum=EnumName [--output=Path]
 ```
 Creates an enum for an existing entity under `Core/Features/<Entity>/Enums`. If no entity is supplied, the enum is placed in `Core/Common/Enums`.
 
-### new constant
+#### new constant
 ```bash
 dotnet-arch new constant [--entity=EntityName] --constant=ConstantName [--output=Path]
 ```
 Creates a constants class for an existing entity under `Core/Features/<Entity>/Constants`. If no entity is supplied, the class is placed in `Core/Common/Constants`.
 
-### new service
+#### new service
 ```bash
 dotnet-arch new service [--output=Path]
 ```
@@ -220,49 +173,30 @@ Interactive scaffolding for:
 
 Interfaces and implementations are placed in the appropriate layer and registered automatically.
 
-### exec
+#### exec
 ```bash
 dotnet-arch exec [--output=Path] [--docker] [--docker-detach] [--docker-stop]
 ```
 Launches the startup project. Detects entity property changes, creates and applies migrations automatically (skipped in No Database mode), and then runs the API. With `--docker`, builds the image, starts the container, streams logs, and tears everything down safely on exit. With `--docker-detach`, performs the same setup with step-by-step logging but leaves the container running in the background without streaming logs or cleaning up. With `--docker-stop`, safely stops and removes the container and image from a detached run.
 
-### remove migration
+#### remove migration
 ```bash
 dotnet-arch remove migration [--output=Path]
 ```
 Rolls the database back one migration and deletes the last migration file without running the application.
 
-## Contributing
-Contributions are welcome! To get started:
-1. **Fork** the repository and create a branch: `git checkout -b feature/awesome-thing`
-2. **Build** to ensure everything compiles: `dotnet build`
-3. **Commit** your changes following conventional commits if possible
-4. **Push** and open a pull request
 
-Please open an issue for large features to discuss your proposal first.
+## Building from source
+```bash
+dotnet build DotNetArch.sln
+dotnet test DotNetArch.sln --filter "Category!=Integration"
+scripts/smoke.sh                       # build, unit + integration tests, generate a solution and build it
+dotnet run --project src/DotNetArch.Cli -- new solution Demo
+```
+Layers: `src/DotNetArch.Core` (implementation), `src/DotNetArch.Cli` (commands, console, the global tool), `src/DotNetArch.Mcp` (MCP server). See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## Roadmap
-- Support for additional architectural styles (microservices, event-driven)
-- Extended template customization options
-- Deeper integrations with libraries like MassTransit
-- Optional GUI for non-CLI users
+## Documentation map
+`docs/specs/` (requirements, architecture, contracts, acceptance, overview, changelog, `openspec.yaml`, `testspec.yaml`), `docs/decisions/` (decision log), `docs/ROADMAP.md`, `AGENTS.md` (rules for agents). Persian mirrors use `.fa.md`; `scripts/check-docs.sh` verifies the pairs.
 
-## License
-[MIT](LICENSE)
-
-## Contact
-- **GitHub Issues**: [Report a problem](https://github.com/moein-rezaee/DotNetArch/issues)
-- **Email**: me.rezaei1996@gmail.com
-- **LinkedIn**: [Moein Rezaee](https://linkedin.com/in/moein-rezaee-26331a125)
-
-Start simplifying your .NET project setup today with **DotNetArch**! 🚀
-
----
-
-## Tips & Notes
-- Controllers never reference Core Entities; they use Application Models. Legacy `using <Solution>.Core.Features.<Entity>.Entities;` directives are removed on update.
-- GET endpoints return IActionResult with NotFound/Ok to prevent null-cast issues.
-- Regex‑based method detection prevents collisions like `Update` versus `UpdateTelegram` when augmenting controllers.
-- Non‑standard actions (commands/queries) are parameterless by default for both controllers and minimal APIs.
-- In no‑DB runs, a minimal Entity class (Id only) is generated to satisfy type references; repository methods contain TODO placeholders.
-- Re‑running scaffolds augments files in place; it won’t overwrite your custom logic.
+## Contributing, license, contact
+Read [CONTRIBUTING.md](CONTRIBUTING.md) and `AGENTS.md` first. MIT licensed ([LICENSE](LICENSE)). Maintainer: Moein Rezaee - [GitHub](https://github.com/moein-rezaee/DotNetArch).

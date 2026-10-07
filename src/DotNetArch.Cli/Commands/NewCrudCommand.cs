@@ -21,6 +21,7 @@ internal sealed class NewCrudCommand : SolutionCommandBase
         if (config == null)
             return 1;
 
+        using var migrations = MigrationScope(parsed);
         CrudScaffolder.Generate(config, entity);
         return 0;
     }

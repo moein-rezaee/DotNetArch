@@ -1,7 +1,16 @@
 # Changelog
 
 ## Unreleased
-- Docs/specs/rules/roadmap baseline: requirements, decisions D-01..D-16, architecture trees, contracts, acceptance, AGENTS.md, ROADMAP.
+- Nothing yet.
+
+## 1.3.0
+- Tool restructured into `DotNetArch.Core` (implementation), `DotNetArch.Cli` (commands) and `DotNetArch.Mcp` (MCP server) with per-layer tests; process execution without a shell; identifier validation.
+- New layout v2 microservice template: Domain/Application/Infrastructure/Api, vertical slices with CQRS (MediatR), unit of work and repository, central package management, configuration loading, tests per layer.
+- `new service` generates an application service or an independent Kit; kit recipes for Cache, MessageBroker, MediaStorage and generic areas; `new kit`, `add kit`.
+- Docker, Git (personal hosts), CI for GitHub/GitLab/Azure/Bitbucket/Gitea, private Docker registry and NuGet feed; `ci add`, `docker add`, `git setup`.
+- MCP: `dotnet-arch mcp serve` with 15 tools; generated MCP host (`--mcp`, `add mcp`).
+- Generated projects and kits ship AGENTS.md, specs, roadmap and decision log in English and Persian.
+- Fixed: spinner crash without a terminal, build of the tool picking up `samples/`.
 
 ## 1.2.0
 - Existing released version (see git history).

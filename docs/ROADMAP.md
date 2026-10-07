@@ -3,7 +3,7 @@
 Persian mirror: `ROADMAP.fa.md`. Legend: `[ ]` todo, `[x]` done (note commit). Requirement IDs refer to `docs/specs/requirements.md`.
 
 ## Resume point
-**Current phase:** phases 0-7 done (open: 1.9b, 2.9, 4.6, 5.4, 6.6). **Next item:** Phase 8 (documentation completion). Branch: `claude/exciting-fermi-b41fue`.
+**Current phase:** phases 0-8 done (open: 1.9b, 2.9, 4.6, 5.4, 6.6). **Next item:** 9.1 smoke run, 9.2 final review. Branch: `claude/exciting-fermi-b41fue`.
 Environment: dotnet SDK 8 available (net9 targets cannot be built here; verify net9 in CI).
 
 ## Phase 0 - Docs, specs, rules, roadmap (R-E1, R-D1..D5)
@@ -78,10 +78,10 @@ Environment: dotnet SDK 8 available (net9 targets cannot be built here; verify n
 - [x] 7.3 Config loading moved to Infrastructure (`AddAppConfiguration(IConfigurationBuilder)`) so Api and Mcp share it
 
 ## Phase 8 - Documentation completion (R-D1..D5)
-- [ ] 8.1 README (+fa) rewrite for new features; command reference
-- [ ] 8.2 Generated-project docs/specs/AGENTS templates; kit docs templates
-- [ ] 8.3 `.fa.md` mirrors for architecture, contracts, acceptance, overview, changelog
-- [ ] 8.4 bilingual-pair check script
+- [x] 8.1 README (+fa) rewrite for new features; command reference
+- [x] 8.2 Generated-project docs/specs/AGENTS templates; kit docs templates
+- [x] 8.3 `.fa.md` mirrors for architecture, contracts, acceptance, overview, changelog
+- [x] 8.4 bilingual-pair check script
 
 ## Phase 9 - Verification and release
 - [ ] 9.1 Run smoke script end to end (needs SDK); fix findings

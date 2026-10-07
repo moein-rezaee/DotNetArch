@@ -76,6 +76,7 @@ internal sealed class NewActionCommand : SolutionCommandBase
         if (config == null)
             return 1;
 
+        using var migrations = MigrationScope(parsed);
         ActionScaffolder.Generate(config, entity, action, upperMethod, autoAction);
         return 0;
     }

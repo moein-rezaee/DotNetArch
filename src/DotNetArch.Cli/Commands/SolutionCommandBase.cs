@@ -7,6 +7,19 @@ internal abstract class SolutionCommandBase : ICommand
 
     public abstract int Run(string[] args);
 
+    /// <summary>Honours <c>--no-migration</c>: generators then skip creating EF migrations for the duration of the command.</summary>
+    protected static IDisposable MigrationScope(CommandArgs args) =>
+        args.Has("no-migration")
+            ? ToolHost.Use(ToolHost.Current with { SkipMigrations = true })
+            : new NoScope();
+
+    private sealed class NoScope : IDisposable
+    {
+        public void Dispose()
+        {
+        }
+    }
+
     protected static SolutionConfig? LoadConfig(CommandArgs args, out string basePath)
     {
         var outputPath = args.Get("output");

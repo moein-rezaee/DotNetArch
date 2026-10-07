@@ -1,35 +1,41 @@
 # Contracts (CLI, config, MCP)
 
-## CLI (current -> target)
-Existing and kept: `new solution`, `new crud`, `new action`, `new event`, `new enum`, `new constant`, `exec`, `remove migration`.
-Changed: `new service` (D-08): asks "Does this service contain business logic?"; yes = existing internal flow; no = kit flow.
-New: `new kit --area <Name> --providers <A,B> [--kit-prefix P] [--output path] [--with-tests]`,
-`add kit <Area>` (wire an existing kit into a solution), `mcp serve`, `ci add [--ci provider]`, `docker add`, `git setup`.
+## CLI
+Commands: `new solution`, `new crud`, `new action`, `new event`, `new enum`, `new constant`, `new service`, `new kit`, `add kit`, `add mcp`,
+`ci add`, `docker add`, `git setup`, `exec`, `remove migration`, `mcp serve`.
 
-`new solution` options (added): `--layout v2` (default), `--tfm net8.0|net9.0`, `--mcp`, `--ci <auto|github|gitlab|azure|bitbucket|none>`,
-`--git-host <url> --git-provider <p>`, `--docker-registry <host>`, `--nuget-source <url>`, `--no-tests`, `--no-docker`, `--no-git`.
+`new solution <Name>` options: `--output`, `--database=SQLite|SqlServer|Postgres` (layout v2), `--style=controller|fast`, `--layout=v2|legacy` (default v2),
+`--mcp`, `--ci=auto|none|github|gitlab|azure|bitbucket|gitea`, `--git-remote`, `--git-provider`, `--git-host`, `--docker-registry`, `--nuget-source`,
+`--nuget-source-name`, `--no-docker`, `--no-git`, `--no-tests`. The target framework follows the highest installed SDK (8 or 9).
 
-All arguments are passed to child processes as argument lists, never through a shell string. Names are validated
-against `^[A-Za-z][A-Za-z0-9_.]*$` before use (solution, entity, event, kit area, provider).
+`new service`: with business logic (`--logic=true --name= [--entity=] [--lifetime=Scoped|Transient|Singleton]`) generates an Application service registered in
+`AddApplication()`; without (`--logic=false --area= [--providers=A,B] [--with-tests]`) generates a kit and wires it. Interactive when `--logic` is absent.
 
-## `dotnet-arch.yml` keys (additive; unknown keys preserved)
-`solution path startup style port framework database layout ci.provider git.host git.provider docker.registry nuget.source
-nuget.sourceName kit.prefix kit.<Area>: <Provider,...> mcp: true|false entity.<Name>: crud|action|both`.
+`new kit --area=<Area> [--providers=A,B] [--kit-prefix=P] [--with-tests] [--no-wire]`; `add kit <Area>`. Built-in areas: MediaStorage (Minio, RustFs), Cache (InMemory, Redis),
+MessageBroker (RabbitMq); any other area name gets a generic skeleton. `new crud` / `new action` accept `--no-migration`.
+
+All arguments reach child processes as argument lists (no shell). Names are validated (`^[A-Za-z][A-Za-z0-9_]*$`, dotted segments allowed for solution names and kit prefixes)
+before use. Interactive questions can be answered from piped input by option number or text; a blank line takes the default.
+
+## dotnet-arch.yml keys
+`solution path startup style port framework database layout ci.provider git.provider git.host docker.image docker.container docker.registry nuget.source nuget.sourceName
+kit.prefix kit.<Area>: <Providers,...> mcp: true entity.<Name>: crud|action|both`. A missing `layout` key means the legacy layout.
 
 ## Configuration contract (generated code)
-- Non-sensitive: `appsettings.json` PascalCase, colon sections. Secrets/run-time: environment, UPPER_CASE with single underscores.
-- One `AddAppConfiguration()` step: appsettings -> environment (last wins) -> `IConfiguration`, before any options binding.
-- `.env.example` = complete placeholder-only key inventory; `appsettings.example.json` = complete sanitized model; CI validates both.
-- Kit keys: `<Area>:Provider`, `<Area>:<Provider>:<Option>`; secrets `<PROVIDER>_<NAME>` e.g. `MINIO_ACCESS_KEY`.
+- Non-sensitive: `appsettings.json` (PascalCase, colon sections). Secrets and run-time values: environment or `.env` (UPPER_CASE, single underscores, `__` for nesting).
+- `AddAppConfiguration()` (Infrastructure, shared by Api and Mcp) loads appsettings, appsettings.{Env}, `.env`, `.env.{env}`, environment, command line (later wins) before any options binding.
+- `.env.example` is the complete placeholder-only inventory of secrets; `appsettings.example.json` mirrors `appsettings.json`; `ConfigurationContract.SecretKeys` lists the secrets; tests tagged `Category=Configuration` enforce all three.
+- Kit keys: `<Area>:Provider`, `<Area>:<Provider>:<Option>`; secrets `<PROVIDER>_<NAME>` (for example `REDIS_PASSWORD`, `MINIO_ACCESS_KEY`).
 
-## MCP: tool server (`dotnet-arch mcp serve`, stdio)
-Tools (JSON in/out, no shell): `new_solution`, `new_crud`, `new_action`, `new_event`, `new_enum`, `new_constant`, `new_service`, `new_kit`,
-`add_kit`, `ci_add`, `docker_add`, `git_setup`, `list_entities`, `describe_config`. Every tool returns created/changed file paths and the
-exact CLI equivalent. Destructive operations are not exposed.
+## MCP: tool server
+`dotnet-arch mcp serve` (stdio). Tools (JSON in/out, non-interactive, no shell): `new_solution`, `new_crud`, `new_action`, `new_event`, `new_enum`, `new_constant`, `new_service`,
+`new_kit`, `add_kit`, `add_mcp`, `ci_add`, `docker_add`, `git_setup`, `list_entities`, `describe_config`. Every result is `{ ok, command, output, created[], modified[], error? }`.
+`list_entities` and `describe_config` are read-only; no tool deletes anything.
 
-## MCP: generated host (`<App>.Mcp`)
-One tool class per entity under `Tools/<Entity>/`; tool names `<entity>_<verb>`; they send the same MediatR requests as controllers.
-Auth by bearer token validated like the API; per-tool authorization policy mirrors the controller policy. Health endpoint `/health`.
+## MCP: generated host
+`src/<App>.Mcp`, streamable HTTP at `/mcp` (stateless), `/health` open. Authentication: bearer token compared in constant time with `MCP_AUTH_TOKEN` (secret, at least 24 characters).
+Tools per entity: `<entity>_list|get|create|update|delete`; per action: `<entity>_<action>`. Each tool sends the same MediatR request as the controller or endpoint; expected failures
+(validation, not found, business rule) become readable MCP errors.
 
 ## Exit codes and output
-0 success; 1 validation/usage; 2 environment (missing SDK/docker); 3 generation failure. Human logs go to stderr in MCP mode, stdout otherwise.
+`0` success, `1` usage or validation error, `2` .NET SDK missing. Human logs go to stdout in the CLI and to stderr in `mcp serve`.

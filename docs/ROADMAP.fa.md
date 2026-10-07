@@ -1,19 +1,36 @@
 # Roadmap (نسخهٔ فارسی)
 
-مرجع اصلی با تیک‌ها: `ROADMAP.md`. این فایل خلاصهٔ هم‌شناسه است و در هر commit با آن همگام می‌شود.
+مرجع اصلی با تیک‌ها و جزئیات: `ROADMAP.md` (هر ردیف آنجا شناسهٔ ثابت مثل 2.3 دارد). این فایل خلاصهٔ هم‌ساختار است و در هر commit همگام می‌شود؛ ✔ یعنی انجام و راستی‌آزمایی شده.
 
 ## نقطهٔ ادامه
-فاز ۱ تقریباً تمام شد (فقط ۱.۹b مانده: تبدیل scaffolderهای static به instance؛ به فاز ۲ موکول شد چون فاز ۲ مولدها را بازنویسی می‌کند). مورد بعدی: ۲.۱. تست‌های Core/Cli، smoke، CI گیت‌هاب، editorconfig، SourceLink و بسته‌بندی ابزار انجام و راستی‌آزمایی شد. branch: `claude/exciting-fermi-b41fue`.
-محیط: dotnet SDK 8 نصب شد (SDK 9 با apt در دسترس نیست؛ net9 باید در CI بررسی شود). باگ csproj که `samples/**` را compile می‌کرد رفع شد.
+فازهای ۰ تا ۷ انجام شد؛ فاز ۸ (مستندات) هم انجام شد و فاز ۹ (راستی‌آزمایی و انتشار) مانده است. موارد باز: ۱.۹b (تبدیل scaffolderهای static به instance)، ۲.۹ (راستی‌آزمایی net9)، ۴.۶ (docker build واقعی)، ۵.۴ (testspec)، ۶.۶ (راستی‌آزمایی زندهٔ providerها). branch: `claude/exciting-fermi-b41fue`.
 
-## فازها
-- **۰ مستندات:** requirements، decisions، معماری و درخت‌ها، contracts، acceptance، AGENTS.md، roadmap ✔؛ بعدی: openspec/testspec، تلاش نصب SDK.
-- **۱ بازساخت ابزار به Cli / Mcp / Core و سخت‌سازی:** رفع crash اسپینر در حالت غیر TTY، snapshot پایه (golden)، اسکلت `src/` و `tests/`، `ToolHost` و انتزاع‌های prompt/process/output، انتقال به Core، شکستن `Main.cs` به Commands، ProcessRunner بدون shell، اعتبارسنجی نام‌ها، `MigrationRunner`، تست‌های Core و Cli، `scripts/smoke.sh`.
-- **۲ قالب میکروسرویس v2 (انجام شد، جز تأیید net9):** `layout: v2`، اسکلت `src/`+`tests/`، Domain با رفتار، Application (پورت‌ها، MediatR، FluentValidation)، Infrastructure (EF، repository async، UoW)، Api (Program کوتاه، controller به‌ازای entity)، دستورهای crud/action/event/enum/constant تودرتو.
-- **۳ پیکربندی:** `AddAppConfiguration()`، options با validation، تولید فایل‌های example و اسکریپت اعتبارسنجی.
-- **۴ Docker و Git و CI و registry:** Dockerfile/compose، git با host شخصی، تشخیص CI و قالب‌های GitHub/GitLab/Azure/Bitbucket، registry شخصی Docker و NuGet، دستورهای `ci add`، `docker add`، `git setup`.
-- **۵ تست در پروژهٔ تولیدشده:** پروژهٔ تست هر لایه، job تست در CI، `testspec.yaml`.
-- **۶ Kitها:** scaffolder کیت (Abstractions/Core/Providers + docs)، recipeهای MediaStorage و Cache و MessageBroker، `new service` با پرسش منطق کسب‌وکار، `add kit`، jobهای CI و انتشار در NuGet شخصی.
-- **۷ MCP:** `mcp serve` و tools؛ host ‏`<App>.Mcp` برای پروژه.
-- **۸ مستندات نهایی:** README، قالب docs/specs/AGENTS پروژه و kit، mirrorهای فارسی، اسکریپت بررسی جفت‌های دو زبانه.
-- **۹ راستی‌آزمایی و انتشار:** اجرای smoke (نیاز به SDK)، نسخه و changelog.
+## فاز ۰ - مستندات، spec، قواعد و roadmap
+انجام‌شده: 0.1 0.2 0.3 0.4 0.5 0.6
+
+## فاز ۱ - بازساخت ابزار به Cli / Mcp / Core و سخت‌سازی
+انجام‌شده: 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9 1.10 1.10b 1.11a 1.11b 1.12 1.13 1.14؛ باز: 1.9b
+
+## فاز ۲ - قالب میکروسرویس v2
+انجام‌شده: 2.1 2.2 2.3 2.4 2.5 2.6 2.7 2.8 2.10؛ باز: 2.9
+
+## فاز ۳ - پیکربندی
+انجام‌شده: 3.1 3.2 3.3
+
+## فاز ۴ - Docker، Git، CI و registry
+انجام‌شده: 4.1 4.2 4.3 4.4 4.5؛ باز: 4.6
+
+## فاز ۵ - تست در پروژهٔ تولیدشده
+انجام‌شده: 5.1 5.2 5.3؛ باز: 5.4
+
+## فاز ۶ - Kitها
+انجام‌شده: 6.1 6.2 6.3 6.4 6.5؛ باز: 6.6
+
+## فاز ۷ - MCP
+انجام‌شده: 7.1 7.2 7.3
+
+## فاز ۸ - تکمیل مستندات
+انجام‌شده: 8.1 8.2 8.3 8.4
+
+## فاز ۹ - راستی‌آزمایی و انتشار
+انجام‌شده: -؛ باز: 9.1 9.2
