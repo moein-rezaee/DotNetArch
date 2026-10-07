@@ -62,6 +62,8 @@ internal static class ActionV2Generator
         if (config.McpEnabled)
             McpV2Generator.AddActionTool(config, entity, actionName, isQuery);
 
+        SpecsV2.AddAction(config, entity, actionName, httpMethod);
+
         ToolHost.Success($"Action {actionName} for {entity} generated ({writer.Created.Count} files).");
         return true;
     }

@@ -40,6 +40,8 @@ public static class SolutionV2Generator
 
         var port = StablePort(app);
         var tokens = BuildTokens(app, tfm, major, provider, port);
+        tokens["McpLine"] = ops.Mcp ? $" and an MCP host (`src/{app}.Mcp`)" : string.Empty;
+        tokens["RoadmapExtras"] = ops.Mcp ? ", MCP host" : string.Empty;
         var withTests = !ops.NoTests;
         var writer = new FileWriter(solutionDir);
 
@@ -52,7 +54,10 @@ public static class SolutionV2Generator
         }
 
         if (wantReadme)
+        {
             writer.Write("README.md", TemplateRenderer.RenderTemplate("V2/docs/README.md.tpl", tokens));
+            writer.Write("README.fa.md", TemplateRenderer.RenderTemplate("V2/docs/README.fa.md.tpl", tokens));
+        }
 
         ToolHost.Success($"Generated {writer.Created.Count} files for layout v2.");
 

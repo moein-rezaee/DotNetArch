@@ -51,6 +51,7 @@ public static class KitWiring
         foreach (var project in projects)
             ToolHost.RunCommand($"dotnet sln add {project} --solution-folder kits/{kit.Area}", config.SolutionPath, print: false);
 
+        V2.SpecsV2.AddKit(config, kit.Area, kit.Providers);
         config.Kits[kit.Area] = string.Join(',', kit.Providers);
         if (string.IsNullOrWhiteSpace(config.KitPrefix))
             config.KitPrefix = kit.Prefix;

@@ -249,4 +249,52 @@ public sealed class V2GenerationTests : IDisposable
 
         Assert.False(Directory.Exists(Path_("tests")));
     }
+
+    [Fact]
+    public void The_project_ships_agent_rules_specs_roadmap_and_decisions_in_both_languages()
+    {
+        Generate();
+
+        foreach (var file in new[]
+        {
+            "AGENTS.md", "README.md", "README.fa.md", "docs/roadmap.md", "docs/roadmap.fa.md", "docs/decisions/decisions.md", "docs/decisions/decisions.fa.md",
+            "docs/specs/overview.md", "docs/specs/overview.fa.md", "docs/specs/contracts.md", "docs/specs/contracts.fa.md",
+            "docs/specs/acceptance.md", "docs/specs/acceptance.fa.md", "docs/specs/changelog.md", "docs/specs/changelog.fa.md",
+            "docs/specs/openspec.yaml", "docs/specs/testspec.yaml", "scripts/check-docs.sh",
+        })
+            Assert.True(File.Exists(Path_(file)), $"missing {file}");
+
+        var agents = Read("AGENTS.md");
+        Assert.Contains("## Spec Rule", agents);
+        Assert.Contains("## Architecture Rule", agents);
+        Assert.Contains("## Configuration Rule", agents);
+        Assert.Contains("## Kit Rule", agents);
+        Assert.Contains("never expose `IQueryable`", agents);
+    }
+
+    [Fact]
+    public void Specs_follow_the_generated_code()
+    {
+        var config = Generate();
+        using var _ = Host();
+        CrudScaffolder.Generate(config, "Product");
+        ActionScaffolder.Generate(config, "Product", "Archive", "POST", crudStyle: false);
+        DotNetArch.Core.Scaffolding.Kits.KitWiring.Wire(config, DotNetArch.Core.Scaffolding.Kits.KitGenerator.Generate(
+            new DotNetArch.Core.Scaffolding.Kits.KitRequest(config.SolutionPath, "Cache", new[] { "InMemory" }, "Acme")));
+
+        var contracts = Read("docs/specs/contracts.md");
+        Assert.Contains("| Product | `/api/products` | list (paged), get, create, update, delete |", contracts);
+        Assert.Contains("POST /api/products/{id}/archive", contracts);
+        Assert.Contains("name: Product, route: /api/products", Read("docs/specs/openspec.yaml"));
+        Assert.Contains("area: Cache, providers: [InMemory]", Read("docs/specs/openspec.yaml"));
+        Assert.Contains("<!-- dotnet-arch:entities -->", contracts);
+    }
+
+    [Fact]
+    public void No_readme_choice_still_leaves_the_specs()
+    {
+        // NonInteractivePrompter answers yes; the specs and agent rules never depend on the README question.
+        Generate();
+        Assert.True(File.Exists(Path_("docs/specs/overview.md")));
+    }
 }

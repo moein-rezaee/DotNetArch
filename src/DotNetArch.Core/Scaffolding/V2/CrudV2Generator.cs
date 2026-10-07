@@ -68,6 +68,8 @@ internal static class CrudV2Generator
         if (config.McpEnabled)
             McpV2Generator.AddEntityTools(config, entity);
 
+        SpecsV2.AddEntity(config, entity);
+
         MigrationService.AddMigration(config, $"Auto_{entity}");
 
         if (!config.Entities.TryGetValue(entity, out var state))
