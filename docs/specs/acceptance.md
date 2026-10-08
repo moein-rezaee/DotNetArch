@@ -16,3 +16,4 @@ Nothing is claimed verified unless the script ran; when the SDK is unavailable t
 - AC-11 (R-D1..D5) Tool repo, generated project and generated kit each contain AGENTS.md, specs, README pair; the bilingual-pair check script passes.
 - AC-12 (D-10) Generated code contains none of the listed sample defects (grep-based check in smoke script: no `GetAwaiter().GetResult()`, no `IQueryable` in `IRepository`, no `AllowAnyOrigin` default, no stack traces via Console).
 - AC-13 (D-11) Generated output restores from public NuGet only.
+- AC-14 (R-F1..F3) `dotnet-arch doctor` on a freshly generated v2 solution reports no errors; on a repo with an upward project reference, a secret in appsettings or a kit Core/Provider package in Application it reports DA-S03 / DA-C05 / DA-K06 as errors and exits `3`; `--json` and the MCP tool `doctor` return the same findings.

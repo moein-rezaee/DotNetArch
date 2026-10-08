@@ -54,3 +54,9 @@ Status legend: `[ ]` not started, `[~]` in progress, `[x]` done and verified. St
 - R-E3. Work proceeds phase by phase; each phase is committed and pushed to `claude/exciting-fermi-b41fue`.
 - R-E4. Fix the sample's defects found during review instead of copying them (see D-10).
 - R-E5. Show the final tree to the owner (`docs/specs/architecture.md`).
+
+## F. Doctor (existing repositories)
+
+- R-F1. `dotnet-arch doctor [path]` diagnoses an existing repository against the standard without changing it: layers and dependency direction, test projects, build hygiene, configuration and secrets, Docker/CI, bilingual docs, code rules and kit boundaries.
+- R-F2. Profiles: `generic` (public standard, layout v2) and `corevia` (adds governance rules, accepts the flat root layout); `auto` picks `corevia` when `.corevia/` exists.
+- R-F3. Output for humans (text) and agents (`--json`, MCP tool `doctor`); findings carry id, severity, locations and a fix hint. Exit code `3` when blocking (errors, or warnings with `--strict`).

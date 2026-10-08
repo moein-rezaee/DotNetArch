@@ -20,7 +20,7 @@ public class ToolCatalogTests
         Assert.Equal(
             new[]
             {
-                "add_kit", "add_mcp", "ci_add", "describe_config", "docker_add", "git_setup", "list_entities", "new_action", "new_constant",
+                "add_kit", "add_mcp", "ci_add", "describe_config", "docker_add", "doctor", "git_setup", "list_entities", "new_action", "new_constant",
                 "new_crud", "new_enum", "new_event", "new_kit", "new_service", "new_solution"
             },
             Tools.Select(entry => entry.Tool.Name!).Order(StringComparer.Ordinal).ToArray());
@@ -38,7 +38,7 @@ public class ToolCatalogTests
     [Fact]
     public void Only_the_read_only_tools_are_marked_read_only() =>
         Assert.Equal(
-            new[] { "describe_config", "list_entities" },
+            new[] { "describe_config", "doctor", "list_entities" },
             Tools.Where(entry => entry.Tool.ReadOnly).Select(entry => entry.Tool.Name!).Order(StringComparer.Ordinal).ToArray());
 
     [Fact]

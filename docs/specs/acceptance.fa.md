@@ -15,3 +15,4 @@
 - AC-11 (R-D1..D5) مخزن ابزار، پروژه و kit تولیدشده AGENTS.md، specها و جفت README دارند؛ `scripts/check-docs.sh` موفق است.
 - AC-12 (D-10) کد تولیدشده ایرادهای sample را ندارد (بدون `GetAwaiter().GetResult()`، بدون `IQueryable<T>` در پورت، بدون `AllowAnyOrigin`، بدون stack trace با Console).
 - AC-13 (D-11) خروجی فقط با NuGet عمومی restore می‌شود.
+- AC-14 (R-F1..F3) ‏`dotnet-arch doctor` روی solution تازه‌تولیدشدهٔ v2 خطایی گزارش نمی‌کند؛ روی ریپویی با ارجاع رو به بالا، secret در appsettings یا پکیج Core/Provider کیت در Application، خطاهای DA-S03 / DA-C05 / DA-K06 را گزارش و با کد `3` خارج می‌شود؛ `--json` و ابزار MCP به نام `doctor` همان findingها را برمی‌گردانند.

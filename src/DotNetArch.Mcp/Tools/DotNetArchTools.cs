@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using DotNetArch.Core.Config;
+using DotNetArch.Core.Doctor;
 using DotNetArch.Core.Hosting;
 using DotNetArch.Core.Scaffolding;
 using DotNetArch.Core.Scaffolding.Entities;
@@ -196,6 +197,27 @@ public sealed class DotNetArchTools(IProcessRunner runner)
     [Description("List the entities, kits and settings recorded in the solution's dotnet-arch.yml.")]
     public Task<ToolResult> ListEntities(string solutionPath) =>
         Task.FromResult(Describe(solutionPath, entitiesOnly: true));
+
+    [McpServerTool(Name = "doctor", ReadOnly = true)]
+    [Description("Diagnose an existing repository against the DotNetArch standard (layers, dependency direction, tests, build hygiene, configuration, secrets, Docker, CI, docs, code rules, optional Corevia governance). Read-only; returns findings with locations and fixes.")]
+    public Task<ToolResult> Doctor(
+        [Description("Repository root to diagnose.")] string repositoryPath,
+        [Description("auto (default), generic or corevia.")] string profile = "auto",
+        [Description("Return the JSON report instead of the text report.")] bool json = false)
+    {
+        var command = $"dotnet-arch doctor {repositoryPath} --profile={profile}{(json ? " --json" : string.Empty)}";
+        try
+        {
+            if (!Enum.TryParse<DoctorProfile>(profile, ignoreCase: true, out var parsed))
+                return Task.FromResult(new ToolResult(false, command, string.Empty, [], [], $"Unknown profile '{profile}'. Use auto, generic or corevia."));
+            var report = DoctorRunner.Run(repositoryPath, new DoctorOptions(parsed));
+            return Task.FromResult(new ToolResult(report.IsHealthy(), command, json ? DoctorFormatter.ToJson(report) : DoctorFormatter.ToText(report), [], [], report.IsHealthy() ? null : $"{report.Errors} blocking error(s)"));
+        }
+        catch (ArgumentException ex)
+        {
+            return Task.FromResult(new ToolResult(false, command, string.Empty, [], [], ex.Message));
+        }
+    }
 
     [McpServerTool(Name = "describe_config", ReadOnly = true)]
     [Description("Describe the solution configuration: layout, framework, database, API style, CI/git/registry settings and wired kits.")]

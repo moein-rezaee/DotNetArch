@@ -36,3 +36,8 @@ kit.prefix kit.<Area> mcp entity.<Name>`. نبودن `layout` یعنی چیدم�
 
 ## کدهای خروج و خروجی
 `0` موفق، `1` خطای استفاده/اعتبارسنجی، `2` نبودن .NET SDK. لاگ انسانی در CLI روی stdout و در `mcp serve` روی stderr می‌رود.
+
+## دکتر
+‏`dotnet-arch doctor [path] [--profile=auto|generic|corevia] [--json] [--strict] [--out=file]` و ابزار MCP به نام `doctor(repositoryPath, profile, json)`. فقط‌خواندنی: هیچ فایلی نوشته نمی‌شود (جز `--out`)، فرایندی اجرا نمی‌شود، .NET SDK لازم نیست.
+Finding: ‏`{ id: "DA-<area><nn>", severity: error|warning|info, category, message, path?, hint?, details?[] }`. شناسه‌ها: S ساختار، B build، C پیکربندی، D کانتینر/CI، M مستندات، K کد، V پروفایل corevia.
+کدهای خروج: `0` سالم، `1` خطای استفاده، `3` finding مسدودکننده.

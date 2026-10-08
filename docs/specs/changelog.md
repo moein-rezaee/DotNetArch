@@ -1,7 +1,7 @@
 # Changelog
 
 ## Unreleased
-- Nothing yet.
+- New `dotnet-arch doctor` command and MCP tool `doctor`: read-only diagnosis of an existing repository (48 checks: layers, dependency direction, tests, build hygiene, configuration and secrets, Docker/CI, bilingual docs, code rules, kit boundaries) with `generic` and `corevia` profiles, text and JSON output, exit code 3 when blocking.
 
 ## 1.3.0
 - Tool restructured into `DotNetArch.Core` (implementation), `DotNetArch.Cli` (commands) and `DotNetArch.Mcp` (MCP server) with per-layer tests; process execution without a shell; identifier validation.

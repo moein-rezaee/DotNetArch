@@ -39,3 +39,8 @@ Tools per entity: `<entity>_list|get|create|update|delete`; per action: `<entity
 
 ## Exit codes and output
 `0` success, `1` usage or validation error, `2` .NET SDK missing. Human logs go to stdout in the CLI and to stderr in `mcp serve`.
+
+## Doctor
+`dotnet-arch doctor [path] [--profile=auto|generic|corevia] [--json] [--strict] [--out=file]` and MCP tool `doctor(repositoryPath, profile, json)`. Read-only: no file is written (except `--out`), no process is started, no .NET SDK is required.
+Finding: `{ id: "DA-<area><nn>", severity: error|warning|info, category, message, path?, hint?, details?[] }`. Ids: S structure, B build, C config, D container/CI, M docs, K code, V corevia profile.
+Exit codes: `0` healthy, `1` usage error, `3` blocking findings.

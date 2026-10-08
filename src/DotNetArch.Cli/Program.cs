@@ -31,6 +31,20 @@ internal static class Program
         if (args.Length >= 2 && args[0].Equals("mcp", StringComparison.OrdinalIgnoreCase) && args[1].Equals("serve", StringComparison.OrdinalIgnoreCase))
             return DotNetArch.Mcp.McpServerHost.RunAsync(args[2..]).GetAwaiter().GetResult();
 
+        // doctor is read-only and needs neither the .NET SDK nor the interactive host.
+        if (args.Length >= 1 && args[0].Equals("doctor", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                return new DoctorCommand().Run(args);
+            }
+            catch (ArgumentException ex)
+            {
+                System.Console.Error.WriteLine(ex.Message);
+                return 1;
+            }
+        }
+
         var output = new ConsoleToolOutput();
         ToolHost.Configure(new HostContext(new ConsolePrompter(output), output, new ConsoleProcessRunner()));
 
