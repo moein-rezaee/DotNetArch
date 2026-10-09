@@ -20,11 +20,15 @@ public sealed class AbpTests : IDisposable
         var repo = Path.Combine(_root, name);
         Write(repo, "Shop.sln", "Project(\"{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}\") = \"Shop.Api\", \"src\\Shop.Api\\Shop.Api.csproj\", \"{11111111-1111-1111-1111-111111111111}\"\nEndProject\nProject(\"{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}\") = \"Shop.Api.Tests\", \"tests\\Shop.Api.Tests\\Shop.Api.Tests.csproj\", \"{22222222-2222-2222-2222-222222222222}\"\nEndProject\n");
         Write(repo, "src/Shop.Domain/Shop.Domain.csproj", "<Project Sdk=\"Microsoft.NET.Sdk\">\n  <PropertyGroup><TargetFramework>net9.0</TargetFramework></PropertyGroup>\n</Project>\n");
-        Write(repo, "src/Shop.Application/Shop.Application.csproj", "<Project Sdk=\"Microsoft.NET.Sdk\">\n  <ItemGroup><ProjectReference Include=\"..\\Shop.Domain\\Shop.Domain.csproj\" /></ItemGroup>\n</Project>\n");
-        Write(repo, "src/Shop.Application/Features/Products/ProductDto.cs", "namespace Shop.Application.Features.Products;\npublic sealed record ProductDto(int Id);\n");
+        Write(repo, "src/Shop.Application/Shop.Application.csproj", "<Project Sdk=\"Microsoft.NET.Sdk\">\n  <ItemGroup><ProjectReference Include=\"..\\Shop.Domain\\Shop.Domain.csproj\" /></ItemGroup>\n  <ItemGroup><PackageReference Include=\"MediatR\" Version=\"12.2.0\" /></ItemGroup>\n  <ItemGroup><InternalsVisibleTo Include=\"Shop.Application.Tests\" /></ItemGroup>\n</Project>\n");
+        Write(repo, "src/Shop.Domain/Products/ProductKind.cs", "namespace Shop.Domain.Products;\npublic enum ProductKind\n{\n    Physical = 1,\n    Digital = 2,\n}\n");
+        Write(repo, "src/Shop.Application/Features/Products/ProductDto.cs", "using Shop.Domain.Products;\n\nnamespace Shop.Application.Features.Products;\npublic sealed record ProductDto(int Id, ProductKind Kind);\n");
+        Write(repo, "src/Shop.Application/Features/Products/GetProductQuery.cs", "using MediatR;\n\nnamespace Shop.Application.Features.Products;\npublic sealed record GetProductQuery(int Id) : IRequest<ProductDto>;\n");
+        Write(repo, "src/Shop.Application/Features/Products/GetProductQueryHandler.cs", "using MediatR;\nusing Shop.Domain.Products;\n\nnamespace Shop.Application.Features.Products;\npublic sealed class GetProductQueryHandler : IRequestHandler<GetProductQuery, ProductDto>\n{\n    public Task<ProductDto> Handle(GetProductQuery request, CancellationToken cancellationToken) => Task.FromResult(new ProductDto(request.Id, ProductKind.Physical));\n}\n");
+        Write(repo, "src/Shop.Api/Controllers/ProductController.cs", "using MediatR;\nusing Microsoft.AspNetCore.Mvc;\nusing Shop.Application.Features.Products;\n\nnamespace Shop.Api.Controllers;\n[ApiController]\npublic sealed class ProductController : ControllerBase\n{\n    private readonly IMediator _mediator;\n\n    public ProductController(IMediator mediator) { _mediator = mediator; }\n\n    [HttpGet]\n    public async Task<IActionResult> Get(int id) => Ok(await _mediator.Send(new GetProductQuery(id)));\n}\n");
         Write(repo, "src/Shop.Domain/Products/IProductRepository.cs", "namespace Shop.Domain.Products;\npublic interface IProductRepository\n{\n    Task<Product?> GetAsync(int id, CancellationToken cancellationToken = default);\n    IQueryable<Product> Query();\n    Product Find(int id);\n    Task AddAsync(Product product);\n}\npublic sealed class Product { }\npublic sealed class PricingService { }\n");
-        Write(repo, "src/Shop.Api/Shop.Api.csproj", "<Project Sdk=\"Microsoft.NET.Sdk.Web\">\n  <ItemGroup><ProjectReference Include=\"..\\Shop.Application\\Shop.Application.csproj\" /></ItemGroup>\n</Project>\n");
-        Write(repo, "src/Shop.Api/Dockerfile", "COPY src/Shop.Api/Shop.Api.csproj src/Shop.Api/\nCOPY tests/Shop.Api.Tests/Shop.Api.Tests.csproj tests/Shop.Api.Tests/\n");
+        Write(repo, "src/Shop.Api/Shop.Api.csproj", "<Project Sdk=\"Microsoft.NET.Sdk.Web\">\n  <ItemGroup><ProjectReference Include=\"..\\Shop.Application\\Shop.Application.csproj\" /></ItemGroup>\n  <ItemGroup><PackageReference Include=\"MediatR\" Version=\"12.2.0\" /></ItemGroup>\n</Project>\n");
+        Write(repo, "src/Shop.Api/Dockerfile", "COPY src/Shop.Domain/Shop.Domain.csproj src/Shop.Domain/\nCOPY src/Shop.Application/Shop.Application.csproj src/Shop.Application/\nCOPY src/Shop.Api/Shop.Api.csproj src/Shop.Api/\nCOPY tests/Shop.Api.Tests/Shop.Api.Tests.csproj tests/Shop.Api.Tests/\n");
         Write(repo, "tests/Shop.Api.Tests/Shop.Api.Tests.csproj", "<Project Sdk=\"Microsoft.NET.Sdk\">\n  <ItemGroup><ProjectReference Include=\"..\\..\\src\\Shop.Api\\Shop.Api.csproj\" /></ItemGroup>\n</Project>\n");
         Write(repo, "tests/Shop.Api.Tests/PathTests.cs", "class PathTests\n{\n    string A(string root) => Path.Combine(root, \"tests\", \"Shop.Api.Tests\");\n    string B = \"tests/Shop.Api.Tests/x\";\n    string C = \"docs/tests/keep\";\n}\n");
         Write(repo, "docker-compose.yml", "services:\n  api:\n    volumes:\n      - ./tests/Shop.Api.Tests:/t\n");
@@ -86,26 +90,87 @@ public sealed class AbpTests : IDisposable
     }
 
     [Fact]
-    public void Layer_projects_are_created_with_only_the_allowed_references_and_registered_and_no_type_moves()
+    public void Layers_are_created_only_where_files_move_in_and_the_move_keeps_namespaces_and_wires_everything()
     {
         var repo = Repo();
         var runner = new FakeProcessRunner();
-        var before = File.ReadAllText(Path.Combine(repo, "src", "Shop.Application", "Features", "Products", "ProductDto.cs"));
+        var dto = File.ReadAllText(Path.Combine(repo, "src", "Shop.Application", "Features", "Products", "ProductDto.cs"));
+        var controller = File.ReadAllText(Path.Combine(repo, "src", "Shop.Api", "Controllers", "ProductController.cs"));
+
+        var plan = Run("fix", repo, apply: false, ("rules", "DA-A02"));
+        Assert.Contains(plan.Plan!, c => c.Action == "move" && c.Path == "src/Shop.Domain.Shared/Products/ProductKind.cs");
+        Assert.DoesNotContain(plan.Plan!, c => c.Path.Contains("HttpApi.Client", StringComparison.Ordinal));
+        Assert.True(File.Exists(Path.Combine(repo, "src", "Shop.Domain", "Products", "ProductKind.cs")));
 
         using (ToolHost.Use(new HostContext(new NonInteractivePrompter(), new BufferedToolOutput(), runner)))
             Run("fix", repo, apply: true, ("rules", "DA-A02"));
 
-        var shared = File.ReadAllText(Path.Combine(repo, "src", "Shop.Domain.Shared", "Shop.Domain.Shared.csproj"));
-        Assert.Contains("<TargetFramework>net9.0</TargetFramework>", shared, StringComparison.Ordinal);
-        Assert.DoesNotContain("ProjectReference", shared, StringComparison.Ordinal);
-        Assert.Contains("Include=\"..\\Shop.Domain.Shared\\Shop.Domain.Shared.csproj\"", File.ReadAllText(Path.Combine(repo, "src", "Shop.Application.Contracts", "Shop.Application.Contracts.csproj")), StringComparison.Ordinal);
+        Assert.Equal(dto, File.ReadAllText(Path.Combine(repo, "src", "Shop.Application.Contracts", "Features", "Products", "ProductDto.cs")));
+        Assert.Equal(controller, File.ReadAllText(Path.Combine(repo, "src", "Shop.HttpApi", "Controllers", "ProductController.cs")));
+        Assert.True(File.Exists(Path.Combine(repo, "src", "Shop.Application.Contracts", "Features", "Products", "GetProductQuery.cs")));
+        Assert.True(File.Exists(Path.Combine(repo, "src", "Shop.Application", "Features", "Products", "GetProductQueryHandler.cs")));
+        Assert.False(Directory.Exists(Path.Combine(repo, "src", "Shop.HttpApi.Client")));
+        Assert.False(Directory.Exists(Path.Combine(repo, "src", "Shop.Api", "Controllers")));
+        var contracts = File.ReadAllText(Path.Combine(repo, "src", "Shop.Application.Contracts", "Shop.Application.Contracts.csproj"));
+        Assert.Contains("Shop.Domain.Shared.csproj", contracts, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"MediatR\" Version=\"12.2.0\" />", contracts, StringComparison.Ordinal);
+        Assert.Contains("InternalsVisibleTo Include=\"Shop.Application.Tests\"", contracts, StringComparison.Ordinal);
         var httpApi = File.ReadAllText(Path.Combine(repo, "src", "Shop.HttpApi", "Shop.HttpApi.csproj"));
-        Assert.Contains("Include=\"..\\Shop.Application.Contracts\\Shop.Application.Contracts.csproj\"", httpApi, StringComparison.Ordinal);
+        Assert.Contains("Shop.Application.Contracts.csproj", httpApi, StringComparison.Ordinal);
         Assert.Contains("<FrameworkReference Include=\"Microsoft.AspNetCore.App\" />", httpApi, StringComparison.Ordinal);
-        Assert.Contains("Include=\"..\\Shop.Application.Contracts\\Shop.Application.Contracts.csproj\"", File.ReadAllText(Path.Combine(repo, "src", "Shop.HttpApi.Client", "Shop.HttpApi.Client.csproj")), StringComparison.Ordinal);
-        Assert.Equal(4, runner.Calls.Count(c => c.Arguments.Contains("sln")));
-        Assert.Equal(before, File.ReadAllText(Path.Combine(repo, "src", "Shop.Application", "Features", "Products", "ProductDto.cs")));
+        Assert.Contains("<PackageReference Include=\"MediatR\" Version=\"12.2.0\" />", httpApi, StringComparison.Ordinal);
+        Assert.Contains("Shop.Domain.Shared.csproj", File.ReadAllText(Path.Combine(repo, "src", "Shop.Domain", "Shop.Domain.csproj")), StringComparison.Ordinal);
+        Assert.Contains("Shop.Application.Contracts.csproj", File.ReadAllText(Path.Combine(repo, "src", "Shop.Application", "Shop.Application.csproj")), StringComparison.Ordinal);
+        Assert.Contains("Shop.HttpApi.csproj", File.ReadAllText(Path.Combine(repo, "src", "Shop.Api", "Shop.Api.csproj")), StringComparison.Ordinal);
+        var dockerfile = File.ReadAllText(Path.Combine(repo, "src", "Shop.Api", "Dockerfile"));
+        Assert.Contains("COPY src/Shop.Domain.Shared/Shop.Domain.Shared.csproj src/Shop.Domain.Shared/", dockerfile, StringComparison.Ordinal);
+        Assert.Contains("COPY src/Shop.Application.Contracts/Shop.Application.Contracts.csproj src/Shop.Application.Contracts/", dockerfile, StringComparison.Ordinal);
+        Assert.Contains("COPY src/Shop.HttpApi/Shop.HttpApi.csproj src/Shop.HttpApi/", dockerfile, StringComparison.Ordinal);
+        Assert.Equal(3, runner.Calls.Count(c => c.Arguments.Contains("sln")));
         Assert.Empty(Run("fix", repo, apply: false, ("rules", "DA-A02")).Plan!);
+    }
+
+    [Fact]
+    public void Empty_layers_are_created_only_when_asked_for()
+    {
+        var repo = Repo();
+        File.Delete(Path.Combine(repo, "src", "Shop.Api", "Controllers", "ProductController.cs"));
+        File.Delete(Path.Combine(repo, "src", "Shop.Domain", "Products", "ProductKind.cs"));
+
+        var plan = Run("fix", repo, apply: false, ("rules", "DA-A02"));
+        Assert.DoesNotContain(plan.Plan!, c => c.Path.Contains("Shop.HttpApi", StringComparison.Ordinal) || c.Path.Contains("Domain.Shared", StringComparison.Ordinal));
+
+        var forced = Run("fix", repo, apply: false, ("rules", "DA-A02"), ("empty", "true"));
+        Assert.Contains(forced.Plan!, c => c.Path == "src/Shop.HttpApi.Client/Shop.HttpApi.Client.csproj" && c.Reason.Contains("empty", StringComparison.Ordinal));
+        Assert.Contains(forced.Plan!, c => c.Path == "src/Shop.HttpApi/Shop.HttpApi.csproj");
+    }
+
+    [Fact]
+    public void One_controller_that_cannot_move_keeps_all_controllers_together_and_the_reason_is_listed()
+    {
+        var repo = Repo();
+        Write(repo, "src/Shop.Api/Services/ReportService.cs", "namespace Shop.Api.Services;\npublic sealed class ReportService\n{\n    public string Name => \"report\";\n}\n");
+        Write(repo, "src/Shop.Api/Controllers/ReportController.cs", "using Microsoft.AspNetCore.Mvc;\nusing Shop.Api.Services;\n\nnamespace Shop.Api.Controllers;\n[ApiController]\npublic sealed class ReportController : ControllerBase\n{\n    public ReportController(ReportService service) { }\n}\n");
+
+        var plan = Run("fix", repo, apply: false, ("rules", "DA-A02"));
+
+        Assert.DoesNotContain(plan.Plan!, c => c.Path.Contains("Shop.HttpApi", StringComparison.Ordinal));
+        Assert.Contains("ReportController.cs stays", plan.Text, StringComparison.Ordinal);
+        Assert.Contains("controllers move together", plan.Text, StringComparison.Ordinal);
+        Assert.Contains(plan.Plan!, c => c.Path == "src/Shop.Application.Contracts/Features/Products/ProductDto.cs");
+    }
+
+    [Fact]
+    public void A_property_named_like_a_type_is_not_a_dependency_on_that_type()
+    {
+        var repo = Repo();
+        Write(repo, "src/Shop.Domain/Products/Currency.cs", "namespace Shop.Domain.Products;\npublic sealed class Currency\n{\n    public string Code { get; init; } = string.Empty;\n    public void Touch() { }\n}\n");
+        Write(repo, "src/Shop.Application/Features/Products/PriceDto.cs", "namespace Shop.Application.Features.Products;\npublic sealed record PriceDto(decimal Value, string Currency);\n");
+
+        var plan = Run("fix", repo, apply: false, ("rules", "DA-A02"));
+
+        Assert.Contains(plan.Plan!, c => c.Path == "src/Shop.Application.Contracts/Features/Products/PriceDto.cs");
+        Assert.DoesNotContain(plan.Plan!, c => c.Path.EndsWith("Currency.cs", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -123,6 +188,8 @@ public sealed class AbpTests : IDisposable
         Assert.Contains("DA-A04", ids);
         Assert.Contains("DA-A05", ids);
         Assert.DoesNotContain("DA-A06", ids);
+        Assert.DoesNotContain("DA-A07", ids);
+        Assert.Contains("Application.Contracts", report.Findings.Single(f => f.Id == "DA-A02").Message, StringComparison.Ordinal);
         var repositoryIssues = report.Findings.Single(f => f.Id == "DA-A04").Details!;
         Assert.Contains(repositoryIssues, d => d.Contains("IProductRepository.Query", StringComparison.Ordinal) && d.Contains("returns IQueryable", StringComparison.Ordinal));
         Assert.Contains(repositoryIssues, d => d.Contains("IProductRepository.Find", StringComparison.Ordinal) && d.Contains("not async", StringComparison.Ordinal));
@@ -133,8 +200,11 @@ public sealed class AbpTests : IDisposable
         using (ToolHost.Use(new HostContext(new NonInteractivePrompter(), new BufferedToolOutput(), new FakeProcessRunner())))
             Run("fix", repo, apply: true, ("rules", "DA-A02"));
         var after = DoctorRunner.Run(repo);
-        Assert.DoesNotContain(after.Findings, f => f.Id == "DA-A02");
-        Assert.Contains(after.Findings.Single(f => f.Id == "DA-A06").Details!, d => d.Contains("ProductDto", StringComparison.Ordinal));
+        Assert.DoesNotContain(after.Findings, f => f.Id is "DA-A02" or "DA-A06" or "DA-A07");
+
+        Directory.CreateDirectory(Path.Combine(repo, "src", "Shop.HttpApi.Client"));
+        File.WriteAllText(Path.Combine(repo, "src", "Shop.HttpApi.Client", "Shop.HttpApi.Client.csproj"), "<Project Sdk=\"Microsoft.NET.Sdk\"></Project>\n");
+        Assert.Contains(DoctorRunner.Run(repo).Findings, f => f.Id == "DA-A07" && f.Details!.Contains("Shop.HttpApi.Client"));
     }
 
     [Fact]

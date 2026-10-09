@@ -121,10 +121,10 @@ The tool follows the structure and rules of the ABP Framework solution and modul
 Layout v3 uses `src/`, `test/` (singular) and `etc/` (docker, scripts, files a service publishes). v2 stays valid for adopted services and is moved by `fix --rules=DA-A01`; legacy flat layouts move with DA-S06 first.
 
 ## D-27 Layer projects: optional for the tool, mandatory for a profile (Owner)
-`Domain.Shared`, `Application.Contracts`, `HttpApi`, `HttpApi.Client` are not required by the tool. A profile may require them (Corevia does). The tool only creates the empty projects with the allowed references (DA-A02); moving types between projects is a reviewed migration step, never done by `fix` (D-21).
+`Domain.Shared`, `Application.Contracts`, `HttpApi`, `HttpApi.Client` are not required by the tool. A profile may require them (Corevia does). A layer exists only where there is something for it. `fix --rules=DA-A02` creates a layer project together with the files that move into it (namespaces unchanged, so no code is edited, D-21); it creates nothing for a layer that has nothing to receive. Empty layers are a CLI-only choice (`--empty`), because a human on the CLI owns a development plan for them; an agent over MCP either migrates what belongs to the layer or does nothing. `doctor` DA-A07 flags a layer project without sources.
 
 ## D-28 Built-in opt-in `abp` rule set (Proposed)
-`doctor` ships a general, public rule set `DA-A01..DA-A06` (folders, layer projects, reference direction, repository shape, naming suffixes, DTO location). It is enabled by `standards: [abp]` in `project.yml`, is off by default and carries no organisation name.
+`doctor` ships a general, public rule set `DA-A01..DA-A07` (folders, layer projects, reference direction, repository shape, naming suffixes, DTO location). It is enabled by `standards: [abp]` in `project.yml`, is off by default and carries no organisation name.
 
 ## D-29 A service owns what it publishes (Owner)
 Files a service publishes for other systems (such as its gateway route declaration) live inside the service, under `etc/`; consumers aggregate them and the service never depends on a consumer. Which file and which consumer is organisation knowledge and belongs to a profile, not to the tool.

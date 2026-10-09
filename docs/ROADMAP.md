@@ -106,12 +106,12 @@ Environment: dotnet SDK 8 available (net9 targets cannot be built here; verify n
 ## Phase 12 - ABP alignment (R-H1..H5, D-25..D-29)
 - [x] 12.1 Specs and documentation updated from the ABP spec and the owner decisions (abp-alignment, D-25..D-29, R-H, AC-19..22, contracts, changelog)
 - [x] 12.2 Layout v3 in the model: `adopt`/`doctor` accept `src/test/etc`; fix rule DA-A01 (v2 to v3) with tests (AC-19); first real use: Catalog (506 tests pass)
-- [x] 12.3 Fix rule DA-A02: layer projects with allowed references (HttpApi also gets the ASP.NET Core framework reference), registered in the solution (AC-20)
+- [x] 12.3 Fix rule DA-A02, content-driven: layer projects only where files move in; references, packages, `InternalsVisibleTo`, Dockerfile restore lines and solution wired; blocked files listed; controllers move together; `--empty` for CLI users (AC-20); DA-A07 flags empty layer projects
 - [x] 12.4 Built-in opt-in `abp` rule set DA-A01..DA-A06 in `doctor`, `standards: [abp]` in project.yml or profile, profile-level `severity` overrides (AC-21)
 - [x] 12.5 Service-published files under `etc/`: no tool change needed; a profile requires them with the existing `require-files` kind (Corevia: CV-09), the tool names no product
 - [ ] 12.6 Generator: `new solution --layout=v3 [--layers=abp]` on the registry (with 11.7) (AC-22)
-- [ ] 12.7 File-move fixer for layer projects (namespaces unchanged). Pattern proven by Catalog: enums used by contracts go to Domain.Shared, `Dtos/`, request records and pagination types to Application.Contracts, controllers and HTTP models to HttpApi; a file that is referenced across the new boundary must move with its dependencies (compute the closure), an interface living in the same file as its implementation needs a verbatim split
-- [ ] 12.9 `doctor` check: the Dockerfile restore stage copies every project reachable from the host (found while moving Catalog: new projects must be listed)
+- [x] 12.7 File-move fixer: part of DA-A02 (type-name dependency closure, pull-in of self-contained data types, blocked files reported); proven on Catalog (tool alone on the v2 state: build 0 warnings, 506 tests pass; HttpApi waits for one split interface)
+- [ ] 12.9 `doctor` check: the Dockerfile restore stage copies every project reachable from the host (DA-A02 now writes the lines for the layers it creates; the check protects hand-made changes)
 - [ ] 12.8 Independence smoke on v3 (generate, adopt, delete `.net-arch/`, build and test)
 
 ## Phase 9 - Verification and release

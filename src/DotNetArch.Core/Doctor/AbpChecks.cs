@@ -37,8 +37,18 @@ internal static partial class AbpChecks
         const string cat = "abp";
         ctx.Check("DA-A01", cat, ctx.Layout == "v3", DoctorSeverity.Warning, $"Layout is '{ctx.Layout}', the ABP layout is v3 (src/, test/, optional etc/).", hint: "dotnet-arch fix --rules=DA-A01 moves tests/ to test/ (flat layouts: DA-S06 first).");
 
-        var missing = LayerProjects.Where(l => !ctx.OfLayer(l.Layer).Any()).Select(l => l.Suffix).ToList();
-        ctx.Check("DA-A02", cat, missing.Count == 0, DoctorSeverity.Warning, $"Missing ABP layer project(s): {string.Join(", ", missing)}.", hint: "dotnet-arch fix --rules=DA-A02 creates them (structure only); moving types into them is a reviewed migration step.");
+        var analysis = Operations.LayerMigration.Analyze(ctx);
+        var missing = Operations.LayerMigration.Targets
+            .Where(l => analysis.Moves.TryGetValue(l, out var moves) && moves.Count > 0 && !ctx.OfLayer(l).Any())
+            .Select(l => $"{Operations.LayerMigration.Suffix(l)} ({analysis.Moves[l].Count} file(s) belong there)")
+            .ToList();
+        ctx.Check("DA-A02", cat, missing.Count == 0, DoctorSeverity.Warning, $"ABP layer project(s) missing where files belong in them: {string.Join(", ", missing)}.", hint: "dotnet-arch fix --rules=DA-A02 creates them and moves the files (namespaces unchanged); what cannot move is listed as manual.", details: analysis.Moves.Where(m => !ctx.OfLayer(m.Key).Any()).SelectMany(m => m.Value.Select(x => x.From)).ToList());
+
+        var empty = LayerProjects
+            .SelectMany(l => ctx.OfLayer(l.Layer).Where(p => !ctx.Files.Any(f => f.StartsWith(p.Dir + "/", StringComparison.OrdinalIgnoreCase) && f.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))))
+            .Select(p => p.Name)
+            .ToList();
+        ctx.Check("DA-A07", cat, empty.Count == 0, DoctorSeverity.Warning, "ABP layer project(s) without any source file: a layer exists only where there is something for it.", hint: "Move the matching files in, develop the layer, or remove the project.", details: empty);
 
         var violations = new List<string>();
         foreach (var project in ctx.Source.Where(p => Direction.ContainsKey(p.Layer)))

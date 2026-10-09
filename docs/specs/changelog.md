@@ -8,7 +8,7 @@
 - One operation registry feeds the CLI and the MCP server (3 registry tools: `doctor`, `adopt`, `fix`; 18 tools in total).
 - `fix` opt-in structural rules: DA-B03 central package versions, DA-B07 warnings as errors, DA-S04 Domain test project, DA-S06 layout v2 move (projects to `src/`, tests to `tests/`, every pointing path rewritten); the default `.editorconfig` fix is now a rule-less marker so lint keeps passing on existing code.
 - Doctor: documentation validation (index, specs, OpenAPI snapshot) and test checks (tests present, coverage versus threshold).
-- ABP alignment accepted (D-25..D-29, `abp-alignment.md`): layout v3 `src/test/etc`, optional layer projects, opt-in `abp` rule set in `doctor`, `fix` rules DA-A01/DA-A02, `new solution --layout=v3` (implementation tracked in roadmap Phase 12).
+- ABP alignment accepted (D-25..D-29, `abp-alignment.md`): layout v3 `src/test/etc`, optional layer projects, opt-in `abp` rule set in `doctor`, `fix` rules DA-A01 and content-driven DA-A02 (moves the files that belong in `Domain.Shared`, `Application.Contracts`, `HttpApi`, wires references/packages/Dockerfile; empty layers only with `--empty`), `new solution --layout=v3` (implementation tracked in roadmap Phase 12).
 
 ## 1.3.0
 - Tool restructured into `DotNetArch.Core` (implementation), `DotNetArch.Cli` (commands) and `DotNetArch.Mcp` (MCP server) with per-layer tests; process execution without a shell; identifier validation.

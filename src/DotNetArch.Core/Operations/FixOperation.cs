@@ -12,13 +12,14 @@ internal static class FixOperation
 {
     public static readonly OperationDefinition Definition = new(
         "fix",
-        "Fix doctor findings mechanically and without touching source code. Default: missing global.json, .editorconfig, .gitignore lines, .dockerignore. Opt-in via rules: DA-B03 (central package versions, resolved versions unchanged), DA-B07 (warnings are errors in CI/Release), DA-S04 (Domain test project with an architecture test), DA-S06 (layout v2: src/ and tests/), DA-A01 (layout v3: tests/ to test/), DA-A02 (ABP layer projects Domain.Shared, Application.Contracts, HttpApi, HttpApi.Client; structure only). Plan first; writes only with apply. Other findings are listed as manual.",
+        "Fix doctor findings mechanically and without touching source code. Default: missing global.json, .editorconfig, .gitignore lines, .dockerignore. Opt-in via rules: DA-B03 (central package versions, resolved versions unchanged), DA-B07 (warnings are errors in CI/Release), DA-S04 (Domain test project with an architecture test), DA-S06 (layout v2: src/ and tests/), DA-A01 (layout v3: tests/ to test/), DA-A02 (ABP layer projects: Domain.Shared, Application.Contracts and HttpApi are created only where files move into them - enum-only files, DTOs and MediatR requests, controllers - with namespaces unchanged and references, packages and Dockerfile restore lines wired; what cannot move is listed as manual; `empty` also creates empty layers). Plan first; writes only with apply. Other findings are listed as manual.",
         OperationKind.Mutating,
         new[]
         {
             new OperationParameter("path", "Repository root (default: current folder).", Positional: true),
             new OperationParameter("profile", "Profile file to apply instead of .net-arch/profile.yml."),
             new OperationParameter("rules", "Comma-separated rule ids to fix (default: every default-fixable finding; name opt-in rules here)."),
+            new OperationParameter("empty", "With DA-A02: also create ABP layer projects that have nothing to receive (default: a layer exists only where files move into it).", ParameterType.Flag),
         },
         Run);
 
@@ -46,7 +47,7 @@ internal static class FixOperation
                     continue;
                 }
 
-                var structural = StructuralFixers.For(finding.Id, root, ctx, only?.Contains("DA-B03") == true);
+                var structural = Structural(finding.Id, root, ctx, only?.Contains("DA-B03") == true, request.Flag("empty"), manual);
                 if (structural.Count == 0)
                     manual.Add($"{finding.Id}  {finding.Message}");
                 else
@@ -64,16 +65,25 @@ internal static class FixOperation
         foreach (var requested in only ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase))
         {
             if (RequestedWithoutFinding.Contains(requested) && !plan.Any(p => p.Change.RuleId?.Equals(requested, StringComparison.OrdinalIgnoreCase) == true) && !report.Findings.Any(f => f.Id.Equals(requested, StringComparison.OrdinalIgnoreCase)))
-                plan.AddRange(StructuralFixers.For(requested.ToUpperInvariant(), root, ctx, only!.Contains("DA-B03")));
+                plan.AddRange(Structural(requested.ToUpperInvariant(), root, ctx, only!.Contains("DA-B03"), request.Flag("empty"), manual));
         }
 
         if (request.Apply)
         {
             foreach (var move in plan.Where(a => a.MoveFrom != null))
             {
+                var source = Path.Combine(root, move.MoveFrom!);
                 var target = Path.Combine(root, move.Change.Path);
                 Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-                Directory.Move(Path.Combine(root, move.MoveFrom!), target);
+                if (File.Exists(source))
+                {
+                    File.Move(source, target);
+                    RemoveEmptyParents(root, Path.GetDirectoryName(source)!);
+                }
+                else
+                {
+                    Directory.Move(source, target);
+                }
             }
 
             foreach (var action in plan.Where(a => a.MoveFrom == null))
@@ -92,6 +102,23 @@ internal static class FixOperation
                    + string.Join("\n", lines)
                    + (manual.Count == 0 ? string.Empty : "\nmanual (not mechanical, or opt-in):\n" + string.Join("\n", manual.Select(m => "  " + m)));
         return new OperationResult(true, text, new { manual }, plan.Select(p => p.Change).ToList(), request.Apply);
+    }
+
+    private static IReadOnlyList<FixAction> Structural(string ruleId, string root, RepoContext ctx, bool centralPackages, bool allowEmpty, List<string> manual)
+    {
+        if (!ruleId.Equals("DA-A02", StringComparison.OrdinalIgnoreCase))
+            return StructuralFixers.For(ruleId, root, ctx, centralPackages);
+        var actions = LayerMigration.Plan(root, ctx, allowEmpty, out var left);
+        manual.AddRange(left.Select(m => $"DA-A02  {m}"));
+        return actions;
+    }
+
+    /// <summary>Folders left empty by a file move are removed (up to, never including, the repository root).</summary>
+    private static void RemoveEmptyParents(string root, string directory)
+    {
+        var rootPath = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar);
+        for (var current = Path.GetFullPath(directory); current.Length > rootPath.Length && Directory.Exists(current) && !Directory.EnumerateFileSystemEntries(current).Any(); current = Path.GetDirectoryName(current)!)
+            Directory.Delete(current);
     }
 
     private static FixAction? Fixer(string root, DoctorFinding finding)
