@@ -50,6 +50,7 @@ internal static partial class TypedClient
         }
 
         var known = KnownTypes(ctx);
+        var transport = ctx.Profile?.Client is { Transport: "rest-client", Interface.Length: > 0 } client ? client : null;
         var prefix = domain.Name[..^".Domain".Length];
         var existing = ctx.OfLayer(ProjectLayer.HttpApiClient).FirstOrDefault();
         var folder = domain.Dir.Contains('/') ? domain.Dir[..domain.Dir.LastIndexOf('/')] : string.Empty;
@@ -61,13 +62,13 @@ internal static partial class TypedClient
         var generated = 0;
         foreach (var file in controllers)
         {
-            var (clientName, methods) = Parse(ctx.Read(file), file, known, notes);
+            var (clientName, methods) = Parse(ctx.Read(file), file, known, notes, transport != null);
             if (methods.Count == 0)
                 continue;
             var path = $"{dir}/{clientName}.cs";
             if (ctx.Has(path))
                 continue;
-            actions.Add(new FixAction(new PlannedChange(path, "create", $"typed client for {Path.GetFileNameWithoutExtension(file)} ({methods.Count} action(s))", "DA-A08"), Render(ns, clientName, methods, known)));
+            actions.Add(new FixAction(new PlannedChange(path, "create", $"typed client for {Path.GetFileNameWithoutExtension(file)} ({methods.Count} action(s))", "DA-A08"), Render(ns, clientName, methods, known, transport)));
             generated++;
         }
 
@@ -75,7 +76,7 @@ internal static partial class TypedClient
             return actions;
 
         if (!ctx.Has($"{dir}/ApiRoute.cs"))
-            actions.Add(new FixAction(new PlannedChange($"{dir}/ApiRoute.cs", "create", "URL helpers of the typed client", "DA-A08"), RenderRoute(ns)));
+            actions.Add(new FixAction(new PlannedChange($"{dir}/ApiRoute.cs", "create", "URL helpers of the typed client", "DA-A08"), RenderRoute(ns, transport != null)));
 
         if (existing == null)
         {
@@ -84,7 +85,7 @@ internal static partial class TypedClient
             var framework = XDocument.Load(Path.Combine(root, domain.File)).Descendants("TargetFramework").FirstOrDefault()?.Value ?? "net8.0";
             var relative = Path.GetRelativePath(dir, $"{contracts.Dir}/{contracts.Name}.csproj").Replace('/', '\\');
             actions.Add(new FixAction(new PlannedChange(csproj, "create", "typed client project (references Application.Contracts only)", "DA-A08"),
-                $"<Project Sdk=\"Microsoft.NET.Sdk\">\n\n  <PropertyGroup>\n    <TargetFramework>{framework}</TargetFramework>\n    <Nullable>enable</Nullable>\n    <ImplicitUsings>enable</ImplicitUsings>\n  </PropertyGroup>\n\n  <ItemGroup>\n    <ProjectReference Include=\"{relative}\" />\n  </ItemGroup>\n\n</Project>\n",
+                $"<Project Sdk=\"Microsoft.NET.Sdk\">\n\n  <PropertyGroup>\n    <TargetFramework>{framework}</TargetFramework>\n    <Nullable>enable</Nullable>\n    <ImplicitUsings>enable</ImplicitUsings>\n  </PropertyGroup>\n\n  <ItemGroup>\n    <ProjectReference Include=\"{relative}\" />\n  </ItemGroup>\n{(transport == null ? string.Empty : $"\n  <ItemGroup>\n    <PackageReference Include=\"{transport.Package}\" />\n  </ItemGroup>\n")}\n</Project>\n",
                 solution == null ? null : () => Register(root, solution, csproj)));
         }
 
@@ -124,7 +125,7 @@ internal static partial class TypedClient
         return result;
     }
 
-    private static (string ClientName, List<ClientAction> Actions) Parse(string raw, string file, Dictionary<string, string> known, List<string> notes)
+    private static (string ClientName, List<ClientAction> Actions) Parse(string raw, string file, Dictionary<string, string> known, List<string> notes, bool stringTransport)
     {
         var text = LineComment().Replace(BlockComment().Replace(raw, " "), string.Empty);
         var controller = ControllerClass().Match(text);
@@ -190,6 +191,8 @@ internal static partial class TypedClient
             if (returns.Type != null && !TypeAllowed(returns.Type, known, out var returnBlocker))
                 problem = $"response type {returnBlocker} is not in Application.Contracts or Domain.Shared";
             var rawBody = returns.Type == null && verb.Groups["verb"].Value == "Get";
+            if (rawBody && stringTransport)
+                problem = "the response is raw bytes and the configured REST client returns strings";
             if (problem != null)
             {
                 notes.Add($"DA-A08  {label} skipped: {problem}");
@@ -229,11 +232,14 @@ internal static partial class TypedClient
         return true;
     }
 
-    private static string Render(string ns, string clientName, List<ClientAction> actions, Dictionary<string, string> known)
+    private static string Render(string ns, string clientName, List<ClientAction> actions, Dictionary<string, string> known, NetArch.ClientTransport? transport)
     {
         var usedTypes = actions.SelectMany(a => a.Parameters.Select(p => p.Type).Append(a.Returns ?? string.Empty)).SelectMany(t => Identifier().Matches(t).Select(m => m.Value));
         var usings = usedTypes.Where(known.ContainsKey).Select(t => known[t]).Distinct(StringComparer.Ordinal).OrderBy(n => n, StringComparer.Ordinal).ToList();
-        var header = new StringBuilder("using System.Net.Http.Json;\n");
+        var header = new StringBuilder(transport == null ? "using System.Net.Http.Json;\n" : "");
+        if (transport != null)
+            usings.Add(transport.Namespace);
+        usings = usings.Distinct(StringComparer.Ordinal).OrderBy(n => n, StringComparer.Ordinal).ToList();
         foreach (var u in usings)
             header.Append("using ").Append(u).Append(";\n");
         var interfaceBody = new StringBuilder();
@@ -244,16 +250,19 @@ internal static partial class TypedClient
             var parameterList = string.Join(", ", action.Parameters.Select(p => $"{p.Type} {p.Name}").Append("CancellationToken cancellationToken = default"));
             var returnType = action.Returns == null ? "Task" : $"Task<{NullableOf(action.Returns)}>";
             interfaceBody.Append("    ").Append(returnType).Append(' ').Append(methodName).Append('(').Append(parameterList).Append(");\n");
-            classBody.Append(RenderMethod(action, methodName, parameterList, returnType));
+            classBody.Append(RenderMethod(action, methodName, parameterList, returnType, transport != null));
         }
 
-        return $"{header}\nnamespace {ns};\n\n/// <summary>Typed client for the {clientName[..^"Client".Length]} endpoints (generated from the controller routes).</summary>\npublic interface I{clientName}\n{{\n{interfaceBody}}}\n\n/// <inheritdoc />\npublic sealed class {clientName} : I{clientName}\n{{\n    private readonly HttpClient _http;\n\n    public {clientName}(HttpClient http)\n    {{\n        _http = http ?? throw new ArgumentNullException(nameof(http));\n    }}\n\n{classBody.ToString().TrimEnd('\n')}\n}}\n";
+        var fieldAndConstructor = transport == null
+            ? $"private readonly HttpClient _http;\n\n    public {clientName}(HttpClient http)\n    {{\n        _http = http ?? throw new ArgumentNullException(nameof(http));\n    }}"
+            : $"private readonly {transport.Interface} _rest;\n\n    public {clientName}({transport.Interface} rest)\n    {{\n        _rest = rest ?? throw new ArgumentNullException(nameof(rest));\n    }}";
+        return $"{header}\nnamespace {ns};\n\n/// <summary>Typed client for the {clientName[..^"Client".Length]} endpoints (generated from the controller routes).</summary>\npublic interface I{clientName}\n{{\n{interfaceBody}}}\n\n/// <inheritdoc />\npublic sealed class {clientName} : I{clientName}\n{{\n    {fieldAndConstructor}\n\n{classBody.ToString().TrimEnd('\n')}\n}}\n";
     }
 
     private static string NullableOf(string type) =>
         type.EndsWith('?') || Primitives.Contains(type) && type is "int" or "long" or "short" or "byte" or "bool" or "decimal" or "double" or "float" or "Guid" or "DateTime" or "DateTimeOffset" or "TimeSpan" ? type : type + "?";
 
-    private static string RenderMethod(ClientAction action, string methodName, string parameterList, string returnType)
+    private static string RenderMethod(ClientAction action, string methodName, string parameterList, string returnType, bool rest)
     {
         var sb = new StringBuilder();
         sb.Append("    public async ").Append(returnType).Append(' ').Append(methodName).Append('(').Append(parameterList).Append(")\n    {\n");
@@ -269,6 +278,19 @@ internal static partial class TypedClient
             sb.Append("        url = ApiRoute.WithQuery(url, ").Append(string.Join(", ", query.Select(p => $"(\"{p.Name}\", {p.Name})"))).Append(");\n");
         var body = action.Parameters.FirstOrDefault(p => p.Source == "body");
         var returnsValue = action.Returns != null;
+        if (rest)
+        {
+            // a string-returning REST client: the query string travels inside the path, so repeated keys survive
+            var call = action.Verb + "Async";
+            var arguments = action.Verb is "Get" or "Delete" ? "url, null, null, cancellationToken" : $"url, {(body != null ? body.Name : "null")}, null, null, cancellationToken";
+            if (returnsValue)
+                sb.Append("        var json = await _rest.").Append(call).Append('(').Append(arguments).Append(").ConfigureAwait(false);\n        return ApiJson.Read<").Append(action.Returns).Append(">(json);\n");
+            else
+                sb.Append("        await _rest.").Append(call).Append('(').Append(arguments).Append(").ConfigureAwait(false);\n");
+            sb.Append("    }\n\n");
+            return sb.ToString();
+        }
+
         switch (action.Verb)
         {
             case "Get" when action.Raw:
@@ -298,8 +320,8 @@ internal static partial class TypedClient
         return sb.ToString();
     }
 
-    private static string RenderRoute(string ns) =>
-        $"using System.Globalization;\n\nnamespace {ns};\n\n/// <summary>Builds the URLs of the typed clients: escaped route segments and a query string without null values.</summary>\ninternal static class ApiRoute\n{{\n    public static string Segment(object? value) => Uri.EscapeDataString(Format(value));\n\n    public static string WithQuery(string url, params (string Name, object? Value)[] query)\n    {{\n        var parts = query\n            .Where(item => item.Value != null)\n            .SelectMany(item => item.Value is System.Collections.IEnumerable list and not string ? list.Cast<object?>().Select(v => (item.Name, Value: v)) : new[] {{ (item.Name, Value: item.Value) }})\n            .Where(item => item.Value != null)\n            .Select(item => Uri.EscapeDataString(item.Name) + \"=\" + Uri.EscapeDataString(Format(item.Value)))\n            .ToList();\n        return parts.Count == 0 ? url : url + \"?\" + string.Join('&', parts);\n    }}\n\n    private static string Format(object? value) => value switch\n    {{\n        null => string.Empty,\n        bool flag => flag ? \"true\" : \"false\",\n        DateTime moment => moment.ToString(\"O\", CultureInfo.InvariantCulture),\n        DateTimeOffset moment => moment.ToString(\"O\", CultureInfo.InvariantCulture),\n        IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),\n        _ => value.ToString() ?? string.Empty,\n    }};\n}}\n";
+    private static string RenderRoute(string ns, bool rest) =>
+        $"using System.Globalization;\n\nnamespace {ns};\n\n/// <summary>Builds the URLs of the typed clients: escaped route segments and a query string without null values.</summary>\ninternal static class ApiRoute\n{{\n    public static string Segment(object? value) => Uri.EscapeDataString(Format(value));\n\n    public static string WithQuery(string url, params (string Name, object? Value)[] query)\n    {{\n        var parts = query\n            .Where(item => item.Value != null)\n            .SelectMany(item => item.Value is System.Collections.IEnumerable list and not string ? list.Cast<object?>().Select(v => (item.Name, Value: v)) : new[] {{ (item.Name, Value: item.Value) }})\n            .Where(item => item.Value != null)\n            .Select(item => Uri.EscapeDataString(item.Name) + \"=\" + Uri.EscapeDataString(Format(item.Value)))\n            .ToList();\n        return parts.Count == 0 ? url : url + \"?\" + string.Join('&', parts);\n    }}\n\n    private static string Format(object? value) => value switch\n    {{\n        null => string.Empty,\n        bool flag => flag ? \"true\" : \"false\",\n        DateTime moment => moment.ToString(\"O\", CultureInfo.InvariantCulture),\n        DateTimeOffset moment => moment.ToString(\"O\", CultureInfo.InvariantCulture),\n        IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),\n        _ => value.ToString() ?? string.Empty,\n    }};\n}}\n" + (rest ? $"\n/// <summary>Reads the JSON text a string-returning REST client delivers.</summary>\ninternal static class ApiJson\n{{\n    private static readonly System.Text.Json.JsonSerializerOptions Options = new(System.Text.Json.JsonSerializerDefaults.Web);\n\n    public static T? Read<T>(string json) => string.IsNullOrWhiteSpace(json) ? default : System.Text.Json.JsonSerializer.Deserialize<T>(json, Options);\n}}\n" : string.Empty);
 
     private static List<string> SplitParameters(string arguments)
     {

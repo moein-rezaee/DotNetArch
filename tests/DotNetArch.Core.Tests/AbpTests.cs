@@ -333,4 +333,29 @@ public sealed class AbpTests : IDisposable
         Assert.Empty(Run("fix", repo, apply: false, ("rules", "DA-A09")).Plan!);
         Assert.DoesNotContain(plan.Plan!, c => c.Path == "docker-compose.yml" && c.Action == "modify");
     }
+
+    [Fact]
+    public void Typed_client_can_use_the_rest_client_abstraction_a_profile_names_instead_of_HttpClient()
+    {
+        var repo = ApiRepo();
+        Write(repo, ".net-arch/profile.yml", "name: acme\nversion: 1.0.0\nclient:\n  transport: rest-client\n  interface: IRestClient\n  namespace: Acme.Http.Abstractions\n  package: Acme.Http.Abstractions\n");
+
+        using (ToolHost.Use(new HostContext(new NonInteractivePrompter(), new BufferedToolOutput(), new FakeProcessRunner())))
+        {
+            var plan = Run("fix", repo, apply: true, ("rules", "DA-A08"));
+            Assert.Contains("ItemController.Export skipped: the response is raw bytes", plan.Text, StringComparison.Ordinal);
+        }
+
+        var client = File.ReadAllText(Path.Combine(repo, "src", "Shop.HttpApi.Client", "ItemClient.cs"));
+        Assert.Contains("using Acme.Http.Abstractions;", client, StringComparison.Ordinal);
+        Assert.Contains("public ItemClient(IRestClient rest)", client, StringComparison.Ordinal);
+        Assert.Contains("var json = await _rest.GetAsync(url, null, null, cancellationToken).ConfigureAwait(false);", client, StringComparison.Ordinal);
+        Assert.Contains("return ApiJson.Read<ItemDto>(json);", client, StringComparison.Ordinal);
+        Assert.Contains("await _rest.PostAsync(url, request, null, null, cancellationToken)", client, StringComparison.Ordinal);
+        Assert.Contains("await _rest.DeleteAsync(url, null, null, cancellationToken)", client, StringComparison.Ordinal);
+        Assert.DoesNotContain("HttpClient", client, StringComparison.Ordinal);
+        Assert.DoesNotContain("ExportAsync", client, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"Acme.Http.Abstractions\" />", File.ReadAllText(Path.Combine(repo, "src", "Shop.HttpApi.Client", "Shop.HttpApi.Client.csproj")), StringComparison.Ordinal);
+        Assert.Contains("internal static class ApiJson", File.ReadAllText(Path.Combine(repo, "src", "Shop.HttpApi.Client", "ApiRoute.cs")), StringComparison.Ordinal);
+    }
 }

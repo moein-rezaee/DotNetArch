@@ -86,6 +86,29 @@ public sealed class ProfileDefinition
     public Dictionary<string, string> Severity { get; set; } = new();
 
     public List<ProfileRule> Rules { get; set; } = new();
+
+    /// <summary>How the generated typed client talks HTTP; by default it uses <c>HttpClient</c>.</summary>
+    public ClientTransport? Client { get; set; }
+}
+
+/// <summary>
+/// A string-returning REST client abstraction that the generated typed client uses instead of <c>HttpClient</c>. The shape is fixed:
+/// <c>Task&lt;string&gt; GetAsync(string path, IDictionary&lt;string,string&gt;? headers, IDictionary&lt;string,string?&gt;? query, CancellationToken ct)</c>,
+/// <c>PostAsync/PutAsync/PatchAsync(string path, object? body, headers, query, ct)</c> and <c>DeleteAsync(path, headers, query, ct)</c>.
+/// </summary>
+public sealed class ClientTransport
+{
+    /// <summary><c>httpclient</c> (default) or <c>rest-client</c>.</summary>
+    public string Transport { get; set; } = "httpclient";
+
+    /// <summary>Name of the abstraction the client constructors take.</summary>
+    public string Interface { get; set; } = string.Empty;
+
+    /// <summary>Namespace of the abstraction.</summary>
+    public string Namespace { get; set; } = string.Empty;
+
+    /// <summary>NuGet package that provides it (referenced by the client project).</summary>
+    public string Package { get; set; } = string.Empty;
 }
 
 /// <summary>

@@ -31,7 +31,8 @@ internal static class FixOperation
         var root = Path.GetFullPath(request.Get("path") ?? Directory.GetCurrentDirectory());
         var report = DoctorRunner.Run(root, new DoctorOptions(request.Get("profile")));
         var only = request.Get("rules")?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var ctx = new RepoContext(root, null, new NetArch.RuleSettings());
+        var profile = NetArch.NetArchStore.ResolveProfile(root, request.Get("profile"), out _);
+        var ctx = new RepoContext(root, profile, new NetArch.RuleSettings());
         var plan = new List<FixAction>();
         var manual = new List<string>();
 
