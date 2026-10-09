@@ -88,10 +88,20 @@ internal static partial class TypedClient
             var solution = ctx.Files.FirstOrDefault(f => !f.Contains('/') && f.EndsWith(".sln", StringComparison.OrdinalIgnoreCase));
             var csproj = $"{dir}/{name}.csproj";
             var framework = StructuralFixers.FrameworkOf(root, ctx, domain.File);
+            var central = ctx.Has("Directory.Packages.props");
+            var kitVersion = KitVersion(ctx);
             var relative = Path.GetRelativePath(dir, $"{contracts.Dir}/{contracts.Name}.csproj").Replace('/', '\\');
             actions.Add(new FixAction(new PlannedChange(csproj, "create", "typed client project (references Application.Contracts only)", "DA-A08"),
-                $"<Project Sdk=\"Microsoft.NET.Sdk\">\n\n  <PropertyGroup>\n    <TargetFramework>{framework}</TargetFramework>\n    <Nullable>enable</Nullable>\n    <ImplicitUsings>enable</ImplicitUsings>\n  </PropertyGroup>\n\n  <ItemGroup>\n    <ProjectReference Include=\"{relative}\" />\n  </ItemGroup>\n{(transport == null ? string.Empty : $"\n  <ItemGroup>\n    <PackageReference Include=\"{transport.Package}\" />\n  </ItemGroup>\n")}\n</Project>\n",
+                $"<Project Sdk=\"Microsoft.NET.Sdk\">\n\n  <PropertyGroup>\n    <TargetFramework>{framework}</TargetFramework>\n    <Nullable>enable</Nullable>\n    <ImplicitUsings>enable</ImplicitUsings>\n  </PropertyGroup>\n\n  <ItemGroup>\n    <ProjectReference Include=\"{relative}\" />\n  </ItemGroup>\n{(transport == null ? string.Empty : $"\n  <ItemGroup>\n    <PackageReference Include=\"{transport.Package}\"{(central ? string.Empty : $" Version=\"{kitVersion}\"")} />\n  </ItemGroup>\n")}\n</Project>\n",
                 solution == null ? null : () => Register(root, solution, csproj)));
+            if (transport != null && central && !ctx.Read("Directory.Packages.props").Contains($"Include=\"{transport.Package}\"", StringComparison.OrdinalIgnoreCase))
+            {
+                var props = ctx.Read("Directory.Packages.props");
+                var close = props.LastIndexOf("</ItemGroup>", StringComparison.Ordinal);
+                if (close > 0)
+                    actions.Add(new FixAction(new PlannedChange("Directory.Packages.props", "modify", $"central version for {transport.Package}", "DA-A08"),
+                        props.Insert(close, $"  <PackageVersion Include=\"{transport.Package}\" Version=\"{kitVersion}\" />\n  ")));
+            }
         }
 
         // tests ride along with the client: the verb and route of every action, and one test that every controller route has a client method
@@ -266,6 +276,17 @@ internal static partial class TypedClient
 
         blocker = string.Empty;
         return true;
+    }
+
+    /// <summary>The version most Corevia.Kit.* packages of the repository use (the transport package ships with the same Kit release).</summary>
+    private static string KitVersion(RepoContext ctx)
+    {
+        var counts = new Dictionary<string, int>(StringComparer.Ordinal);
+        var files = ctx.Projects.Select(p => p.File).Append("Directory.Packages.props").Where(f => ctx.Has(f));
+        foreach (var file in files)
+            foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(ctx.Read(file), "Include=\"Corevia\\.Kit\\.[^\"]+\"[^>]*?Version=\"(?<v>[^\"$]+)\""))
+                counts[m.Groups["v"].Value] = counts.GetValueOrDefault(m.Groups["v"].Value) + 1;
+        return counts.Count == 0 ? "1.0.0" : counts.OrderByDescending(c => c.Value).First().Key;
     }
 
     private static string Render(string ns, string clientName, List<ClientAction> actions, Dictionary<string, string> known, NetArch.ClientTransport? transport)
@@ -489,7 +510,7 @@ internal static partial class TypedClient
     [GeneratedRegex(@"\[Route\(\s*""(?<t>[^""]*)""\s*\)\]", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 2000)]
     private static partial Regex RouteOnClass();
 
-    [GeneratedRegex(@"(?<attrs>(?:[ \t]*\[(?:[^\[\]]|\[[^\]]*\])*\][ \t]*\r?\n)+)[ \t]*public\s+(?:async\s+)?(?<ret>[\w<>\[\]?,. ]+?)\s+(?<name>\w+)\s*\((?<params>(?:[^()]|\([^()]*\))*)\)", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 3000)]
+    [GeneratedRegex(@"(?<attrs>(?:[ \t]*\[(?:[^\[\]]|\[[^\]]*\])*\][ \t]*\r?\n(?:[ \t]*\r?\n)*)+)[ \t]*public\s+(?:async\s+)?(?<ret>[\w<>\[\]?,. ]+?)\s+(?<name>\w+)\s*\((?<params>(?:[^()]|\([^()]*\))*)\)", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 3000)]
     private static partial Regex ActionMethod();
 
     [GeneratedRegex(@"\[Http(?<verb>Get|Post|Put|Delete|Patch)(?:\(\s*""(?<tpl>[^""]*)""\s*\))?\]", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 2000)]

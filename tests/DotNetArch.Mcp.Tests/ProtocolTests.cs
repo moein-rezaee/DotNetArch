@@ -54,11 +54,12 @@ public class ProtocolTests
         var text = call.GetProperty("result").GetProperty("content")[0].GetProperty("text").GetString()!;
         Assert.Contains("\"ok\": false", text);
 
-        var doctor = await Exchange(new { jsonrpc = "2.0", id = 4, method = "tools/call", @params = new { name = "doctor", arguments = new { path = Path.GetTempPath() } } });
+        var emptyFolder = Directory.CreateTempSubdirectory("dotnet-arch-mcp").FullName;
+        var doctor = await Exchange(new { jsonrpc = "2.0", id = 4, method = "tools/call", @params = new { name = "doctor", arguments = new { path = emptyFolder } } });
         var doctorText = doctor.GetProperty("result").GetProperty("content")[0].GetProperty("text").GetString()!;
         Assert.Contains("\"operation\": \"doctor\"", doctorText);
 
-        var adopt = await Exchange(new { jsonrpc = "2.0", id = 5, method = "tools/call", @params = new { name = "adopt", arguments = new { path = Path.GetTempPath() } } });
+        var adopt = await Exchange(new { jsonrpc = "2.0", id = 5, method = "tools/call", @params = new { name = "adopt", arguments = new { path = emptyFolder } } });
         var adoptText = adopt.GetProperty("result").GetProperty("content")[0].GetProperty("text").GetString()!;
         Assert.Contains("\"applied\": false", adoptText);
 

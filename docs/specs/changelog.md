@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2.0.0 (unreleased)
+- Found while migrating the nine .NET services: the layer fixer carries the packages the moved files name by namespace (for example `Microsoft.EntityFrameworkCore`, `Corevia.Kit.*`) to the new layer project; an extension-method call counts as a dependency (a controller that calls one stays); a comment between the attributes and an action no longer hides the action from the typed client; the client project's transport package gets the Kit version (central or direct); the doctor skips folders it cannot read.
 - **Breaking** (D-32..D-34): the generators are registry operations. Every file-changing command plans first and writes only with `--apply` (MCP: `apply: true`); the old immediate behaviour is in 1.3.x. MCP tools take the registry values (`path`, `entity`, ...), not the old camelCase names (`solutionPath`, ...). `new solution` defaults to layout v3 (ABP); `--layout=v2|legacy` remain.
 - One registry for all commands: CLI words (`new crud`) and MCP tools (`new_crud`) derive from it; 26 operations. New: `add_layer`, `add_tests`, `spec_list`, `spec_add`, `spec_check`, `graph`; `adopt --standards=abp`.
 - In an ABP project every generator is followed by the ABP fixers (DA-A01, A02, A10, A11, A08, A09) and an `.net-arch/` refresh; a generated solution with entities, actions and events builds without warnings, passes its tests and has no ABP finding.

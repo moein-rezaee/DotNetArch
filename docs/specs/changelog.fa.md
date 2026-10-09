@@ -1,6 +1,7 @@
 # تغییرات
 
 ## 2.0.0 (منتشرنشده)
+- یافته‌های مهاجرت نه سرویس .NET: fixer لایه پکیج‌هایی را که فایل‌های جابه‌جاشده با namespace نام می‌برند (مثل `Microsoft.EntityFrameworkCore` و `Corevia.Kit.*`) به پروژهٔ لایهٔ تازه می‌برد؛ صدا زدن متد extension وابستگی حساب می‌شود (controllerی که یکی را صدا بزند می‌ماند)؛ کامنت بین attributeها و action دیگر action را از کلاینت typed پنهان نمی‌کند؛ پکیج transport پروژهٔ کلاینت نسخهٔ Kit را می‌گیرد (مرکزی یا مستقیم)؛ doctor پوشه‌هایی را که نمی‌تواند بخواند رد می‌کند.
 - **شکستنده** (D-32..D-34): مولدها عملیات رجیستری‌اند. هر دستور تغییردهنده اول طرح می‌دهد و فقط با `--apply` می‌نویسد (MCP: ‏`apply: true`)؛ رفتار فوری قبلی در 1.3.x است. ابزارهای MCP مقدارهای رجیستری (`path`، `entity`، ...) را می‌گیرند نه نام‌های camelCase قبلی (`solutionPath`، ...). ‏`new solution` پیش‌فرض layout v3 (ABP) دارد؛ ‏`--layout=v2|legacy` می‌ماند.
 - یک رجیستری برای همهٔ دستورها: کلمه‌های CLI (`new crud`) و ابزار MCP (`new_crud`) از آن مشتق می‌شوند؛ ۲۶ عملیات. تازه: ‏`add_layer`، `add_tests`، `spec_list`، `spec_add`، `spec_check`، `graph`؛ ‏`adopt --standards=abp`.
 - در پروژهٔ ABP بعد از هر مولد fixerهای ABP (DA-A01، A02، A10، A11، A08، A09) و تازه‌سازی `.net-arch/` اجرا می‌شود؛ solution تولیدشده با entity، action و event بدون هشدار build می‌شود، تست‌هایش پاس است و یافتهٔ ABP ندارد.

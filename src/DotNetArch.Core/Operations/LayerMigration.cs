@@ -43,6 +43,24 @@ internal static partial class LayerMigration
     public static LayerAnalysis Analyze(RepoContext ctx)
     {
         var files = Load(ctx);
+
+        // an extension method call (x.ToThing()) names no type, but the file that declares the method is a dependency all the same
+        foreach (var file in files)
+        {
+            foreach (Match m in ExtensionMethod().Matches(file.Text))
+                file.Declared.Add("ext:" + m.Groups[1].Value);
+        }
+
+        var extensions = files.SelectMany(f => f.Declared.Where(d => d.StartsWith("ext:", StringComparison.Ordinal))).ToHashSet(StringComparer.Ordinal);
+        foreach (var file in files)
+        {
+            foreach (var name in extensions)
+            {
+                if (!file.Declared.Contains(name) && Regex.IsMatch(file.Text, @"\.\s*" + Regex.Escape(name[4..]) + @"\s*[(<]"))
+                    file.Identifiers.Add(name);
+            }
+        }
+
         var index = new Dictionary<string, List<SourceFile>>(StringComparer.Ordinal);
         foreach (var file in files)
         {
@@ -292,7 +310,46 @@ internal static partial class LayerMigration
             }
         }
 
+        // Packages the moved files name by namespace (for example Corevia.Kit.ErrorHandling.Abstractions.Exceptions or Microsoft.EntityFrameworkCore) are
+        // carried too: the new project does not see what the old host got through its other references.
+        var known = KnownPackages(root, ctx);
+        foreach (var ns in usings.Where(u => !u.StartsWith("System", StringComparison.Ordinal)))
+        {
+            var id = known.Keys.Where(k => ns == k || ns.StartsWith(k + ".", StringComparison.Ordinal)).OrderByDescending(k => k.Length).FirstOrDefault();
+            if (id == null)
+                continue;
+            var text = known[id];
+            if (!packages.Any(x => PackageId(x) == id))
+                packages.Add(text);
+        }
+
         return (web, packages, visible);
+    }
+
+    /// <summary>Every package the repository already references, with the reference element as a project would write it.</summary>
+    private static Dictionary<string, string> KnownPackages(string root, RepoContext ctx)
+    {
+        var central = ctx.Has("Directory.Packages.props");
+        var result = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var project in ctx.Projects)
+        {
+            var document = XDocument.Load(Path.Combine(root, project.File));
+            foreach (var reference in document.Descendants("PackageReference"))
+            {
+                var id = (string?)reference.Attribute("Include");
+                if (id == null || result.ContainsKey(id))
+                    continue;
+                result[id] = central ? $"<PackageReference Include=\"{id}\" />" : reference.ToString(SaveOptions.DisableFormatting);
+            }
+        }
+
+        if (central)
+        {
+            foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(ctx.Read("Directory.Packages.props"), "PackageVersion\\s+Include=\"(?<id>[^\"]+)\""))
+                result.TryAdd(m.Groups["id"].Value, $"<PackageReference Include=\"{m.Groups["id"].Value}\" />");
+        }
+
+        return result;
     }
 
     /// <summary>An existing layer project that receives files gets the packages, framework reference and internals visibility those files need.</summary>
@@ -321,6 +378,9 @@ internal static partial class LayerMigration
             yield return new FixAction(new PlannedChange(project.File, "modify", "packages, framework reference and internals visibility for the moved files", "DA-A02"), text[..close].TrimEnd('\n') + "\n\n" + group + "\n" + text[close..]);
         }
     }
+
+    [GeneratedRegex(@"static\s+[\w<>\[\],.?\s]+?\s+(\w+)\s*(?:<[^>]*>)?\s*\(\s*this\s+", RegexOptions.CultureInvariant)]
+    private static partial Regex ExtensionMethod();
 
     private static string PackageId(string element) => Regex.Match(element, "Include=\"([^\"]+)\"").Groups[1].Value;
 

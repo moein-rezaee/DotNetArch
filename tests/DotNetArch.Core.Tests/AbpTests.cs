@@ -361,8 +361,62 @@ public sealed class AbpTests : IDisposable
         Assert.Contains("await _rest.DeleteAsync(url, null, null, cancellationToken)", client, StringComparison.Ordinal);
         Assert.DoesNotContain("HttpClient", client, StringComparison.Ordinal);
         Assert.DoesNotContain("ExportAsync", client, StringComparison.Ordinal);
-        Assert.Contains("<PackageReference Include=\"Acme.Http.Abstractions\" />", File.ReadAllText(Path.Combine(repo, "src", "Shop.HttpApi.Client", "Shop.HttpApi.Client.csproj")), StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"Acme.Http.Abstractions\" Version=\"1.0.0\" />", File.ReadAllText(Path.Combine(repo, "src", "Shop.HttpApi.Client", "Shop.HttpApi.Client.csproj")), StringComparison.Ordinal);
         Assert.Contains("internal static class ApiJson", File.ReadAllText(Path.Combine(repo, "src", "Shop.HttpApi.Client", "Common", "ApiRoute.cs")), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void The_transport_package_of_the_client_follows_the_central_versions_of_the_repository()
+    {
+        var repo = ApiRepo();
+        Write(repo, ".net-arch/profile.yml", "name: acme\nversion: 1.0.0\nclient:\n  transport: rest-client\n  interface: IRestClient\n  namespace: Acme.Http.Abstractions\n  package: Acme.Http.Abstractions\n");
+        Write(repo, "Directory.Packages.props", "<Project>\n  <PropertyGroup><ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally></PropertyGroup>\n  <ItemGroup>\n    <PackageVersion Include=\"Corevia.Kit.Http.Core\" Version=\"2.3.0\" />\n  </ItemGroup>\n</Project>\n");
+        Write(repo, "src/Shop.HttpApi/Shop.HttpApi.csproj", "<Project Sdk=\"Microsoft.NET.Sdk\"><ItemGroup><PackageReference Include=\"Corevia.Kit.Http.Core\" /></ItemGroup></Project>\n");
+
+        using (ToolHost.Use(new HostContext(new NonInteractivePrompter(), new BufferedToolOutput(), new FakeProcessRunner())))
+            Run("fix", repo, apply: true, ("rules", "DA-A08"));
+
+        var client = File.ReadAllText(Path.Combine(repo, "src", "Shop.HttpApi.Client", "Shop.HttpApi.Client.csproj"));
+        Assert.Contains("<PackageReference Include=\"Acme.Http.Abstractions\" />", client, StringComparison.Ordinal);
+        Assert.Contains("<PackageVersion Include=\"Acme.Http.Abstractions\" Version=\"2.3.0\" />", File.ReadAllText(Path.Combine(repo, "Directory.Packages.props")), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_comment_between_the_attributes_and_the_action_does_not_hide_the_action_from_the_client()
+    {
+        var repo = ApiRepo();
+        Write(repo, "src/Shop.HttpApi/Controllers/NoteController.cs", "using Microsoft.AspNetCore.Mvc;\nusing Shop.Application;\n\nnamespace Shop.Api.Controllers;\n\n[ApiController]\n[Route(\"v1/api/[controller]\")]\npublic sealed class NoteController : ControllerBase\n{\n    [HttpGet(\"one\")]\n    [ProducesResponseType(typeof(ItemDto), StatusCodes.Status200OK)]\n    // why the default is what it is\n    // and a second line\n    public async Task<IActionResult> One([FromQuery] bool fresh = true, CancellationToken cancellationToken = default) => Ok();\n}\n");
+
+        using (ToolHost.Use(new HostContext(new NonInteractivePrompter(), new BufferedToolOutput(), new FakeProcessRunner())))
+            Run("fix", repo, apply: true, ("rules", "DA-A08"));
+
+        Assert.Contains("OneAsync", File.ReadAllText(Path.Combine(repo, "src", "Shop.HttpApi.Client", "Note", "NoteClient.cs")), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_package_the_moved_files_name_by_namespace_is_carried_to_the_new_layer_project()
+    {
+        var repo = Repo();
+        Write(repo, "src/Shop.Application/Shop.Application.csproj", "<Project Sdk=\"Microsoft.NET.Sdk\">\n  <ItemGroup><ProjectReference Include=\"..\\Shop.Domain\\Shop.Domain.csproj\" /></ItemGroup>\n  <ItemGroup><PackageReference Include=\"MediatR\" Version=\"12.2.0\" /><PackageReference Include=\"Acme.Errors.Abstractions\" Version=\"2.0.0\" /></ItemGroup>\n</Project>\n");
+        Write(repo, "src/Shop.Api/Controllers/ProductController.cs", "using Acme.Errors.Abstractions.Exceptions;\nusing MediatR;\nusing Microsoft.AspNetCore.Mvc;\nusing Shop.Application.Features.Products;\n\nnamespace Shop.Api.Controllers;\n[ApiController]\npublic sealed class ProductController : ControllerBase\n{\n    private readonly IMediator _mediator;\n\n    public ProductController(IMediator mediator) { _mediator = mediator; }\n\n    [HttpGet]\n    public async Task<IActionResult> Get(int id) => Ok(await _mediator.Send(new GetProductQuery(id)));\n}\n");
+
+        using (ToolHost.Use(new HostContext(new NonInteractivePrompter(), new BufferedToolOutput(), new FakeProcessRunner())))
+            Run("fix", repo, apply: true, ("rules", "DA-A02"));
+
+        Assert.Contains("<PackageReference Include=\"Acme.Errors.Abstractions\" Version=\"2.0.0\" />", File.ReadAllText(Path.Combine(repo, "src", "Shop.HttpApi", "Shop.HttpApi.csproj")), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_controller_that_calls_an_extension_method_of_a_project_that_stays_is_blocked()
+    {
+        var repo = Repo();
+        Write(repo, "src/Shop.Application/Features/Products/SortMapper.cs", "namespace Shop.Application.Features.Products;\npublic static class SortMapper\n{\n    public static int ToSortKey(this string value) => value.Length;\n}\n");
+        Write(repo, "src/Shop.Api/Controllers/ProductController.cs", "using Microsoft.AspNetCore.Mvc;\n\nnamespace Shop.Api.Controllers;\n[ApiController]\npublic sealed class ProductController : ControllerBase\n{\n    [HttpGet]\n    public IActionResult Get(string sortBy) => Ok(sortBy.ToSortKey());\n}\n");
+
+        var plan = Run("fix", repo, apply: false, ("rules", "DA-A02"));
+
+        Assert.Contains("ProductController.cs stays: it needs src/Shop.Application/Features/Products/SortMapper.cs", plan.Text, StringComparison.Ordinal);
+        Assert.DoesNotContain(plan.Plan!, c => c.Path.Contains("Shop.HttpApi", StringComparison.Ordinal));
     }
 
     [Fact]

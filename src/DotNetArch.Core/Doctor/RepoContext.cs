@@ -117,6 +117,9 @@ internal sealed class RepoContext
         return Projects.Count == 0 ? "none" : "flat";
     }
 
+    /// <summary>A folder the user cannot read (a protected system folder) is skipped instead of failing the whole scan.</summary>
+    private static readonly EnumerationOptions Inaccessible = new() { IgnoreInaccessible = true, AttributesToSkip = 0 };
+
     private static IEnumerable<string> Enumerate(string root)
     {
         var pending = new Stack<string>();
@@ -124,9 +127,9 @@ internal sealed class RepoContext
         while (pending.Count > 0)
         {
             var dir = pending.Pop();
-            foreach (var file in Directory.EnumerateFiles(dir))
+            foreach (var file in Directory.EnumerateFiles(dir, "*", Inaccessible))
                 yield return System.IO.Path.GetRelativePath(root, file).Replace('\\', '/');
-            foreach (var sub in Directory.EnumerateDirectories(dir))
+            foreach (var sub in Directory.EnumerateDirectories(dir, "*", Inaccessible))
             {
                 if (!SkippedDirectories.Contains(System.IO.Path.GetFileName(sub)))
                     pending.Push(sub);
