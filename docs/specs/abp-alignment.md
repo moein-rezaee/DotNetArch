@@ -2,7 +2,7 @@
 
 # ABP standards: extracted spec and distance from DotNetArch
 
-Purpose: take the published ABP Framework conventions as the reference standard, measure how far DotNetArch (layout v2 and the Corevia services) is from it, and decide what to adopt now. Nothing in this document changes the tool; decisions are listed at the end.
+Purpose: take the published ABP Framework conventions as the reference standard, measure how far DotNetArch (layout v2 and the Corevia services) is from it, and record what is adopted. Status: **accepted by the owner on 2026-10-09** (decisions D-25..D-29); the implementation plan is roadmap Phase 12.
 
 ## 1. Sources
 All rules below were read from the official ABP documentation (version "latest", checked 2026-10-09):
@@ -56,15 +56,24 @@ All rules below were read from the official ABP documentation (version "latest",
 ## 4. Distance of the Corevia services
 Measured on Catalog after the layout v2 move: it already has `src/` and the separate `Contracts`/provider projects; it lacks Domain.Shared, Application.Contracts for services, HttpApi/Client packages and `etc/`; it uses CQRS handlers, not application services; ids are business ids (not `Guid`); persistence is not EF Core. The Corevia services therefore sit at "ABP-shaped folders, different internals".
 
-## 5. Recommendation
-Adopt the ABP conventions that are structural and cheap, keep the parts that depend on ABP's runtime framework out:
-1. Make layout names configurable and align the defaults with ABP: `src/`, `test/`, `etc/`.
-2. Add an optional layered blueprint (`--layout=layered`) with `Domain.Shared`, `Application.Contracts`, `HttpApi`, `HttpApi.Client` and a thin host, because typed clients and shared contracts are what Corevia services lack today; keep v2 for existing services.
-3. Add ABP naming and repository rules to `doctor` as an opt-in profile (async plus cancellation token, no `IQueryable`, `Manager` suffix, `AppService` interface suffix, DTOs in Contracts) so adoption is measurable.
-4. Do not copy the runtime module system, multi-tenancy or localization into the tool; keep them in Kits.
-5. Do not force Guid ids or application services onto services that use business ids and CQRS: record them as accepted exceptions of the Corevia profile.
+## 5. Decisions (owner, 2026-10-09)
+1. **ABP is the structural reference standard** of the tool (D-25). The ABP runtime framework (module system, multi-tenancy, audit, permissions, localization, settings) is not copied; it stays in Kits.
+2. **Layout v3 = ABP-shaped folders** `src/`, `test/` (singular), `etc/` (D-26). v2 (`tests/`) stays valid for services already adopted; `fix --rules=DA-S07` moves v2 to v3.
+3. **Layer projects** `Domain.Shared`, `Application.Contracts`, `HttpApi`, `HttpApi.Client` are *optional for the tool and mandatory for a profile* (D-27). The tool creates the empty projects with the allowed references; it never moves types between projects. Moving types is a reviewed migration step (namespaces stay unchanged, so no code is edited).
+4. **A built-in, opt-in `abp` rule set in `doctor`** (D-28), ids `DA-A01..DA-A06`, enabled by `standards: [abp]` in `project.yml`. It contains only structural rules; it has no rule about `Guid` ids or application services, so CQRS services with business ids need no exception.
+5. **Services own what they publish** (D-29): files a service publishes for other systems (for example its gateway route declaration) live in the service under `etc/` and consumers aggregate them; a service never depends on a consumer. Which file and which consumer is organisation-level knowledge and belongs to a profile.
 
-## 6. Decisions needed
-- Folder name `test` (ABP) versus `tests` (current): changing it is one tool rule plus a move per adopted service (Catalog was moved to `tests/` on 2026-10-09).
-- Whether the layered blueprint is part of the next cycle or a separate roadmap phase.
-- Whether the ABP rules become the default profile of the tool or stay opt-in.
+## 6. Resulting rules
+| Id | Rule | Kind |
+|---|---|---|
+| DA-A01 | Solution roots are `src/`, `test/`, `etc/` (layout v3) | structure |
+| DA-A02 | Layer projects `Domain.Shared`, `Application.Contracts`, `HttpApi`, `HttpApi.Client` exist | structure |
+| DA-A03 | Reference direction: Domain.Shared none; Domain to Domain.Shared; Contracts to Domain.Shared; HttpApi and HttpApi.Client to Contracts only; persistence to Domain only | structure |
+| DA-A04 | Repository interfaces: async methods, optional `CancellationToken` last, no `IQueryable` returned | code |
+| DA-A05 | Domain services end with `Manager`; application service interfaces end with `AppService` and live in Contracts (only when such types exist) | code |
+| DA-A06 | DTO types live in `Application.Contracts` (only when that project exists) | code |
+
+## 7. Fix and migration path
+- `fix --rules=DA-S07`: v2 to v3 (`tests/` to `test/`, rewriting every path that points at it, same machinery as DA-S06).
+- `fix --rules=DA-S08`: create the four layer projects with the allowed references and register them in the solution (structure only).
+- Moving DTOs, constants and controllers into the new projects is a migration step done by the service owner or agent, with the namespaces unchanged; `doctor` DA-A02..A06 shows what remains. A file-move fixer is considered only after a real service has proven the pattern (roadmap 12.7).

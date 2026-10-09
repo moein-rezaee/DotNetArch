@@ -69,3 +69,10 @@ Status legend: `[ ]` not started, `[~]` in progress, `[x]` done and verified. St
 - R-G4. One operation registry defines every operation once; CLI and MCP derive from it. Mutating operations return a machine-readable plan.
 - R-G5. Settings: tool defaults < global `~/.net-arch/` < project `.net-arch/`; rules.yml carries severity overrides, thresholds and exceptions with a mandatory reason.
 - R-G6. `doctor` also validates documentation (index, specs, OpenAPI snapshot) and tests (tests present, coverage versus threshold).
+
+### ABP alignment (R-H)
+- R-H1. Layout v3 (`src/`, `test/`, `etc/`) is supported by `adopt`, `doctor` and `fix`; v2 stays valid; `fix --rules=DA-S07` moves v2 to v3 and rewrites every path that points at the moved folders.
+- R-H2. The layer projects `Domain.Shared`, `Application.Contracts`, `HttpApi`, `HttpApi.Client` are optional; `fix --rules=DA-S08` creates them with only the allowed references and never moves types.
+- R-H3. `doctor` has a built-in opt-in rule set `abp` (`DA-A01..DA-A06`), enabled by `standards: [abp]`; a profile can require it and can list accepted exceptions with a reason.
+- R-H4. `new solution --layout=v3` generates the ABP-shaped tree (optionally with the layer projects) and passes the `abp` rule set.
+- R-H5. The tool has no rule about `Guid` ids, application services or ABP runtime features.
