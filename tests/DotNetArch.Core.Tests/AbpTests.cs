@@ -99,7 +99,9 @@ public sealed class AbpTests : IDisposable
         Assert.Contains("<TargetFramework>net9.0</TargetFramework>", shared, StringComparison.Ordinal);
         Assert.DoesNotContain("ProjectReference", shared, StringComparison.Ordinal);
         Assert.Contains("Include=\"..\\Shop.Domain.Shared\\Shop.Domain.Shared.csproj\"", File.ReadAllText(Path.Combine(repo, "src", "Shop.Application.Contracts", "Shop.Application.Contracts.csproj")), StringComparison.Ordinal);
-        Assert.Contains("Include=\"..\\Shop.Application.Contracts\\Shop.Application.Contracts.csproj\"", File.ReadAllText(Path.Combine(repo, "src", "Shop.HttpApi", "Shop.HttpApi.csproj")), StringComparison.Ordinal);
+        var httpApi = File.ReadAllText(Path.Combine(repo, "src", "Shop.HttpApi", "Shop.HttpApi.csproj"));
+        Assert.Contains("Include=\"..\\Shop.Application.Contracts\\Shop.Application.Contracts.csproj\"", httpApi, StringComparison.Ordinal);
+        Assert.Contains("<FrameworkReference Include=\"Microsoft.AspNetCore.App\" />", httpApi, StringComparison.Ordinal);
         Assert.Contains("Include=\"..\\Shop.Application.Contracts\\Shop.Application.Contracts.csproj\"", File.ReadAllText(Path.Combine(repo, "src", "Shop.HttpApi.Client", "Shop.HttpApi.Client.csproj")), StringComparison.Ordinal);
         Assert.Equal(4, runner.Calls.Count(c => c.Arguments.Contains("sln")));
         Assert.Equal(before, File.ReadAllText(Path.Combine(repo, "src", "Shop.Application", "Features", "Products", "ProductDto.cs")));

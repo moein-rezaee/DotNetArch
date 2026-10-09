@@ -222,6 +222,9 @@ internal static partial class StructuralFixers
             var name = $"{prefix}.{suffix}";
             var dir = folder.Length == 0 ? name : $"{folder}/{name}";
             var references = reference == null ? string.Empty : $"\n  <ItemGroup>\n    <ProjectReference Include=\"..\\{prefix}.{reference}\\{prefix}.{reference}.csproj\" />\n  </ItemGroup>\n";
+            // controllers live in HttpApi, so it needs the ASP.NET Core shared framework (a framework reference, not a project or package reference)
+            if (layer == ProjectLayer.HttpApi)
+                references += "\n  <ItemGroup>\n    <FrameworkReference Include=\"Microsoft.AspNetCore.App\" />\n  </ItemGroup>\n";
             var csproj = $"<Project Sdk=\"Microsoft.NET.Sdk\">\n\n  <PropertyGroup>\n    <TargetFramework>{framework}</TargetFramework>\n    <Nullable>enable</Nullable>\n    <ImplicitUsings>enable</ImplicitUsings>\n  </PropertyGroup>\n{references}\n</Project>\n";
             var path = $"{dir}/{name}.csproj";
             actions.Add(new FixAction(new PlannedChange(path, "create", $"ABP layer project {suffix} (structure only)", "DA-A02"), csproj, solution == null ? null : () => RegisterInSolution(root, solution, path)));
