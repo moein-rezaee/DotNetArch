@@ -14,7 +14,7 @@ Runtime hosting, hosting of registries, live verification of kit providers again
 
 ## Document map
 `requirements.md` (what was asked) - `decisions/decisions.md` (why) - `architecture.md` (trees) - `contracts.md` (CLI, configuration, MCP) - `acceptance.md` (how it is verified) -
-`changelog.md` - `../ROADMAP.md` (phases and resume point) - `openspec.yaml` / `testspec.yaml` (machine-readable). Persian mirrors use `.fa.md`.
+`abp-alignment.md` (ABP standards and the distance from them) - `changelog.md` - `../ROADMAP.md` (phases and resume point) - `openspec.yaml` / `testspec.yaml` (machine-readable). Persian mirrors use `.fa.md`.
 
 ## References
 `samples/corevia-identity` (microservice shape, with the defects listed in D-10) and `samples/MediaStorage` (kit shape); both are read-only.

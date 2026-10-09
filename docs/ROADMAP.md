@@ -100,6 +100,7 @@ Environment: dotnet SDK 8 available (net9 targets cannot be built here; verify n
 - [ ] 11.7 Move the existing generators onto the registry (one definition for CLI and MCP)
 - [ ] 11.8 Independence smoke: generate, adopt, delete `.net-arch/`, build and test (needs SDK; add to `scripts/smoke.sh`)
 - [ ] 11.9 Blueprint upgrade steps (versioned migrations); opt-in `format` fixer (the baseline of Catalog failed `dotnet format --verify-no-changes`)
+- [ ] 11.12 ABP alignment (spec `docs/specs/abp-alignment.md`): decide `test/` vs `tests/`, optional layered blueprint (Domain.Shared, Application.Contracts, HttpApi, HttpApi.Client), opt-in ABP rule profile; no runtime-framework features
 - [ ] 11.11 `doctor`: lint baseline check (`dotnet format whitespace --verify-no-changes`) and OpenAPI export
 
 ## Phase 9 - Verification and release

@@ -14,7 +14,7 @@ DotNetArch یک ابزار گلوبال چندسکویی دات‌نت (`dotnet-
 
 ## نقشهٔ اسناد
 `requirements.md` (خواسته‌ها) - `decisions/decisions.md` (چرا) - `architecture.md` (درخت‌ها) - `contracts.md` (CLI، پیکربندی، MCP) - `acceptance.md` (راستی‌آزمایی) -
-`changelog.md` - `../ROADMAP.md` (فازها و نقطهٔ ادامه) - `openspec.yaml` و `testspec.yaml` (ماشین‌خوان). نسخه‌های فارسی `.fa.md` هستند.
+`abp-alignment.md` (استانداردهای ABP و فاصله از آن) - `changelog.md` - `../ROADMAP.md` (فازها و نقطهٔ ادامه) - `openspec.yaml` و `testspec.yaml` (ماشین‌خوان). نسخه‌های فارسی `.fa.md` هستند.
 
 ## مراجع
 `samples/corevia-identity` (شکل میکروسرویس، با ایرادهای ثبت‌شده در D-10) و `samples/MediaStorage` (شکل kit)؛ هر دو فقط‌خواندنی‌اند.
