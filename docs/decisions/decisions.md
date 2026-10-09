@@ -124,7 +124,10 @@ Layout v3 uses `src/`, `test/` (singular) and `etc/` (docker, scripts, files a s
 `Domain.Shared`, `Application.Contracts`, `HttpApi`, `HttpApi.Client` are not required by the tool. A profile may require them (Corevia does). A layer exists only where there is something for it. `fix --rules=DA-A02` creates a layer project together with the files that move into it (namespaces unchanged, so no code is edited, D-21); it creates nothing for a layer that has nothing to receive. Empty layers are a CLI-only choice (`--empty`), because a human on the CLI owns a development plan for them; an agent over MCP either migrates what belongs to the layer or does nothing. `doctor` DA-A07 flags a layer project without sources.
 
 ## D-28 Built-in opt-in `abp` rule set (Proposed)
-`doctor` ships a general, public rule set `DA-A01..DA-A07` (folders, layer projects, reference direction, repository shape, naming suffixes, DTO location). It is enabled by `standards: [abp]` in `project.yml`, is off by default and carries no organisation name.
+`doctor` ships a general, public rule set `DA-A01..DA-A09` (folders, layer projects, reference direction, repository shape, naming suffixes, DTO location). It is enabled by `standards: [abp]` in `project.yml`, is off by default and carries no organisation name.
 
 ## D-29 A service owns what it publishes (Owner)
 Files a service publishes for other systems (such as its gateway route declaration) live inside the service, under `etc/`; consumers aggregate them and the service never depends on a consumer. Which file and which consumer is organisation knowledge and belongs to a profile, not to the tool.
+
+## D-30 A complete migration puts everything in its standard place, including the typed client (Owner)
+Migrating to the standard means every file ends in its standard location with its references fixed: files that belong in a layer move there, root Compose files go to `etc/docker/`, and a service with controllers gets its typed client (`HttpApi.Client`, DA-A08) generated from the controllers. A layer that would stay empty does not exist; a layer with a purpose is filled in the same migration. The API request and response models are input and output contracts and live in Application.Contracts, so the client can use them without referencing ASP.NET Core.

@@ -50,6 +50,11 @@ internal static partial class AbpChecks
             .ToList();
         ctx.Check("DA-A07", cat, empty.Count == 0, DoctorSeverity.Warning, "ABP layer project(s) without any source file: a layer exists only where there is something for it.", hint: "Move the matching files in, develop the layer, or remove the project.", details: empty);
 
+        ctx.Check("DA-A08", cat, !Operations.TypedClient.IsMissing(ctx), DoctorSeverity.Warning, "The API has controllers but no typed client (HttpApi.Client) for the services that call it.", hint: "dotnet-arch fix --rules=DA-A08 generates it from the controller routes; actions it cannot express are listed as manual.");
+
+        var compose = Operations.EtcMove.Pending(ctx);
+        ctx.Check("DA-A09", cat, compose.Count == 0, DoctorSeverity.Warning, "Docker Compose file(s) at the repository root belong in etc/docker/.", hint: "dotnet-arch fix --rules=DA-A09 moves them, re-bases their relative paths and updates mentions.", details: compose.ToList());
+
         var violations = new List<string>();
         foreach (var project in ctx.Source.Where(p => Direction.ContainsKey(p.Layer)))
         {

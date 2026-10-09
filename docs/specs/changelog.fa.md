@@ -8,7 +8,7 @@
 - یک رجیستری عملیات هم CLI و هم سرور MCP را تغذیه می‌کند (۳ ابزار رجیستری: `doctor`، `adopt`، `fix`؛ در مجموع ۱۸ ابزار).
 - قاعده‌های ساختاری اختیاری `fix`: ‏DA-B03 نسخه‌های مرکزی پکیج، DA-B07 هشدار به‌عنوان خطا، DA-S04 پروژهٔ تست Domain، DA-S06 جابه‌جایی به layout v2 ‏(پروژه‌ها به `src/`، تست‌ها به `tests/`، بازنویسی هر مسیر اشاره‌کننده)؛ اصلاح پیش‌فرض `.editorconfig` اکنون یک نشانگر بدون قاعده است تا lint روی کد موجود پاس بماند.
 - doctor: اعتبارسنجی مستندات (فهرست، specها، snapshot ‏OpenAPI) و بررسی تست (وجود تست، پوشش در برابر آستانه).
-- هم‌ترازی با ABP پذیرفته شد (D-25..D-29، `abp-alignment.fa.md`): ‏layout v3 با `src/test/etc`، پروژه‌های لایهٔ اختیاری، مجموعه‌قاعدهٔ اختیاری `abp` در `doctor`، قاعده‌های `fix` ‏DA-A01 و DA-A02 مبتنی بر محتوا (فایل‌های متعلق به `Domain.Shared`، `Application.Contracts`، `HttpApi` را جابه‌جا و ارجاع‌ها/پکیج‌ها/Dockerfile را وصل می‌کند؛ لایهٔ خالی فقط با `--empty`) و `new solution --layout=v3` (پیاده‌سازی در فاز ۱۲ roadmap).
+- هم‌ترازی با ABP پذیرفته شد (D-25..D-29، `abp-alignment.fa.md`): ‏layout v3 با `src/test/etc`، پروژه‌های لایهٔ اختیاری، مجموعه‌قاعدهٔ اختیاری `abp` در `doctor`، قاعده‌های `fix` ‏DA-A01 و DA-A02 مبتنی بر محتوا (فایل‌های متعلق به `Domain.Shared`، `Application.Contracts`، `HttpApi` را جابه‌جا و ارجاع‌ها/پکیج‌ها/Dockerfile را وصل می‌کند؛ لایهٔ خالی فقط با `--empty`) و `fix` ‏DA-A08 (کلاینت HTTP تایپ‌دار از روی controllerها) و DA-A09 (فایل‌های Compose به `etc/docker/`) و `new solution --layout=v3` (پیاده‌سازی در فاز ۱۲ roadmap).
 
 ## 1.3.0
 - ابزار به `DotNetArch.Core` (پیاده‌سازی)، `DotNetArch.Cli` (دستورها) و `DotNetArch.Mcp` (سرور MCP) با تست هر لایه بازساخت شد؛ اجرای فرایند بدون shell؛ اعتبارسنجی نام‌ها.

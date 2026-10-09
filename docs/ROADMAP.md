@@ -109,6 +109,8 @@ Environment: dotnet SDK 8 available (net9 targets cannot be built here; verify n
 - [x] 12.3 Fix rule DA-A02, content-driven: layer projects only where files move in; references, packages, `InternalsVisibleTo`, Dockerfile restore lines and solution wired; blocked files listed; controllers move together; `--empty` for CLI users (AC-20); DA-A07 flags empty layer projects
 - [x] 12.4 Built-in opt-in `abp` rule set DA-A01..DA-A06 in `doctor`, `standards: [abp]` in project.yml or profile, profile-level `severity` overrides (AC-21)
 - [x] 12.5 Service-published files under `etc/`: no tool change needed; a profile requires them with the existing `require-files` kind (Corevia: CV-09), the tool names no product
+- [x] 12.10 `fix` DA-A08: typed client project generated from the controllers (D-30, AC-23); Catalog: all 45 routes
+- [x] 12.11 `fix` DA-A09: Compose files to `etc/docker/` with re-based paths (AC-24)
 - [ ] 12.6 Generator: `new solution --layout=v3 [--layers=abp]` on the registry (with 11.7) (AC-22)
 - [x] 12.7 File-move fixer: part of DA-A02 (type-name dependency closure, pull-in of self-contained data types, blocked files reported); proven on Catalog (tool alone on the v2 state: build 0 warnings, 506 tests pass; HttpApi waits for one split interface)
 - [ ] 12.9 `doctor` check: the Dockerfile restore stage copies every project reachable from the host (DA-A02 now writes the lines for the layers it creates; the check protects hand-made changes)

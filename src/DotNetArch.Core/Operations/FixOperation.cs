@@ -24,7 +24,7 @@ internal static class FixOperation
         Run);
 
     // idempotent structural rules that can be requested without a doctor finding (the standard may not be switched on yet)
-    private static readonly HashSet<string> RequestedWithoutFinding = new(StringComparer.OrdinalIgnoreCase) { "DA-S06", "DA-A01", "DA-A02" };
+    private static readonly HashSet<string> RequestedWithoutFinding = new(StringComparer.OrdinalIgnoreCase) { "DA-S06", "DA-A01", "DA-A02", "DA-A08", "DA-A09" };
 
     private static OperationResult Run(OperationRequest request)
     {
@@ -106,6 +106,13 @@ internal static class FixOperation
 
     private static IReadOnlyList<FixAction> Structural(string ruleId, string root, RepoContext ctx, bool centralPackages, bool allowEmpty, List<string> manual)
     {
+        if (ruleId.Equals("DA-A08", StringComparison.OrdinalIgnoreCase))
+        {
+            var client = TypedClient.Plan(root, ctx, out var skipped);
+            manual.AddRange(skipped);
+            return client;
+        }
+
         if (!ruleId.Equals("DA-A02", StringComparison.OrdinalIgnoreCase))
             return StructuralFixers.For(ruleId, root, ctx, centralPackages);
         var actions = LayerMigration.Plan(root, ctx, allowEmpty, out var left);

@@ -108,14 +108,14 @@ internal static partial class LayerMigration
         while (changed);
 
         // controllers move together: a host that is split over two assemblies breaks route discovery, so one blocked controller keeps all of them
-        var blocked = rejected.Where(r => initial.TryGetValue(r.Key, out var l) && l == ProjectLayer.HttpApi).Select(r => r.Key).ToList();
+        var blocked = rejected.Where(r => initial.TryGetValue(r.Key, out var l) && l == ProjectLayer.HttpApi && ControllerBase().IsMatch(r.Key.Text)).Select(r => r.Key).ToList();
         if (blocked.Count > 0)
         {
             var waiting = 0;
             foreach (var file in target.Where(t => !t.Key.Placed && t.Value == ProjectLayer.HttpApi).Select(t => t.Key).ToList())
             {
                 target.Remove(file);
-                if (initial.ContainsKey(file))
+                if (initial.ContainsKey(file) && ControllerBase().IsMatch(file.Text))
                     waiting++;
             }
 
@@ -390,6 +390,8 @@ internal static partial class LayerMigration
         _ => 9,
     };
 
+    private static bool UsesAspNet(SourceFile file) => file.Text.Contains("using Microsoft.AspNetCore", StringComparison.Ordinal);
+
     private static ProjectLayer? Classify(SourceFile file)
     {
         var layer = file.Project.Layer;
@@ -399,6 +401,9 @@ internal static partial class LayerMigration
             return ProjectLayer.ApplicationContracts;
         if (layer == ProjectLayer.Api && ControllerBase().IsMatch(file.Text))
             return ProjectLayer.HttpApi;
+        // request/response models are the input and output contracts of the API: they belong to Application.Contracts so a typed client can use them
+        if (layer is ProjectLayer.Api or ProjectLayer.HttpApi && ModelFolder().IsMatch(file.Path) && !UsesAspNet(file))
+            return ProjectLayer.ApplicationContracts;
         return null;
     }
 
@@ -412,7 +417,7 @@ internal static partial class LayerMigration
             ProjectLayer.Domain => shape ? ProjectLayer.DomainShared : (ProjectLayer?)null,
             ProjectLayer.Application => needer != ProjectLayer.DomainShared && (shape || dependency.Declared.Any(d => d.EndsWith("Dto", StringComparison.Ordinal)) || dependency.Path.Contains("/Dtos/", StringComparison.Ordinal)) ? ProjectLayer.ApplicationContracts : (ProjectLayer?)null,
             // HTTP models live in conventional folders of the host; its services and implementations stay
-            ProjectLayer.Api => needer == ProjectLayer.HttpApi && ModelFolder().IsMatch(dependency.Path) ? ProjectLayer.HttpApi : (ProjectLayer?)null,
+            ProjectLayer.Api => ModelFolder().IsMatch(dependency.Path) ? (UsesAspNet(dependency) ? (needer == ProjectLayer.HttpApi ? ProjectLayer.HttpApi : (ProjectLayer?)null) : ProjectLayer.ApplicationContracts) : (ProjectLayer?)null,
             _ => (ProjectLayer?)null,
         };
         return wanted != null && Rank(wanted.Value) <= Rank(needer) ? wanted : null;
@@ -457,7 +462,8 @@ internal static partial class LayerMigration
                 }
 
                 var identifiers = new HashSet<string>(Identifier().Matches(WithoutMemberNames(stripped)).Select(m => m.Value), StringComparer.Ordinal);
-                var placed = project.Layer is ProjectLayer.DomainShared or ProjectLayer.ApplicationContracts or ProjectLayer.HttpApi;
+                var placed = project.Layer is ProjectLayer.DomainShared or ProjectLayer.ApplicationContracts or ProjectLayer.HttpApi
+                    && !(project.Layer == ProjectLayer.HttpApi && ModelFolder().IsMatch(path) && !stripped.Contains("using Microsoft.AspNetCore", StringComparison.Ordinal));
                 result.Add(new SourceFile { Path = path, Project = project, Text = stripped, Declared = declared, Kinds = kinds, Identifiers = identifiers, Placed = placed });
             }
         }

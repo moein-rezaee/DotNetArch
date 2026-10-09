@@ -240,4 +240,96 @@ public sealed class AbpTests : IDisposable
         Write(repo, ".net-arch/rules.yml", "severity:\n  DA-A02: warning\n");
         Assert.Equal(DoctorSeverity.Warning, DoctorRunner.Run(repo).Findings.Single(f => f.Id == "DA-A02").Severity);
     }
+
+    private string ApiRepo()
+    {
+        var repo = Path.Combine(_root, "api");
+        Write(repo, "Shop.sln", "");
+        Write(repo, "src/Shop.Domain/Shop.Domain.csproj", "<Project Sdk=\"Microsoft.NET.Sdk\">\n  <PropertyGroup><TargetFramework>net9.0</TargetFramework></PropertyGroup>\n</Project>\n");
+        Write(repo, "src/Shop.Domain.Shared/Shop.Domain.Shared.csproj", "<Project Sdk=\"Microsoft.NET.Sdk\"></Project>\n");
+        Write(repo, "src/Shop.Domain.Shared/Kind.cs", "namespace Shop.Domain;\npublic enum Kind { A = 1, B = 2 }\n");
+        Write(repo, "src/Shop.Application.Contracts/Shop.Application.Contracts.csproj", "<Project Sdk=\"Microsoft.NET.Sdk\"></Project>\n");
+        Write(repo, "src/Shop.Application.Contracts/ItemDto.cs", "namespace Shop.Application;\npublic sealed record ItemDto(string Id, Kind Kind);\n");
+        Write(repo, "src/Shop.Application.Contracts/CreateItemRequest.cs", "namespace Shop.Api.Contracts;\npublic sealed record CreateItemRequest(string Title);\n");
+        Write(repo, "src/Shop.HttpApi/Shop.HttpApi.csproj", "<Project Sdk=\"Microsoft.NET.Sdk\"></Project>\n");
+        Write(repo, "src/Shop.HttpApi/Controllers/ItemController.cs", "using Microsoft.AspNetCore.Mvc;\nusing Shop.Application;\nusing Shop.Api.Contracts;\n\nnamespace Shop.Api.Controllers;\n\n[ApiController]\n[Route(\"v1/api/[controller]\")]\npublic sealed class ItemController : ControllerBase\n{\n    [HttpGet(\"{id}\")]\n    [ProducesResponseType(typeof(ItemDto), StatusCodes.Status200OK)]\n    public async Task<IActionResult> GetById(string id, CancellationToken cancellationToken) => Ok();\n\n    [HttpGet]\n    [ProducesResponseType(typeof(IReadOnlyCollection<ItemDto>), StatusCodes.Status200OK)]\n    public async Task<IActionResult> GetAll([FromQuery] Kind? kind, [FromQuery] List<string>? tags, int pageSize, CancellationToken cancellationToken) => Ok();\n\n    [HttpPost]\n    [ProducesResponseType(typeof(ItemDto), StatusCodes.Status201Created)]\n    public async Task<IActionResult> Create([FromBody] CreateItemRequest request, CancellationToken cancellationToken) => Ok();\n\n    [HttpDelete(\"{id}\")]\n    public async Task<IActionResult> Delete(string id, CancellationToken cancellationToken) => NoContent();\n\n    [HttpGet(\"export\")]\n    public async Task<IActionResult> Export(CancellationToken cancellationToken) => File(new byte[0], \"text/plain\");\n\n    [HttpGet(\"odd\")]\n    [ProducesResponseType(typeof(Unknown), StatusCodes.Status200OK)]\n    public async Task<IActionResult> Odd(CancellationToken cancellationToken) => Ok();\n}\n");
+        return repo;
+    }
+
+    [Fact]
+    public void Typed_client_is_generated_from_the_controllers_and_what_it_cannot_express_is_listed()
+    {
+        var repo = ApiRepo();
+        var runner = new FakeProcessRunner();
+        Assert.Contains("DA-A08", string.Join(',', DoctorRunnerWith(repo).Findings.Select(f => f.Id)));
+
+        using (ToolHost.Use(new HostContext(new NonInteractivePrompter(), new BufferedToolOutput(), runner)))
+        {
+            var plan = Run("fix", repo, apply: true, ("rules", "DA-A08"));
+            Assert.Contains("ItemController.Odd skipped: response type Unknown", plan.Text, StringComparison.Ordinal);
+        }
+
+        var client = File.ReadAllText(Path.Combine(repo, "src", "Shop.HttpApi.Client", "ItemClient.cs"));
+        Assert.Contains("public interface IItemClient", client, StringComparison.Ordinal);
+        Assert.Contains("Task<ItemDto?> GetByIdAsync(string id, CancellationToken cancellationToken = default);", client, StringComparison.Ordinal);
+        Assert.Contains("var url = \"v1/api/Item/\" + ApiRoute.Segment(id);", client, StringComparison.Ordinal);
+        Assert.Contains("GetFromJsonAsync<ItemDto>(url, cancellationToken)", client, StringComparison.Ordinal);
+        Assert.Contains("ApiRoute.WithQuery(url, (\"kind\", kind), (\"tags\", tags), (\"pageSize\", pageSize))", client, StringComparison.Ordinal);
+        Assert.Contains("PostAsJsonAsync(url, request, cancellationToken)", client, StringComparison.Ordinal);
+        Assert.Contains("Task<ItemDto?> CreateAsync(CreateItemRequest request", client, StringComparison.Ordinal);
+        Assert.Contains("DeleteAsync(url, cancellationToken)", client, StringComparison.Ordinal);
+        Assert.Contains("GetByteArrayAsync(url, cancellationToken)", client, StringComparison.Ordinal);
+        Assert.DoesNotContain("OddAsync", client, StringComparison.Ordinal);
+        Assert.Contains("using Shop.Api.Contracts;", client, StringComparison.Ordinal);
+        Assert.Contains("using Shop.Application;", client, StringComparison.Ordinal);
+        Assert.Contains("Shop.Application.Contracts.csproj", File.ReadAllText(Path.Combine(repo, "src", "Shop.HttpApi.Client", "Shop.HttpApi.Client.csproj")), StringComparison.Ordinal);
+        Assert.True(File.Exists(Path.Combine(repo, "src", "Shop.HttpApi.Client", "ApiRoute.cs")));
+        Assert.Equal(1, runner.Calls.Count(c => c.Arguments.Contains("sln")));
+        Assert.Empty(Run("fix", repo, apply: false, ("rules", "DA-A08")).Plan!);
+        Assert.DoesNotContain("DA-A08", string.Join(',', DoctorRunnerWith(repo).Findings.Select(f => f.Id)));
+    }
+
+    private static DoctorReport DoctorRunnerWith(string repo)
+    {
+        Write(repo, ".net-arch/project.yml", "schema: 2\nblueprint: 1.0.0\nlayout: v2\nstandards:\n- abp\n");
+        return DoctorRunner.Run(repo);
+    }
+
+    [Fact]
+    public void Api_models_belong_to_application_contracts_and_models_that_need_aspnet_stay_with_the_controllers()
+    {
+        var repo = Repo();
+        Write(repo, "src/Shop.Api/Contracts/Products/CreateProductRequest.cs", "using Shop.Application.Features.Products;\n\nnamespace Shop.Api.Contracts.Products;\npublic sealed record CreateProductRequest(int Id)\n{\n    public GetProductQuery ToQuery() => new(Id);\n}\n");
+        Write(repo, "src/Shop.Api/Contracts/Products/UploadRequest.cs", "using Microsoft.AspNetCore.Http;\n\nnamespace Shop.Api.Contracts.Products;\npublic sealed class UploadRequest\n{\n    public IFormFile? File { get; set; }\n}\n");
+
+        var plan = Run("fix", repo, apply: false, ("rules", "DA-A02"));
+
+        Assert.Contains(plan.Plan!, c => c.Path == "src/Shop.Application.Contracts/Contracts/Products/CreateProductRequest.cs");
+        Assert.DoesNotContain(plan.Plan!, c => c.Path.EndsWith("UploadRequest.cs", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Compose_file_moves_to_etc_docker_with_its_relative_paths_re_based()
+    {
+        var repo = Repo();
+        Write(repo, "docker-compose.yml", "services:\n  api:\n    build:\n      context: .\n      dockerfile: src/Shop.Api/Dockerfile\n    env_file:\n    - ./src/Shop.Api/.env\n    volumes:\n    - type: bind\n      source: ./src/Shop.Api/appsettings.json\n      target: /app/appsettings.json\n    - ./data:/data\n    - named:/cache\n    ports:\n    - 5000:5000\n");
+        Write(repo, "README.md", "Run `docker compose -f docker-compose.yml up` from the root.\n");
+        Write(repo, "docs/evidence/old.md", "see docker-compose.yml\n");
+
+        var plan = Run("fix", repo, apply: true, ("rules", "DA-A09"));
+
+        Assert.False(File.Exists(Path.Combine(repo, "docker-compose.yml")));
+        var compose = File.ReadAllText(Path.Combine(repo, "etc", "docker", "docker-compose.yml"));
+        Assert.Contains("context: ../..", compose, StringComparison.Ordinal);
+        Assert.Contains("dockerfile: src/Shop.Api/Dockerfile", compose, StringComparison.Ordinal);
+        Assert.Contains("- ../../src/Shop.Api/.env", compose, StringComparison.Ordinal);
+        Assert.Contains("source: ../../src/Shop.Api/appsettings.json", compose, StringComparison.Ordinal);
+        Assert.Contains("- ../../data:/data", compose, StringComparison.Ordinal);
+        Assert.Contains("- named:/cache", compose, StringComparison.Ordinal);
+        Assert.Contains("5000:5000", compose, StringComparison.Ordinal);
+        Assert.Contains("-f etc/docker/docker-compose.yml up", File.ReadAllText(Path.Combine(repo, "README.md")), StringComparison.Ordinal);
+        Assert.Equal("see docker-compose.yml\n", File.ReadAllText(Path.Combine(repo, "docs", "evidence", "old.md")));
+        Assert.Empty(Run("fix", repo, apply: false, ("rules", "DA-A09")).Plan!);
+        Assert.DoesNotContain(plan.Plan!, c => c.Path == "docker-compose.yml" && c.Action == "modify");
+    }
 }
