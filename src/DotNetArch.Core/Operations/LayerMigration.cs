@@ -78,7 +78,7 @@ internal static partial class LayerMigration
         do
         {
             changed = false;
-            foreach (var (file, layer) in target.ToList())
+            foreach (var (file, layer) in target.ToList().Where(t => !t.Key.Placed))
             {
                 foreach (var dependency in Dependencies(file, index))
                 {
@@ -484,6 +484,8 @@ internal static partial class LayerMigration
     {
         text = EnumBody().Replace(text, match => match.Groups["head"].Value + EnumMember().Replace(match.Groups["body"].Value, "_") + "}");
         text = MemberAccess().Replace(text, "._");
+        text = NamedArgument().Replace(text, "_");
+        text = InitializerMember().Replace(text, "_");
         return MemberName().Replace(text, match => NonTypeKeywords.Contains(match.Groups["prev"].Value) ? match.Value : match.Groups["prev"].Value + " _");
     }
 
@@ -492,6 +494,12 @@ internal static partial class LayerMigration
 
     [GeneratedRegex(@"\b[A-Za-z_]\w*(?=\s*(?:=|,|$))", RegexOptions.CultureInvariant | RegexOptions.Multiline, matchTimeoutMilliseconds: 2000)]
     private static partial Regex EnumMember();
+
+    [GeneratedRegex(@"(?<=[(,]\s*)[A-Za-z_]\w*(?=\s*:(?!:))", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 2000)]
+    private static partial Regex NamedArgument();
+
+    [GeneratedRegex(@"(?<=[{,]\s*)[A-Za-z_]\w*(?=\s*=(?![=>]))", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 2000)]
+    private static partial Regex InitializerMember();
 
     [GeneratedRegex(@"(?<=\w\s*)\.\s*[A-Za-z_]\w*", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 2000)]
     private static partial Regex MemberAccess();

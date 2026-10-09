@@ -284,6 +284,7 @@ public sealed class AbpTests : IDisposable
         Assert.Contains("using Shop.Application;", client, StringComparison.Ordinal);
         Assert.Contains("Shop.Application.Contracts.csproj", File.ReadAllText(Path.Combine(repo, "src", "Shop.HttpApi.Client", "Shop.HttpApi.Client.csproj")), StringComparison.Ordinal);
         Assert.True(File.Exists(Path.Combine(repo, "src", "Shop.HttpApi.Client", "ApiRoute.cs")));
+        Assert.Contains("System.Collections.IEnumerable list and not string", File.ReadAllText(Path.Combine(repo, "src", "Shop.HttpApi.Client", "ApiRoute.cs")), StringComparison.Ordinal);
         Assert.Equal(1, runner.Calls.Count(c => c.Arguments.Contains("sln")));
         Assert.Empty(Run("fix", repo, apply: false, ("rules", "DA-A08")).Plan!);
         Assert.DoesNotContain("DA-A08", string.Join(',', DoctorRunnerWith(repo).Findings.Select(f => f.Id)));
