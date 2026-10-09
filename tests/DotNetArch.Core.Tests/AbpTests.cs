@@ -149,7 +149,7 @@ public sealed class AbpTests : IDisposable
     public void One_controller_that_cannot_move_keeps_all_controllers_together_and_the_reason_is_listed()
     {
         var repo = Repo();
-        Write(repo, "src/Shop.Api/Services/ReportService.cs", "namespace Shop.Api.Services;\npublic sealed class ReportService\n{\n    public string Name => \"report\";\n}\n");
+        Write(repo, "src/Shop.Api/Services/ReportService.cs", "using Shop.Domain.Products;\n\nnamespace Shop.Api.Services;\npublic sealed class ReportService\n{\n    public ReportService(Product product) { }\n}\n");
         Write(repo, "src/Shop.Api/Controllers/ReportController.cs", "using Microsoft.AspNetCore.Mvc;\nusing Shop.Api.Services;\n\nnamespace Shop.Api.Controllers;\n[ApiController]\npublic sealed class ReportController : ControllerBase\n{\n    public ReportController(ReportService service) { }\n}\n");
 
         var plan = Run("fix", repo, apply: false, ("rules", "DA-A02"));
@@ -357,5 +357,18 @@ public sealed class AbpTests : IDisposable
         Assert.DoesNotContain("ExportAsync", client, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"Acme.Http.Abstractions\" />", File.ReadAllText(Path.Combine(repo, "src", "Shop.HttpApi.Client", "Shop.HttpApi.Client.csproj")), StringComparison.Ordinal);
         Assert.Contains("internal static class ApiJson", File.ReadAllText(Path.Combine(repo, "src", "Shop.HttpApi.Client", "ApiRoute.cs")), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Host_services_move_to_the_http_layer_with_internals_visible_to_the_host()
+    {
+        var repo = Repo();
+        Write(repo, "src/Shop.Api/Services/ExportService.cs", "using MediatR;\n\nnamespace Shop.Api.Services;\ninternal sealed class ExportService\n{\n    public ExportService(IMediator mediator) { }\n}\n");
+        using (ToolHost.Use(new HostContext(new NonInteractivePrompter(), new BufferedToolOutput(), new FakeProcessRunner())))
+            Run("fix", repo, apply: true, ("rules", "DA-A02"));
+
+        Assert.True(File.Exists(Path.Combine(repo, "src", "Shop.HttpApi", "Services", "ExportService.cs")));
+        Assert.False(Directory.Exists(Path.Combine(repo, "src", "Shop.Api", "Services")));
+        Assert.Contains("<InternalsVisibleTo Include=\"Shop.Api\" />", File.ReadAllText(Path.Combine(repo, "src", "Shop.HttpApi", "Shop.HttpApi.csproj")), StringComparison.Ordinal);
     }
 }

@@ -212,6 +212,7 @@ internal static partial class LayerMigration
                 actions.Add(new FixAction(new PlannedChange(move.To, "move", $"{Suffix(layer)}: moved from {move.From}", "DA-A02"), string.Empty, MoveFrom: move.From));
         }
 
+        actions.AddRange(EnsureProjectItems(root, ctx, analysis.Moves, created));
         actions.AddRange(ReferenceEdits(root, ctx, prefix, layerDirs, analysis));
         actions.AddRange(DockerfileEdits(ctx, prefix, layerDirs, created));
         return actions;
@@ -232,13 +233,26 @@ internal static partial class LayerMigration
             sb.Append("  </ItemGroup>\n");
         }
 
+        var items = ProjectItems(root, ctx, layer, moved);
+        if (items.Web)
+            sb.Append("\n  <ItemGroup>\n    <FrameworkReference Include=\"Microsoft.AspNetCore.App\" />\n  </ItemGroup>\n\n  <ItemGroup>\n    <Using Include=\"Microsoft.AspNetCore.Http\" />\n  </ItemGroup>\n");
+        if (items.Packages.Count > 0)
+            sb.Append("\n  <ItemGroup>\n").Append(string.Concat(items.Packages.Select(p => "    " + p + "\n"))).Append("  </ItemGroup>\n");
+        if (items.Visible.Count > 0)
+            sb.Append("\n  <ItemGroup>\n").Append(string.Concat(items.Visible.Select(v => "    " + v + "\n"))).Append("  </ItemGroup>\n");
+
+        sb.Append("\n</Project>\n");
+        return sb.ToString();
+    }
+
+    /// <summary>What the moved files need from their project: ASP.NET Core, the packages their usings name, and visibility of their old project's internals.</summary>
+    private static (bool Web, List<string> Packages, List<string> Visible) ProjectItems(string root, RepoContext ctx, ProjectLayer layer, IReadOnlyList<LayerMove> moved)
+    {
         var usings = moved.SelectMany(m => UsingNamespaces(ctx.Read(m.From))).ToHashSet(StringComparer.Ordinal);
         var web = usings.Any(u => u.StartsWith("Microsoft.AspNetCore", StringComparison.Ordinal)) || layer == ProjectLayer.HttpApi;
-        if (web)
-            sb.Append("\n  <ItemGroup>\n    <FrameworkReference Include=\"Microsoft.AspNetCore.App\" />\n  </ItemGroup>\n\n  <ItemGroup>\n    <Using Include=\"Microsoft.AspNetCore.Http\" />\n  </ItemGroup>\n");
-
         var sources = moved.Select(m => ctx.Projects.First(p => p.Name == m.SourceProject)).DistinctBy(p => p.Name).ToList();
         var packages = new List<string>();
+        var visible = new List<string>();
         foreach (var source in sources)
         {
             var document = XDocument.Load(Path.Combine(root, source.File));
@@ -251,22 +265,49 @@ internal static partial class LayerMigration
                 if (!packages.Contains(text))
                     packages.Add(text);
             }
+
+            // the old project keeps using the internals that moved out, and so do its tests
+            var own = $"<InternalsVisibleTo Include=\"{source.Name}\" />";
+            if (!visible.Contains(own))
+                visible.Add(own);
+            foreach (var entry in document.Descendants("InternalsVisibleTo").Select(e => e.ToString(SaveOptions.DisableFormatting)))
+            {
+                if (!visible.Contains(entry))
+                    visible.Add(entry);
+            }
         }
 
-        if (packages.Count > 0)
-            sb.Append("\n  <ItemGroup>\n").Append(string.Concat(packages.Select(p => "    " + p + "\n"))).Append("  </ItemGroup>\n");
-
-        var primary = sources.FirstOrDefault();
-        if (primary != null)
-        {
-            var visible = XDocument.Load(Path.Combine(root, primary.File)).Descendants("InternalsVisibleTo").Select(e => e.ToString(SaveOptions.DisableFormatting)).ToList();
-            if (visible.Count > 0)
-                sb.Append("\n  <ItemGroup>\n").Append(string.Concat(visible.Select(v => "    " + v + "\n"))).Append("  </ItemGroup>\n");
-        }
-
-        sb.Append("\n</Project>\n");
-        return sb.ToString();
+        return (web, packages, visible);
     }
+
+    /// <summary>An existing layer project that receives files gets the packages, framework reference and internals visibility those files need.</summary>
+    private static IEnumerable<FixAction> EnsureProjectItems(string root, RepoContext ctx, IReadOnlyDictionary<ProjectLayer, IReadOnlyList<LayerMove>> moves, IReadOnlyCollection<ProjectLayer> created)
+    {
+        foreach (var (layer, moved) in moves)
+        {
+            var project = ctx.OfLayer(layer).FirstOrDefault();
+            if (project == null || created.Contains(layer) || moved.Count == 0)
+                continue;
+            var text = ctx.Read(project.File);
+            var items = ProjectItems(root, ctx, layer, moved);
+            var additions = new List<string>();
+            if (items.Web && !text.Contains("Microsoft.AspNetCore.App", StringComparison.Ordinal))
+                additions.Add("<FrameworkReference Include=\"Microsoft.AspNetCore.App\" />");
+            additions.AddRange(items.Packages.Where(p => !text.Contains(PackageId(p), StringComparison.Ordinal)));
+            additions.AddRange(items.Visible);
+            additions = additions.Distinct().ToList();
+            var fresh = additions.Where(a => !text.Contains(a, StringComparison.Ordinal)).ToList();
+            if (fresh.Count == 0)
+                continue;
+            var close = text.LastIndexOf("</Project>", StringComparison.Ordinal);
+            if (close < 0)
+                continue;
+            var group = "  <ItemGroup>\n" + string.Concat(fresh.Select(a => "    " + a + "\n")) + "  </ItemGroup>\n";
+            yield return new FixAction(new PlannedChange(project.File, "modify", "packages, framework reference and internals visibility for the moved files", "DA-A02"), text[..close].TrimEnd('\n') + "\n\n" + group + "\n" + text[close..]);
+        }
+    }
+
+    private static string PackageId(string element) => Regex.Match(element, "Include=\"([^\"]+)\"").Groups[1].Value;
 
     private static List<ProjectLayer> ReferenceTargets(ProjectLayer layer, IReadOnlyDictionary<ProjectLayer, string> dirs) => layer switch
     {
@@ -400,6 +441,9 @@ internal static partial class LayerMigration
         if (layer == ProjectLayer.Application && (file.Declared.Any(d => d.EndsWith("Dto", StringComparison.Ordinal)) || file.Path.Contains("/Dtos/", StringComparison.Ordinal) || RequestBase().IsMatch(file.Text)))
             return ProjectLayer.ApplicationContracts;
         if (layer == ProjectLayer.Api && ControllerBase().IsMatch(file.Text))
+            return ProjectLayer.HttpApi;
+        // the host composes; request-scoped services it keeps next to the controllers belong to the HTTP layer
+        if (layer == ProjectLayer.Api && file.Path.Contains("/Services/", StringComparison.Ordinal) && file.Kinds.Count > 0)
             return ProjectLayer.HttpApi;
         // request/response models are the input and output contracts of the API: they belong to Application.Contracts so a typed client can use them
         if (layer is ProjectLayer.Api or ProjectLayer.HttpApi && ModelFolder().IsMatch(file.Path) && !UsesAspNet(file))
