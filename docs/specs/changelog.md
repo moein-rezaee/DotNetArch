@@ -6,6 +6,7 @@
 - New `.net-arch/` folder (`project.yml`, `rules.yml`, `profile.yml`, `generated.lock`) with a global `~/.net-arch/`; rules.yml carries severity overrides, thresholds and exceptions with a reason.
 - Organisation rules are a declarative profile (`profile.yml`); the tool itself contains no organisation-specific check.
 - One operation registry feeds the CLI and the MCP server (3 registry tools: `doctor`, `adopt`, `fix`; 18 tools in total).
+- `fix` opt-in structural rules: DA-B03 central package versions, DA-B07 warnings as errors, DA-S04 Domain test project, DA-S06 layout v2 move (projects to `src/`, tests to `tests/`, every pointing path rewritten); the default `.editorconfig` fix is now a rule-less marker so lint keeps passing on existing code.
 - Doctor: documentation validation (index, specs, OpenAPI snapshot) and test checks (tests present, coverage versus threshold).
 
 ## 1.3.0
