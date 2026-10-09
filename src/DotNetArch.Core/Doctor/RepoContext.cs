@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
+using DotNetArch.Core.NetArch;
 
 namespace DotNetArch.Core.Doctor;
 
@@ -38,20 +39,21 @@ internal sealed class RepoContext
     private readonly List<DoctorFinding> _findings = new();
     private readonly List<string> _passed = new();
 
-    public RepoContext(string root, DoctorProfile profile)
+    public RepoContext(string root, ProfileDefinition? profile, RuleSettings rules)
     {
         Root = Path.GetFullPath(root);
         Files = Enumerate(Root).ToList();
         Projects = Files.Where(f => f.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase)).Select(ParseProject).ToList();
-        Profile = profile == DoctorProfile.Auto
-            ? (Directory.Exists(System.IO.Path.Combine(Root, ".corevia")) ? DoctorProfile.Corevia : DoctorProfile.Generic)
-            : profile;
+        Profile = profile;
+        Rules = rules;
         Layout = DetectLayout();
     }
 
     public string Root { get; }
 
-    public DoctorProfile Profile { get; }
+    public ProfileDefinition? Profile { get; }
+
+    public RuleSettings Rules { get; }
 
     public string Layout { get; }
 
@@ -62,8 +64,6 @@ internal sealed class RepoContext
     public IReadOnlyList<DoctorFinding> Findings => _findings;
 
     public IReadOnlyList<string> Passed => _passed;
-
-    public bool IsCorevia => Profile == DoctorProfile.Corevia;
 
     public IEnumerable<ProjectInfo> Source => Projects.Where(p => !p.IsTest);
 

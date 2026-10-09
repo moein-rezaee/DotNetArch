@@ -7,14 +7,6 @@ public enum DoctorSeverity
     Error,
 }
 
-/// <summary>Rule set a repository is judged by. <c>Generic</c> is the public DotNetArch standard; <c>Corevia</c> adds the Corevia governance rules.</summary>
-public enum DoctorProfile
-{
-    Auto,
-    Generic,
-    Corevia,
-}
-
 /// <summary>One thing the doctor found. <see cref="Details"/> lists the concrete locations (capped) so an agent can act without re-scanning.</summary>
 public sealed record DoctorFinding(
     string Id,
@@ -25,7 +17,11 @@ public sealed record DoctorFinding(
     string? Hint = null,
     IReadOnlyList<string>? Details = null);
 
-public sealed record DoctorOptions(DoctorProfile Profile = DoctorProfile.Auto);
+/// <summary>A finding that an exception from rules.yml accepted; it no longer counts but stays visible.</summary>
+public sealed record AcceptedFinding(string Id, string Message, string Reason);
+
+/// <param name="ProfilePath">Explicit profile file; when null the project's <c>.net-arch/profile.yml</c> is used, if present.</param>
+public sealed record DoctorOptions(string? ProfilePath = null);
 
 public sealed record DoctorReport(
     string Root,
@@ -33,7 +29,9 @@ public sealed record DoctorReport(
     string Layout,
     IReadOnlyList<string> Projects,
     IReadOnlyList<string> Passed,
-    IReadOnlyList<DoctorFinding> Findings)
+    IReadOnlyList<DoctorFinding> Findings,
+    IReadOnlyList<AcceptedFinding> Accepted,
+    IReadOnlyList<string> Notes)
 {
     public int Errors => Findings.Count(f => f.Severity == DoctorSeverity.Error);
 
@@ -41,7 +39,7 @@ public sealed record DoctorReport(
 
     public int Infos => Findings.Count(f => f.Severity == DoctorSeverity.Info);
 
-    public int ChecksRun => Passed.Count + Findings.Select(f => f.Id).Distinct(StringComparer.Ordinal).Count();
+    public int ChecksRun => Passed.Count + Findings.Select(f => f.Id).Distinct(StringComparer.Ordinal).Count() + Accepted.Select(a => a.Id).Distinct(StringComparer.Ordinal).Count();
 
     /// <summary>True when nothing blocks adoption: no errors, and (when <paramref name="strict"/>) no warnings either.</summary>
     public bool IsHealthy(bool strict = false) => Errors == 0 && (!strict || Warnings == 0);

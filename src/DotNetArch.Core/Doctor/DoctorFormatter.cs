@@ -14,8 +14,10 @@ public static class DoctorFormatter
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
-    public static string ToJson(DoctorReport report) =>
-        JsonSerializer.Serialize(new
+    public static string ToJson(DoctorReport report) => JsonSerializer.Serialize(ToData(report), Json);
+
+    public static object ToData(DoctorReport report) =>
+        new
         {
             report.Root,
             report.Profile,
@@ -24,7 +26,9 @@ public static class DoctorFormatter
             report.Projects,
             report.Passed,
             report.Findings,
-        }, Json);
+            report.Accepted,
+            report.Notes,
+        };
 
     public static string ToText(DoctorReport report)
     {
@@ -32,6 +36,8 @@ public static class DoctorFormatter
         sb.AppendLine($"dotnet-arch doctor - {report.Root}");
         sb.AppendLine($"profile: {report.Profile}   layout: {report.Layout}   projects: {report.Projects.Count}");
         sb.AppendLine($"checks: {report.ChecksRun}   passed: {report.Passed.Count}   errors: {report.Errors}   warnings: {report.Warnings}   info: {report.Infos}");
+        foreach (var note in report.Notes)
+            sb.AppendLine($"note: {note}");
         foreach (var group in report.Findings.GroupBy(f => f.Category))
         {
             sb.AppendLine();
@@ -47,6 +53,14 @@ public static class DoctorFormatter
                 if (f.Hint != null)
                     sb.AppendLine($"        fix: {f.Hint}");
             }
+        }
+
+        if (report.Accepted.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("[accepted exceptions]");
+            foreach (var a in report.Accepted)
+                sb.AppendLine($"  ok    {a.Id}  {a.Message} - {a.Reason}");
         }
 
         sb.AppendLine();

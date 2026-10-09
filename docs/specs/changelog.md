@@ -1,7 +1,12 @@
 # Changelog
 
 ## Unreleased
-- New `dotnet-arch doctor` command and MCP tool `doctor`: read-only diagnosis of an existing repository (48 checks: layers, dependency direction, tests, build hygiene, configuration and secrets, Docker/CI, bilingual docs, code rules, kit boundaries) with `generic` and `corevia` profiles, text and JSON output, exit code 3 when blocking.
+- New `dotnet-arch doctor` (read-only diagnosis: layers, dependency direction, tests and coverage, build hygiene, configuration and secrets, Docker/CI, documentation, code rules, kit boundaries; text or `--json`; exit code 3 when blocking).
+- New `dotnet-arch adopt` (brings an existing project under control by writing only `.net-arch/`) and `dotnet-arch fix` (mechanical hygiene fixes, plan first, `--apply` to write).
+- New `.net-arch/` folder (`project.yml`, `rules.yml`, `profile.yml`, `generated.lock`) with a global `~/.net-arch/`; rules.yml carries severity overrides, thresholds and exceptions with a reason.
+- Organisation rules are a declarative profile (`profile.yml`); the tool itself contains no organisation-specific check.
+- One operation registry feeds the CLI and the MCP server (3 registry tools: `doctor`, `adopt`, `fix`; 18 tools in total).
+- Doctor: documentation validation (index, specs, OpenAPI snapshot) and test checks (tests present, coverage versus threshold).
 
 ## 1.3.0
 - Tool restructured into `DotNetArch.Core` (implementation), `DotNetArch.Cli` (commands) and `DotNetArch.Mcp` (MCP server) with per-layer tests; process execution without a shell; identifier validation.

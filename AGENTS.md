@@ -29,6 +29,12 @@ Applies to the whole repository except `samples/` (read-only references; never e
 - Layers (D-17): Core = implementation, Cli = commands/console, Mcp = MCP tools. Core must not reference Cli/Mcp nor use `Console`/shell directly (use `ToolHost`, D-18).
 - Tests live in `tests/` per layer where needed. Do not claim a build/test passed unless it was run.
 
+## Independence and Neutrality Rule
+- A generated or adopted project must never depend on the tool: everything it needs is ordinary files in its repository; the tool keeps only `.net-arch/` (D-19). Deleting `.net-arch/` must break nothing.
+- The tool contains nothing organisation-specific (D-22): organisation rules are a declarative profile. If a rule is general it belongs here, otherwise it does not.
+- `fix` and generators change structure, configuration and documentation, never business code (D-21).
+- New operations are defined once in the operation registry (D-20) so the CLI and MCP stay identical; mutating operations plan first and write only with apply.
+
 ## Documentation Governance Rule
 - Keep `.md` + `.fa.md` pairs synchronized. Update `docs/ROADMAP.md` checkboxes in the same commit as the work.
 

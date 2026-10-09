@@ -50,8 +50,8 @@ internal static class StructureChecks
         var mcpUntested = ctx.OfLayer(ProjectLayer.Mcp).Any() && !ctx.OfLayer(ProjectLayer.Mcp, tests: true).Any();
         ctx.Check("DA-S05", cat, !mcpUntested, DoctorSeverity.Warning, "MCP host exists without a test project.", hint: "Add <App>.Mcp.Tests (auth, tool catalog, handshake).");
 
-        var layoutOk = ctx.Layout == "v2" || (ctx.IsCorevia && ctx.Layout == "flat");
-        ctx.Check("DA-S06", cat, layoutOk, DoctorSeverity.Warning, $"Layout is '{ctx.Layout}', the standard is v2 (src/, tests/, kits/).", hint: "Profile 'corevia' accepts the flat root layout; the generic profile expects layout v2.");
+        var layoutOk = ctx.Layout == "v2" || (ctx.Profile?.AcceptedLayouts.Contains(ctx.Layout, StringComparer.OrdinalIgnoreCase) ?? false);
+        ctx.Check("DA-S06", cat, layoutOk, DoctorSeverity.Warning, $"Layout is '{ctx.Layout}', the standard is v2 (src/, tests/, kits/).", hint: "A profile can accept other layouts (accepted_layouts); the move to v2 is a separate opt-in step.");
 
         var unclassified = ctx.Source.Where(p => p.Layer == ProjectLayer.Other && !p.Name.Contains(".Kit.", StringComparison.Ordinal)).Select(p => p.Name).ToList();
         ctx.Check("DA-S07", cat, unclassified.Count == 0, DoctorSeverity.Info, "Projects outside the known layers (Domain/Application/Infrastructure/Api/Mcp/Contracts).", details: unclassified);

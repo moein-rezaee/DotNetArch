@@ -31,12 +31,13 @@ internal static class Program
         if (args.Length >= 2 && args[0].Equals("mcp", StringComparison.OrdinalIgnoreCase) && args[1].Equals("serve", StringComparison.OrdinalIgnoreCase))
             return DotNetArch.Mcp.McpServerHost.RunAsync(args[2..]).GetAwaiter().GetResult();
 
-        // doctor is read-only and needs neither the .NET SDK nor the interactive host.
-        if (args.Length >= 1 && args[0].Equals("doctor", StringComparison.OrdinalIgnoreCase))
+        // Registry operations (doctor, adopt, fix) need neither the .NET SDK nor the interactive host.
+        var registryCommand = new RegistryCommand();
+        if (registryCommand.Matches(args))
         {
             try
             {
-                return new DoctorCommand().Run(args);
+                return registryCommand.Run(args);
             }
             catch (ArgumentException ex)
             {

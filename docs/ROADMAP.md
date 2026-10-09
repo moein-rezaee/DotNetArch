@@ -3,7 +3,7 @@
 Persian mirror: `ROADMAP.fa.md`. Legend: `[ ]` todo, `[x]` done (note commit). Requirement IDs refer to `docs/specs/requirements.md`.
 
 ## Resume point
-**Current phase:** phases 0-9 and 10.1 (doctor) done; remaining open verification items: 1.9b, 2.9 (net9), 4.6 (real docker build), 5.4, 6.6 (live providers). Branch: `claude/exciting-fermi-b41fue`.
+**Current phase:** phases 0-9, 10.1 (doctor) and 11.1-11.6 (adoption foundations) done; remaining open verification items: 1.9b, 2.9 (net9), 4.6 (real docker build), 5.4, 6.6 (live providers). Branch: `claude/exciting-fermi-b41fue`.
 Environment: dotnet SDK 8 available (net9 targets cannot be built here; verify net9 in CI).
 
 ## Phase 0 - Docs, specs, rules, roadmap (R-E1, R-D1..D5)
@@ -84,10 +84,21 @@ Environment: dotnet SDK 8 available (net9 targets cannot be built here; verify n
 - [x] 8.4 bilingual-pair check script
 
 ## Phase 10 - Doctor (R-F1..F3)
-- [x] 10.1 `DotNetArch.Core.Doctor` (read-only checks DA-S/B/C/D/M/K/V), `doctor` CLI command (text/JSON, exit code 3), MCP tool `doctor` (16 tools), 7 unit tests; run against all 11 Corevia service repos
-- [ ] 10.2 Wire `doctor` into the golden/smoke script and CI; add `--fix` suggestions mapped to generator commands
+- [x] 10.1 `DotNetArch.Core.Doctor` (read-only checks), `doctor` command (text/JSON, exit code 3), unit tests; run against 11 real service repos
+- [ ] 10.2 Wire `doctor` into the golden/smoke script and CI
 - [ ] 10.3 Kit grouping (generic / corevia / sepidar / ungrouped) - decision pending, intentionally not started
 - [ ] 10.4 Shared `Mcp` kit (generic host + Corevia governance layer)
+
+## Phase 11 - Adoption foundations (R-G1..G6, cycle zero)
+- [x] 11.1 Decisions D-19..D-24 (independence, one registry, structure-only fixes, no private part, settings layers, mission)
+- [x] 11.2 Operation registry (`doctor`, `adopt`, `fix`) feeding the CLI and the MCP server; mutating operations plan first (`--json`), write with `--apply`
+- [x] 11.3 `.net-arch/` (project.yml, rules.yml, profile.yml, generated.lock), global `~/.net-arch/` (`DOTNET_ARCH_HOME`), rules.yml severity/thresholds/exceptions
+- [x] 11.4 Declarative profile rules replace the organisation-specific checks (none remain in the tool)
+- [x] 11.5 `adopt` (state from source, only `.net-arch/` written) and `fix` (hygiene files from tool templates), independence test
+- [x] 11.6 Doctor: documentation validation (DA-M06..M09) and test checks (DA-T01..T02, coverage threshold)
+- [ ] 11.7 Move the existing generators onto the registry (one definition for CLI and MCP)
+- [ ] 11.8 Independence smoke: generate, adopt, delete `.net-arch/`, build and test (needs SDK; add to `scripts/smoke.sh`)
+- [ ] 11.9 Layout move (`src/`, `tests/`) as an opt-in migration step; blueprint upgrade steps
 
 ## Phase 9 - Verification and release
 - [x] 9.1 Run smoke script end to end (needs SDK); fix findings (smoke OK, v1.3.0)

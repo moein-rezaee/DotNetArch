@@ -44,3 +44,9 @@ Tools per entity: `<entity>_list|get|create|update|delete`; per action: `<entity
 `dotnet-arch doctor [path] [--profile=auto|generic|corevia] [--json] [--strict] [--out=file]` and MCP tool `doctor(repositoryPath, profile, json)`. Read-only: no file is written (except `--out`), no process is started, no .NET SDK is required.
 Finding: `{ id: "DA-<area><nn>", severity: error|warning|info, category, message, path?, hint?, details?[] }`. Ids: S structure, B build, C config, D container/CI, M docs, K code, V corevia profile.
 Exit codes: `0` healthy, `1` usage error, `3` blocking findings.
+
+## Operations registry, adopt, fix, .net-arch
+`doctor`, `adopt` and `fix` are defined once in the operation registry; the CLI (`dotnet-arch <op> [path] [--json] [--apply] [--out=file]`) and the MCP tools (`doctor`, `adopt`, `fix`) derive from it. `--json` / the MCP result is `{ ok, operation, applied, error?, plan[], data }`; a plan item is `{ path, action: create|modify, reason, ruleId? }`. Mutating operations write only with `--apply` (MCP `apply: true`).
+`adopt [path] [--profile=file]` writes only `.net-arch/project.yml` (schema, blueprint, layout, mcp, layers, kits, entities, modules), `rules.yml` (once), `generated.lock` (once) and, with `--profile`, `profile.yml` (once, `source` relative to the repository root). `fix [path] [--rules=ids]` fixes DA-B01 (global.json), DA-B05 (.editorconfig), DA-B08/B09 (.gitignore) and DA-D04 (.dockerignore) and lists everything else as manual.
+`rules.yml`: `severity` (id to off|info|warning|error), `thresholds` (`coverage_line`), `exceptions` (`rule`, mandatory `reason`, optional `path`). `profile.yml`: `name`, `version`, optional `source`, `accepted_layouts`, `rules[]` with kinds `require-files`, `forbid-project-reference`, `dockerfile-forbid-line`, `folder-prefix`, `note-if-files-match`.
+Ids added to the doctor: DA-M06..M09 (documentation), DA-T01..T02 (tests and coverage).

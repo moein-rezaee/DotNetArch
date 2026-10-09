@@ -87,3 +87,29 @@ Core never touches `Console` or spawns shells directly. It uses `ToolHost` (ambi
 `IProcessRunner`, `IToolOutput`. Cli installs console implementations; Mcp installs a non-interactive prompter (defaults or explicit
 "missing option" error) and a stderr/JSON output; tests install fakes. Scaffolders stay static for now; migrating them to injected
 instances is a later, tracked item (roadmap 1.9).
+
+## D-19 The project never depends on the tool (Owner)
+Everything a generated or adopted project needs (code, tests, documentation, specs, OpenAPI snapshot, CI, Docker, its own MCP host) is ordinary files in
+the repository. The tool keeps only `.net-arch/` (state, rules, profile reference, generated.lock). Deleting `.net-arch/` breaks nothing; adopting a project
+changes no source file. The state is a cache that `adopt` can rebuild from the source. Consequence: a test proves it (adopt, delete, doctor/build unchanged).
+
+## D-20 One operation registry for CLI and MCP (Proposed)
+Each operation (`doctor`, `adopt`, `fix`, later the generators) is defined once with name, description, parameters and read-only/mutating kind. The CLI maps
+arguments onto it and the MCP server derives its tools from it, so the two cannot drift. Mutating operations return a plan (`--json`) and write only with
+`--apply` (MCP: `apply: true`). The existing generator tools move onto the registry in later cycles.
+
+## D-21 The tool changes structure, never business code (Owner)
+`fix` creates missing hygiene files from the tool's own templates and appends missing ignore lines; it never edits source code. Findings that need a code
+change are listed as manual and can be recorded as exceptions with a reason in `rules.yml`.
+
+## D-22 No private part in the tool; organisations bring a profile (Owner)
+Anything is either general and part of DotNetArch, or it is not added. Organisation rules (required files, forbidden references, folder naming, ...) are a
+declarative profile (`profile.yml`, or a shared file referenced by `source`) with a fixed set of rule kinds. The tool never names an organisation.
+
+## D-23 Settings layers (Proposed)
+Tool defaults < global `~/.net-arch/` (override with `DOTNET_ARCH_HOME`) < project `.net-arch/`. The project stores only differences. A legacy
+`dotnet-arch.yml` keeps working for the generators.
+
+## D-24 Mission (Owner)
+Build, adopt, measure, deploy and upgrade Clean Architecture microservices, with identical CLI and MCP. Deployment, CI, graph and documentation modules are
+optional and arrive as separate phases; kit grouping is out of scope for now.

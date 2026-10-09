@@ -18,6 +18,9 @@ commands:
   - {name: "docker add", status: planned}
   - {name: "git setup", status: planned}
   - {name: "mcp serve", status: planned}
+  - {name: "doctor", status: exists, kind: read-only, mcp_tool: doctor}
+  - {name: "adopt", status: exists, kind: mutating, plan_apply: true, mcp_tool: adopt}
+  - {name: "fix", status: exists, kind: mutating, plan_apply: true, mcp_tool: fix}
   - {name: "exec", status: exists}
   - {name: "remove migration", status: exists}
 layouts: {legacy: default-when-key-absent, v2: default-for-new-solutions}

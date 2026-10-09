@@ -69,7 +69,9 @@ Missing options are prompted for (with defaults) when a terminal is attached; wi
 | `ci add [provider]` / `docker add` / `git setup [--remote=] [--git-provider=] [--git-host=]` | Operations files for an existing solution |
 | `exec [--docker|--docker-detach|--docker-stop]` | Run the API locally or in Docker (applies migrations first) |
 | `remove migration` | Roll back and remove the last migration |
-| `doctor [path] [--profile=auto|generic|corevia] [--json] [--strict]` | Read-only diagnosis of an existing repository (layers, dependencies, tests, config/secrets, Docker/CI, docs, code rules, kit boundaries). Exit `3` when blocking |
+| `doctor [path] [--profile=file] [--json] [--strict]` | Read-only diagnosis of an existing repository (layers, dependencies, tests and coverage, config/secrets, Docker/CI, docs, code rules, kit boundaries, profile rules). Exit `3` when blocking |
+| `adopt [path] [--profile=file] [--apply]` | Bring an existing project under control: writes only `.net-arch/` (state from the source). Plan first |
+| `fix [path] [--rules=ids] [--apply]` | Mechanical hygiene fixes (global.json, .editorconfig, .gitignore lines, .dockerignore). Never edits code. Plan first |
 | `mcp serve` | Start the MCP server over stdio |
 
 Exit codes: `0` success, `1` usage/validation error, `2` missing .NET SDK. All names are validated before they reach the file system or a command line; child processes run without a shell.
@@ -114,7 +116,7 @@ kits/Cache/
 - `--docker-registry` and `--nuget-source` add the private registry/feed to the compose image names, CI login and push jobs, `NuGet.config` and the Dockerfile restore. Credentials are never written to files; CI secrets (`REGISTRY_USER`, `REGISTRY_PASSWORD`, `NUGET_USER`, `NUGET_PASSWORD`, `NUGET_API_KEY`) are referenced by name.
 
 ## MCP
-- **Tool server**: `dotnet-arch mcp serve` (stdio) exposes `new_solution`, `new_crud`, `new_action`, `new_event`, `new_enum`, `new_constant`, `new_service`, `new_kit`, `add_kit`, `add_mcp`, `ci_add`, `docker_add`, `git_setup`, `list_entities`, `describe_config`, `doctor`. Non-interactive; each result lists created/modified files and the equivalent CLI command. No destructive tools.
+- **Tool server**: `dotnet-arch mcp serve` (stdio) exposes `new_solution`, `new_crud`, `new_action`, `new_event`, `new_enum`, `new_constant`, `new_service`, `new_kit`, `add_kit`, `add_mcp`, `ci_add`, `docker_add`, `git_setup`, `list_entities`, `describe_config`, `doctor`, `adopt`, `fix`. Non-interactive; each result lists created/modified files and the equivalent CLI command. No destructive tools.
 ```json
 { "mcpServers": { "dotnet-arch": { "command": "dotnet-arch", "args": ["mcp", "serve"] } } }
 ```

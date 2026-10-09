@@ -70,19 +70,95 @@ public sealed class DoctorTests : IDisposable
     }
 
     [Fact]
-    public void Dockerfile_without_dockerignore_and_with_syntax_line_is_flagged_under_corevia_profile()
+    public void Profile_rules_apply_from_profile_yml_and_the_tool_itself_knows_no_organisation()
     {
-        Directory.CreateDirectory(Path.Combine(_root, ".corevia"));
         Write("Shop.Api/Dockerfile", "# syntax=docker/dockerfile:1.7\nFROM a AS build\nFROM b\n");
+        Write("Shop.Application/Shop.Application.csproj", Csproj("../shared/Common/Common.csproj"));
+        Write(".net-arch/profile.yml", """
+            name: acme
+            version: 1.0.0
+            accepted_layouts: [flat]
+            rules:
+              - id: AC-01
+                kind: require-files
+                severity: error
+                message: Governance metadata missing.
+                files: [.acme/repo.yaml, .acme/ci/]
+              - id: AC-02
+                kind: dockerfile-forbid-line
+                severity: error
+                message: Dockerfile pins a syntax frontend.
+                prefix: "# syntax="
+              - id: AC-03
+                kind: forbid-project-reference
+                severity: error
+                message: Projects reference shared sources.
+                pattern: '(^|/)shared/'
+            """);
 
-        var generic = DoctorRunner.Run(_root, new DoctorOptions(DoctorProfile.Generic));
-        var corevia = DoctorRunner.Run(_root);
+        var report = DoctorRunner.Run(_root);
 
-        Assert.Equal("corevia", corevia.Profile);
-        Assert.Contains(generic.Findings, f => f.Id == "DA-D04");
-        Assert.DoesNotContain(generic.Findings, f => f.Id == "DA-D05");
-        Assert.Contains(corevia.Findings, f => f.Id == "DA-D05");
-        Assert.Contains(corevia.Findings, f => f.Id == "DA-V01");
+        Assert.Equal("acme 1.0.0", report.Profile);
+        Assert.Contains(report.Findings, f => f.Id == "AC-01" && f.Severity == DoctorSeverity.Error);
+        Assert.Contains(report.Findings, f => f.Id == "AC-02");
+        Assert.Contains(report.Findings, f => f.Id == "AC-03");
+        Assert.DoesNotContain(report.Findings, f => f.Id == "DA-S06");
+        Assert.DoesNotContain(report.Findings, f => f.Id.StartsWith("DA-V", StringComparison.Ordinal));
+        Assert.Contains(report.Findings, f => f.Id == "DA-D04");
+    }
+
+    [Fact]
+    public void Missing_shared_profile_is_a_note_not_a_failure()
+    {
+        Write("Shop.Api/Shop.Api.csproj", Csproj());
+        Write(".net-arch/profile.yml", "name: acme\nversion: 1.0.0\nsource: ../acme-standards/profile.yml\n");
+
+        var report = DoctorRunner.Run(_root);
+
+        Assert.Equal("none", report.Profile);
+        Assert.Contains(report.Notes, n => n.Contains("Profile source not found", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Rules_yml_overrides_severity_and_accepts_exceptions_with_a_reason()
+    {
+        Write("Shop.Api/Shop.Api.csproj", Csproj());
+        Write("Shop.Api/Startup.cs", "class S { void M() { builder.AllowAnyOrigin(); Console.WriteLine(\"x\"); } }");
+        Write(".net-arch/rules.yml", """
+            severity: { DA-K01: error, DA-B03: off }
+            exceptions:
+              - rule: DA-K04
+                reason: Public read-only API behind the gateway
+            """);
+
+        var report = DoctorRunner.Run(_root);
+
+        Assert.Contains(report.Findings, f => f.Id == "DA-K01" && f.Severity == DoctorSeverity.Error);
+        Assert.DoesNotContain(report.Findings, f => f.Id == "DA-B03");
+        Assert.DoesNotContain(report.Findings, f => f.Id == "DA-K04");
+        var accepted = Assert.Single(report.Accepted);
+        Assert.Equal("DA-K04", accepted.Id);
+        Assert.Contains("gateway", accepted.Reason, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Docs_and_test_sections_report_missing_documents_empty_tests_and_coverage()
+    {
+        Write("Shop.Api/Shop.Api.csproj", "<Project Sdk=\"Microsoft.NET.Sdk\"><ItemGroup><PackageReference Include=\"Swashbuckle.AspNetCore\" Version=\"6.0.0\" /></ItemGroup></Project>");
+        Write("Shop.Api.Tests/Shop.Api.Tests.csproj", Csproj());
+        Write("Shop.Api.Tests/Empty.cs", "class Nothing {}");
+        Write("docs/specs/openspec.yaml", "a: [unclosed");
+        Write("TestResults/coverage.cobertura.xml", "<coverage line-rate=\"0.40\"></coverage>");
+        Write(".net-arch/rules.yml", "thresholds: { coverage_line: 70 }\n");
+
+        var report = DoctorRunner.Run(_root);
+
+        Assert.Contains(report.Findings, f => f.Id == "DA-M06");
+        Assert.Contains(report.Findings, f => f.Id == "DA-M07");
+        Assert.Contains(report.Findings, f => f.Id == "DA-M08" && f.Severity == DoctorSeverity.Error);
+        Assert.Contains(report.Findings, f => f.Id == "DA-M09");
+        Assert.Contains(report.Findings, f => f.Id == "DA-T01");
+        Assert.Contains(report.Findings, f => f.Id == "DA-T02" && f.Severity == DoctorSeverity.Warning && f.Message.Contains("40.0%", StringComparison.Ordinal));
     }
 
     [Fact]

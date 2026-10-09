@@ -67,7 +67,9 @@ dotnet run --project src/Shop.Api
 | `ci add` / `docker add` / `git setup` | فایل‌های عملیاتی برای solution موجود |
 | `exec [--docker|--docker-detach|--docker-stop]` | اجرای API محلی یا در Docker (ابتدا migrationها اعمال می‌شود) |
 | `remove migration` | بازگرداندن و حذف آخرین migration |
-| `doctor [path] [--profile=auto|generic|corevia] [--json] [--strict]` | تشخیص فقط‌خواندنی ریپوی موجود (لایه‌ها، وابستگی‌ها، تست‌ها، پیکربندی/secret، Docker/CI، مستندات، قواعد کد، مرز kitها)؛ در حالت مسدودکننده کد خروج ۳ |
+| `doctor [path] [--profile=file] [--json] [--strict]` | تشخیص فقط‌خواندنی ریپوی موجود (لایه‌ها، وابستگی‌ها، تست و پوشش، پیکربندی/secret، Docker/CI، مستندات، قواعد کد، مرز kitها، قواعد پروفایل)؛ در حالت مسدودکننده کد خروج ۳ |
+| `adopt [path] [--profile=file] [--apply]` | پروژهٔ موجود را تحت کنترل می‌آورد: فقط `.net-arch/` را می‌نویسد (state از روی سورس). اول طرح |
+| `fix [path] [--rules=ids] [--apply]` | اصلاحات مکانیکی بهداشتی (global.json، .editorconfig، خط‌های .gitignore، .dockerignore). هرگز کد را ویرایش نمی‌کند. اول طرح |
 | `mcp serve` | شروع سرور MCP روی stdio |
 
 کد خروج: `0` موفق، `1` خطای استفاده/اعتبارسنجی، `2` نبودن .NET SDK. همهٔ نام‌ها پیش از رسیدن به فایل‌سیستم یا خط فرمان اعتبارسنجی می‌شوند و فرایندهای فرزند بدون shell اجرا می‌شوند.
@@ -104,7 +106,7 @@ Shop/
 - `--docker-registry` و `--nuget-source` نام ایمیج‌ها، login و push در CI، `NuGet.config` و restore در Dockerfile را تنظیم می‌کنند. credential هرگز در فایل نوشته نمی‌شود؛ secretهای CI فقط با نام ارجاع می‌شوند.
 
 ## MCP
-- **سرور ابزار**: `dotnet-arch mcp serve` (stdio) با ۱۶ ابزار غیرتعاملی (`new_solution`، `new_crud`، `new_service`، `new_kit`، `add_mcp`، `doctor`، ...)؛ هر نتیجه فایل‌های ساخته/تغییرکرده و فرمان CLI معادل را می‌دهد؛ ابزار مخرب ندارد.
+- **سرور ابزار**: `dotnet-arch mcp serve` (stdio) با ۱۸ ابزار غیرتعاملی (`new_solution`، `new_crud`، `new_service`، `new_kit`، `add_mcp`، `doctor`، `adopt`، `fix`، ...)؛ هر نتیجه فایل‌های ساخته/تغییرکرده و فرمان CLI معادل را می‌دهد؛ ابزار مخرب ندارد.
 ```json
 { "mcpServers": { "dotnet-arch": { "command": "dotnet-arch", "args": ["mcp", "serve"] } } }
 ```

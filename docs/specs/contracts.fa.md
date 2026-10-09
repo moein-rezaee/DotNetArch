@@ -41,3 +41,9 @@ kit.prefix kit.<Area> mcp entity.<Name>`. نبودن `layout` یعنی چیدم�
 ‏`dotnet-arch doctor [path] [--profile=auto|generic|corevia] [--json] [--strict] [--out=file]` و ابزار MCP به نام `doctor(repositoryPath, profile, json)`. فقط‌خواندنی: هیچ فایلی نوشته نمی‌شود (جز `--out`)، فرایندی اجرا نمی‌شود، .NET SDK لازم نیست.
 Finding: ‏`{ id: "DA-<area><nn>", severity: error|warning|info, category, message, path?, hint?, details?[] }`. شناسه‌ها: S ساختار، B build، C پیکربندی، D کانتینر/CI، M مستندات، K کد، V پروفایل corevia.
 کدهای خروج: `0` سالم، `1` خطای استفاده، `3` finding مسدودکننده.
+
+## رجیستری عملیات، adopt، fix، .net-arch
+‏`doctor`، `adopt` و `fix` یک‌بار در رجیستری عملیات تعریف شده‌اند؛ CLI ‏(`dotnet-arch <op> [path] [--json] [--apply] [--out=file]`) و ابزارهای MCP ‏(`doctor`، `adopt`، `fix`) از آن مشتق می‌شوند. خروجی `--json` / نتیجهٔ MCP به شکل `{ ok, operation, applied, error?, plan[], data }` است؛ هر آیتم طرح `{ path, action: create|modify, reason, ruleId? }` است. عملیات تغییردهنده فقط با `--apply` (در MCP ‏`apply: true`) می‌نویسند.
+‏`adopt [path] [--profile=file]` فقط `.net-arch/project.yml` ‏(schema، blueprint، layout، mcp، layers، kits، entities، modules)، `rules.yml` ‏(یک‌بار)، `generated.lock` ‏(یک‌بار) و با `--profile` فایل `profile.yml` ‏(یک‌بار، `source` نسبت به ریشهٔ ریپو) را می‌نویسد. ‏`fix [path] [--rules=ids]` موارد DA-B01 ‏(global.json)، DA-B05 ‏(.editorconfig)، DA-B08/B09 ‏(.gitignore) و DA-D04 ‏(.dockerignore) را اصلاح می‌کند و بقیه را دستی فهرست می‌کند.
+‏`rules.yml`: ‏`severity` ‏(شناسه به off|info|warning|error)، `thresholds` ‏(`coverage_line`)، `exceptions` ‏(`rule`، `reason` اجباری، `path` اختیاری). ‏`profile.yml`: ‏`name`، `version`، `source` اختیاری، `accepted_layouts`، `rules[]` با انواع `require-files`، `forbid-project-reference`، `dockerfile-forbid-line`، `folder-prefix`، `note-if-files-match`.
+شناسه‌های جدید doctor: ‏DA-M06..M09 ‏(مستندات)، DA-T01..T02 ‏(تست و پوشش).

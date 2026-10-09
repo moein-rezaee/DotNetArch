@@ -58,5 +58,14 @@ Status legend: `[ ]` not started, `[~]` in progress, `[x]` done and verified. St
 ## F. Doctor (existing repositories)
 
 - R-F1. `dotnet-arch doctor [path]` diagnoses an existing repository against the standard without changing it: layers and dependency direction, test projects, build hygiene, configuration and secrets, Docker/CI, bilingual docs, code rules and kit boundaries.
-- R-F2. Profiles: `generic` (public standard, layout v2) and `corevia` (adds governance rules, accepts the flat root layout); `auto` picks `corevia` when `.corevia/` exists.
+- R-F2. Organisation rules come from a declarative profile (`.net-arch/profile.yml` or a shared file it references); the tool contains no organisation-specific check. A profile may accept other layouts than v2.
 - R-F3. Output for humans (text) and agents (`--json`, MCP tool `doctor`); findings carry id, severity, locations and a fix hint. Exit code `3` when blocking (errors, or warnings with `--strict`).
+
+## G. Adoption and independence
+
+- R-G1. `adopt` brings an existing project under tool control by writing only `.net-arch/` (state derived from the source, rules, profile reference, generated.lock); it changes no source file and is repeatable.
+- R-G2. The project never depends on the tool: deleting `.net-arch/` breaks neither build, tests, Docker, CI, documentation nor MCP.
+- R-G3. `fix` restores the standard only where the change is mechanical and cannot alter behaviour (hygiene files, ignore lines); it plans first and writes only with `--apply`.
+- R-G4. One operation registry defines every operation once; CLI and MCP derive from it. Mutating operations return a machine-readable plan.
+- R-G5. Settings: tool defaults < global `~/.net-arch/` < project `.net-arch/`; rules.yml carries severity overrides, thresholds and exceptions with a mandatory reason.
+- R-G6. `doctor` also validates documentation (index, specs, OpenAPI snapshot) and tests (tests present, coverage versus threshold).

@@ -10,6 +10,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- state / profile / rules files (.net-arch/) -->
+    <PackageVersion Include="YamlDotNet" Version="16.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- MCP server layer -->
     <PackageVersion Include="ModelContextProtocol" Version="2.2.0" />
   </ItemGroup>

@@ -26,12 +26,6 @@ internal static partial class ContainerChecks
 
             var hasIgnore = dockerfiles.All(d => ctx.Has(((Path.GetDirectoryName(d) ?? string.Empty).Replace('\\', '/') + "/.dockerignore").TrimStart('/'))) || ctx.Has(".dockerignore");
             ctx.Check("DA-D04", cat, hasIgnore, DoctorSeverity.Error, ".dockerignore is missing (host bin/obj leak into the build context and break restore).", hint: "Ignore bin/, obj/, .git, .env and IDE files.");
-
-            if (ctx.IsCorevia)
-            {
-                var syntax = dockerfiles.Where(d => ctx.Read(d).Split('\n').Any(l => l.TrimStart().StartsWith("# syntax=", StringComparison.OrdinalIgnoreCase))).ToList();
-                ctx.Check("DA-D05", cat, syntax.Count == 0, DoctorSeverity.Error, "Dockerfile pins a '# syntax=' frontend that is unreachable offline / from the private registry.", hint: "Remove the '# syntax=' line.", details: syntax);
-            }
         }
 
         var compose = ctx.Files.Any(f => Regex.IsMatch(Path.GetFileName(f), @"^(docker-)?compose(\.[\w-]+)?\.ya?ml$", RegexOptions.IgnoreCase));
