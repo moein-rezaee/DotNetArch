@@ -426,4 +426,43 @@ public sealed class AbpTests : IDisposable
         Assert.DoesNotContain("Shop.Domain.csproj", csproj, StringComparison.Ordinal);
         Assert.DoesNotContain(DoctorRunner.Run(repo).Findings, f => f.Id == "DA-A11" && f.Details!.Any(d => d.StartsWith("missing", StringComparison.Ordinal) || d.StartsWith("forbidden", StringComparison.Ordinal)));
     }
+
+    [Fact]
+    public void A_profile_can_move_a_root_folder_and_the_paths_that_point_at_it_follow_without_touching_runtime_paths_or_key_paths()
+    {
+        var repo = Repo();
+        Write(repo, "ocelot/A.json", "{}");
+        Write(repo, "src/Shop.Api/Dockerfile", "COPY --from=build /src/shop/ocelot/ /app/ocelot/\n");
+        Write(repo, "tests/Shop.Api.Tests/Shop.Api.Tests.csproj", "<Project Sdk=\"Microsoft.NET.Sdk\">\n  <ItemGroup><Content Include=\"..\\..\\ocelot\\*.json\" Link=\"ocelot\\%(Filename)%(Extension)\" /></ItemGroup>\n</Project>\n");
+        Write(repo, "README.md", "Fragments live in `ocelot/*.json`; the Consul key `ocelot/config-paths/*` is not a folder; image path /app/ocelot stays.\n");
+        Write(repo, ".net-arch/profile.yml", "name: test\nversion: 1.0.0\nstandards: [abp]\nfolder_moves:\n  - from: ocelot\n    to: etc/gateway\n");
+
+        Assert.Contains(DoctorRunner.Run(repo).Findings, f => f.Id == "DA-A12" && f.Details!.Contains("ocelot -> etc/gateway"));
+
+        Run("fix", repo, apply: true, ("rules", "DA-A12"));
+
+        Assert.True(File.Exists(Path.Combine(repo, "etc", "gateway", "A.json")));
+        Assert.False(Directory.Exists(Path.Combine(repo, "ocelot")));
+        Assert.Contains("/src/shop/etc/gateway/ /app/ocelot/", File.ReadAllText(Path.Combine(repo, "src", "Shop.Api", "Dockerfile")), StringComparison.Ordinal);
+        var csproj = File.ReadAllText(Path.Combine(repo, "tests", "Shop.Api.Tests", "Shop.Api.Tests.csproj"));
+        Assert.Contains("Include=\"..\\..\\etc\\gateway\\*.json\"", csproj, StringComparison.Ordinal);
+        Assert.Contains("Link=\"ocelot\\%(Filename)%(Extension)\"", csproj, StringComparison.Ordinal);
+        var readme = File.ReadAllText(Path.Combine(repo, "README.md"));
+        Assert.Contains("`etc/gateway/*.json`", readme, StringComparison.Ordinal);
+        Assert.Contains("`ocelot/config-paths/*`", readme, StringComparison.Ordinal);
+        Assert.Contains("/app/ocelot stays", readme, StringComparison.Ordinal);
+        Assert.Empty(Run("fix", repo, apply: false, ("rules", "DA-A12")).Plan!);
+    }
+
+    [Fact]
+    public void Compose_mentions_of_another_repository_are_not_rewritten()
+    {
+        var repo = Repo();
+        Write(repo, ".corevia/operations/followups.yaml", "files:\n  - docker-compose.yml\n  - corevia-payment:docker-compose.yml\n");
+        Run("fix", repo, apply: true, ("rules", "DA-A09"));
+
+        var text = File.ReadAllText(Path.Combine(repo, ".corevia", "operations", "followups.yaml"));
+        Assert.Contains("- etc/docker/docker-compose.yml", text, StringComparison.Ordinal);
+        Assert.Contains("corevia-payment:docker-compose.yml", text, StringComparison.Ordinal);
+    }
 }

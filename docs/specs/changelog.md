@@ -6,6 +6,7 @@
 - In an ABP project every generator is followed by the ABP fixers (DA-A01, A02, A10, A11, A08, A09) and an `.net-arch/` refresh; a generated solution with entities, actions and events builds without warnings, passes its tests and has no ABP finding.
 - Templates: DTOs are pure data, entity mapping is a separate file, repository ports are async (`RemoveAsync`) and return no `IQueryable`; the tests root follows the layout (`tests` or `test`).
 - The typed client is generated with its tests and follows later controller routes (R-I5); the framework of generated projects comes from Directory.Build.props when the projects do not name one.
+- Profile `folder_moves` and `fix --rules=DA-A12` (D-35); DA-A09 leaves Compose mentions of another repository alone.
 - Doctor: DA-A10, DA-A11 (see Unreleased list below); `IQueryable` check ignores comments.
 
 ## Unreleased (folded into 2.0.0)

@@ -89,6 +89,17 @@ public sealed class ProfileDefinition
 
     /// <summary>How the generated typed client talks HTTP; by default it uses <c>HttpClient</c>.</summary>
     public ClientTransport? Client { get; set; }
+
+    /// <summary>Root folders that belong somewhere else in the standard layout (for example a folder of deploy-time data that belongs under <c>etc/</c>). <c>fix --rules=DA-A12</c> moves them and follows every path that points at them.</summary>
+    public List<FolderMove> FolderMoves { get; set; } = new();
+}
+
+/// <summary>One folder move of a profile: <c>from</c> a repository-root folder <c>to</c> its standard place.</summary>
+public sealed class FolderMove
+{
+    public string From { get; set; } = string.Empty;
+
+    public string To { get; set; } = string.Empty;
 }
 
 /// <summary>

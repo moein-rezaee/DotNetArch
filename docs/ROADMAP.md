@@ -124,6 +124,7 @@ Environment: dotnet SDK 8 available (net9 targets cannot be built here; verify n
 - [x] 13.3 ABP fixers run after every generator in a v3 project; templates made fixer-friendly (DTO/mapping split, async `RemoveAsync`, partial controller parts travel together) (AC-29)
 - [x] 13.4 `new solution` defaults to layout v3 (closes 12.6); generated solution with crud, action and event builds with 0 warnings, passes tests, no ABP finding
 - [x] 13.5 Typed client tests generated with the client (verb and route of every action, route parity); a client follows new controller routes (partial controller files included), so an added action reaches the client and its tests
+- [x] 13.8 Profile `folder_moves` and `fix` DA-A12 (found migrating the Gateway: route fragments `ocelot/` to `etc/gateway/`) (D-35, AC-32)
 - [ ] 13.6 Smoke on the packaged tool: install, generate, adopt, delete `.net-arch/`, build and test (also closes 12.8)
 - [ ] 13.7 Interactive confirmation after the plan covers `exec` and `remove migration` end to end on a real database
 

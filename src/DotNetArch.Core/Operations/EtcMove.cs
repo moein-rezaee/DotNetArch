@@ -41,7 +41,7 @@ internal static partial class EtcMove
             var text = ctx.Read(file);
             var updated = text;
             foreach (var name in names)
-                updated = Regex.Replace(updated, $@"(?<![\w/.\\-]){Regex.Escape(name!)}", $"etc/docker/{name}", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(2));
+                updated = Regex.Replace(updated, $@"(?<![\w/.\\:-]){Regex.Escape(name!)}", $"etc/docker/{name}", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(2));
             if (updated != text)
                 actions.Add(new FixAction(new PlannedChange(file, "modify", "mentions of the compose file follow it to etc/docker/", "DA-A09"), updated));
         }

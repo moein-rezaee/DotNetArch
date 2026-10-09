@@ -12,7 +12,7 @@ internal static class FixOperation
 {
     public static readonly OperationDefinition Definition = new(
         "fix",
-        "Fix doctor findings mechanically and without touching source code. Default: missing global.json, .editorconfig, .gitignore lines, .dockerignore. Opt-in via rules: DA-B03 (central package versions, resolved versions unchanged), DA-B07 (warnings are errors in CI/Release), DA-S04 (Domain test project with an architecture test), DA-S06 (layout v2: src/ and tests/), DA-A01 (layout v3: tests/ to test/), DA-A10 (folder tree inside the layers), DA-A11 (project references between layers, solution and Dockerfile), DA-A02 (ABP layer projects: Domain.Shared, Application.Contracts and HttpApi are created only where files move into them - enum-only files, DTOs and MediatR requests, controllers - with namespaces unchanged and references, packages and Dockerfile restore lines wired; what cannot move is listed as manual; `empty` also creates empty layers). Plan first; writes only with apply. Other findings are listed as manual.",
+        "Fix doctor findings mechanically and without touching source code. Default: missing global.json, .editorconfig, .gitignore lines, .dockerignore. Opt-in via rules: DA-B03 (central package versions, resolved versions unchanged), DA-B07 (warnings are errors in CI/Release), DA-S04 (Domain test project with an architecture test), DA-S06 (layout v2: src/ and tests/), DA-A01 (layout v3: tests/ to test/), DA-A10 (folder tree inside the layers), DA-A12 (folders a profile moves, such as deploy-time data to etc/), DA-A11 (project references between layers, solution and Dockerfile), DA-A02 (ABP layer projects: Domain.Shared, Application.Contracts and HttpApi are created only where files move into them - enum-only files, DTOs and MediatR requests, controllers - with namespaces unchanged and references, packages and Dockerfile restore lines wired; what cannot move is listed as manual; `empty` also creates empty layers). Plan first; writes only with apply. Other findings are listed as manual.",
         OperationKind.Mutating,
         new[]
         {
@@ -24,7 +24,7 @@ internal static class FixOperation
         Run);
 
     // idempotent structural rules that can be requested without a doctor finding (the standard may not be switched on yet)
-    private static readonly HashSet<string> RequestedWithoutFinding = new(StringComparer.OrdinalIgnoreCase) { "DA-S06", "DA-A01", "DA-A02", "DA-A08", "DA-A09", "DA-A10", "DA-A11" };
+    private static readonly HashSet<string> RequestedWithoutFinding = new(StringComparer.OrdinalIgnoreCase) { "DA-S06", "DA-A01", "DA-A02", "DA-A08", "DA-A09", "DA-A10", "DA-A11", "DA-A12" };
 
     private static OperationResult Run(OperationRequest request)
     {

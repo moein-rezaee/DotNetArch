@@ -143,3 +143,6 @@ For an ABP project (`layout: v3` or `standards: [abp]`) every generator is follo
 
 ## D-34 A new version may break the old one (Owner)
 Versions are published, so users who need the previous behaviour keep the previous version; the new version does not carry compatibility switches for the old command shapes. Breaking changes are named in the changelog and the major version changes. Reading old state files (`.net-arch/`, `dotnet-arch.yml`) stays supported, because that is data, not behaviour.
+
+## D-35 A profile can move root folders to their standard place (Owner, found in the Gateway migration)
+Deploy-time data that sits in a root folder (for example route fragments) belongs under `etc/`. A profile lists such moves (`folder_moves: [{from, to}]`); `doctor` DA-A12 reports a pending move and `fix --rules=DA-A12` moves the folder unchanged and rewrites the paths that point at it in project files, Dockerfiles, Compose, CI and documentation. Not rewritten: history documents and code, the same word inside another path (`/app/ocelot`), key paths without a file or glob after them, and MSBuild `Link` metadata (an output location). The tool names no folder itself. Compose mentions of another repository (`<repo>:docker-compose.yml`) are left alone by DA-A09.

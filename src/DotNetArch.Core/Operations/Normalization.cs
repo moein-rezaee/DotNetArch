@@ -10,7 +10,7 @@ namespace DotNetArch.Core.Operations;
 /// </summary>
 internal static class Normalization
 {
-    private static readonly string[] Rules = { "DA-A01", "DA-A02", "DA-A10", "DA-A11", "DA-A08", "DA-A09" };
+    private static readonly string[] Rules = { "DA-A01", "DA-A02", "DA-A10", "DA-A11", "DA-A08", "DA-A09", "DA-A12" };
 
     public static bool IsAbp(string root)
     {

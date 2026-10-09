@@ -58,6 +58,9 @@ internal static partial class AbpChecks
         var tree = Operations.LayerTree.Moves(ctx);
         ctx.Check("DA-A10", cat, tree.Count == 0, DoctorSeverity.Warning, $"Folder tree: source files sit loose at a project root or more than {Operations.LayerTree.FlatLimit} files of several features share one folder.", hint: "dotnet-arch fix --rules=DA-A10 moves them into kind and feature folders inside their project (namespaces unchanged).", details: tree.Select(m => $"{m.From} -> {m.To}").ToList());
 
+        var folderMoves = Operations.FolderMoves.Pending(ctx);
+        ctx.Check("DA-A12", cat, folderMoves.Count == 0, DoctorSeverity.Warning, "A folder the profile moves is still at the repository root.", hint: "dotnet-arch fix --rules=DA-A12 moves it and rewrites the paths that point at it.", details: folderMoves.Select(m => $"{m.From} -> {m.To}").ToList());
+
         var references = Operations.LayerReferences.Issues(ctx);
         ctx.Check("DA-A11", cat, references.Count == 0, DoctorSeverity.Warning, "Project references: a used project is not reachable, a forbidden reference remains, a project is not in the solution or a Dockerfile restore line is missing.", hint: "dotnet-arch fix --rules=DA-A11 adds the missing references, removes the unused forbidden ones, registers projects in the solution and completes the Dockerfile; a used forbidden reference is listed as manual.", details: references.Select(i => $"{i.Kind}: {i.Project} -> {i.Target} ({i.Detail})").ToList());
 

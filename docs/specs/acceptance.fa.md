@@ -33,3 +33,4 @@
 - AC-29 (R-I3,I4) ‏solution ساخته‌شده با layout v3 و `new crud`، `new action` و `new event` بدون هشدار build می‌شود، تست‌هایش پاس است، پروژه‌های لایهٔ ABP و کلاینت تایپ‌دار دارد و `doctor` هیچ یافتهٔ DA-A گزارش نمی‌کند.
 - AC-30 (R-I2) ‏`add_layer` لایه را فقط وقتی چیزی به آن منتقل می‌شود می‌سازد و `add_tests` پروژهٔ تست ثبت‌شده اضافه می‌کند؛ schema ابزار MCP ‏`add_layer` پارامتر `empty` ندارد.
 - AC-31 (R-I5) بعد از `new crud` و سپس `new action` در solution با layout v3 کلاینت action تازه را دارد، پروژهٔ تست کلاینت (با تست برابری route) پاس است و اجرای دوم `fix --rules=DA-A08` ۰ تغییر طرح می‌کند.
+- AC-32 (R-I6) با `folder_moves: [{from: ocelot, to: etc/gateway}]` ‏DA-A12 پوشه را می‌برد و `COPY --from=build /src/<repo>/ocelot/`، `Include="..\\..\\ocelot\\*.json"` و `ocelot/*.json` در مستندات را بازنویسی می‌کند، در حالی که `/app/ocelot`، `Link="ocelot\\..."` و `ocelot/config-paths/*` می‌مانند؛ اجرای دوم ۰ تغییر طرح می‌کند.
