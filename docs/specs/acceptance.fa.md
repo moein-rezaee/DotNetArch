@@ -32,3 +32,4 @@
 - AC-28 (R-I1) ‏`new solution` بدون apply چیزی نمی‌نویسد و فایل‌ها را فهرست می‌کند؛ با apply می‌سازد. ‏`new crud` بدون apply solution را تغییر نمی‌دهد.
 - AC-29 (R-I3,I4) ‏solution ساخته‌شده با layout v3 و `new crud`، `new action` و `new event` بدون هشدار build می‌شود، تست‌هایش پاس است، پروژه‌های لایهٔ ABP و کلاینت تایپ‌دار دارد و `doctor` هیچ یافتهٔ DA-A گزارش نمی‌کند.
 - AC-30 (R-I2) ‏`add_layer` لایه را فقط وقتی چیزی به آن منتقل می‌شود می‌سازد و `add_tests` پروژهٔ تست ثبت‌شده اضافه می‌کند؛ schema ابزار MCP ‏`add_layer` پارامتر `empty` ندارد.
+- AC-31 (R-I5) بعد از `new crud` و سپس `new action` در solution با layout v3 کلاینت action تازه را دارد، پروژهٔ تست کلاینت (با تست برابری route) پاس است و اجرای دوم `fix --rules=DA-A08` ۰ تغییر طرح می‌کند.

@@ -116,9 +116,36 @@ internal static partial class StructuralFixers
         if (target == null || ctx.OfLayer(layer, tests: true).Any())
             return Array.Empty<FixAction>();
 
+        var actions = NewTestProject(root, ctx, target.Name, target.Dir, target.File, Array.Empty<string>(), central, ruleId, out var dir, out var testName);
+        var forbidden = ctx.Source.Where(p => p.Name != target.Name && p.Layer != ProjectLayer.Other && !LayerReferences.Allowed(layer, p.Layer)).Select(p => $"\"{p.Name}\"").ToList();
+        var label = target.Name[(target.Name.IndexOf('.') + 1)..];
+        var testClass = label.Replace(".", string.Empty) + "LayerTests";
+        var test = $"using System.Reflection;\nusing Xunit;\n\nnamespace {testName};\n\n/// <summary>Architecture rule: dependencies point inwards, so {label} must not know a layer outside what it may reference.</summary>\npublic sealed class {testClass}\n{{\n    private static readonly string[] Forbidden = {{ {string.Join(", ", forbidden)} }};\n\n    [Fact]\n    public void Layer_does_not_reference_a_project_it_must_not_know()\n    {{\n        var offenders = Assembly.Load(\"{target.Name}\").GetReferencedAssemblies()\n            .Select(a => a.Name ?? string.Empty)\n            .Where(name => Forbidden.Contains(name, StringComparer.Ordinal))\n            .ToList();\n\n        Assert.Empty(offenders);\n    }}\n\n    [Fact]\n    public void Layer_assembly_is_loadable() =>\n        Assert.NotNull(Assembly.Load(\"{target.Name}\"));\n}}\n";
+        return actions.Append(new FixAction(new PlannedChange($"{dir}/{testClass}.cs", "create", $"architecture test: {label} references no project it must not know", ruleId), test)).ToList();
+    }
+
+    /// <summary>
+    /// The test project of a (possibly not yet existing) project: csproj with the test packages (versions of a sibling test project, or central), references to the target and
+    /// <paramref name="extraReferences"/> (project files), placed in the test folder next to the other test projects, and registered in the solution.
+    /// </summary>
+    /// <summary>The target framework the repository builds for: a project that names one, else Directory.Build.props, else net8.0.</summary>
+    internal static string FrameworkOf(string root, RepoContext ctx, params string[] preferredProjectFiles)
+    {
+        static string? From(string file) => File.Exists(file) ? XDocument.Load(file).Descendants("TargetFramework").FirstOrDefault()?.Value : null;
+        foreach (var project in preferredProjectFiles.Concat(ctx.Projects.Select(p => p.File)))
+        {
+            if (From(Path.Combine(root, project)) is { Length: > 0 } framework)
+                return framework;
+        }
+
+        return From(Path.Combine(root, "Directory.Build.props")) ?? "net8.0";
+    }
+
+    internal static IReadOnlyList<FixAction> NewTestProject(string root, RepoContext ctx, string targetName, string targetDir, string targetFile, IReadOnlyList<string> extraReferences, bool central, string ruleId, out string dir, out string testName)
+    {
         var sibling = ctx.Projects.FirstOrDefault(p => p.IsTest);
         var siblingDoc = sibling == null ? null : XDocument.Load(Path.Combine(root, sibling.File));
-        var framework = siblingDoc?.Descendants("TargetFramework").FirstOrDefault()?.Value ?? XDocument.Load(Path.Combine(root, target.File)).Descendants("TargetFramework").FirstOrDefault()?.Value ?? "net8.0";
+        var framework = FrameworkOf(root, ctx, sibling?.File ?? string.Empty);
         var testPackages = new[] { "Microsoft.NET.Test.Sdk", "xunit", "xunit.runner.visualstudio" };
         var packageLines = new StringBuilder();
         foreach (var name in testPackages)
@@ -131,22 +158,17 @@ internal static partial class StructuralFixers
         }
 
         var testRoot = ctx.DirectoryExists("test") || !ctx.DirectoryExists("tests") ? "test" : "tests";
-        var sourceFolder = target.Dir.Contains('/') ? target.Dir[..target.Dir.LastIndexOf('/')] : string.Empty;
+        var sourceFolder = targetDir.Contains('/') ? targetDir[..targetDir.LastIndexOf('/')] : string.Empty;
         var prefix = sourceFolder.Length == 0 ? string.Empty : sourceFolder.Contains('/') ? sourceFolder[..sourceFolder.LastIndexOf('/')] + "/" : string.Empty;
-        var testName = target.Name + ".Tests";
-        var dir = sibling != null && sibling.Dir.Contains('/') ? sibling.Dir[..sibling.Dir.LastIndexOf('/')] + "/" + testName : (sourceFolder.Length == 0 ? testName : $"{prefix}{testRoot}/{testName}");
-        var relative = Path.GetRelativePath(dir, target.File).Replace('/', '\\');
-        var csproj = $"<Project Sdk=\"Microsoft.NET.Sdk\">\n\n  <PropertyGroup>\n    <TargetFramework>{framework}</TargetFramework>\n    <IsPackable>false</IsPackable>\n    <IsTestProject>true</IsTestProject>\n    <Nullable>enable</Nullable>\n    <ImplicitUsings>enable</ImplicitUsings>\n  </PropertyGroup>\n\n  <ItemGroup>\n{packageLines}  </ItemGroup>\n\n  <ItemGroup>\n    <ProjectReference Include=\"{relative}\" />\n  </ItemGroup>\n\n</Project>\n";
-        var forbidden = ctx.Source.Where(p => p.Name != target.Name && p.Layer != ProjectLayer.Other && !LayerReferences.Allowed(layer, p.Layer)).Select(p => $"\"{p.Name}\"").ToList();
-        var label = target.Name[(target.Name.IndexOf('.') + 1)..];
-        var testClass = label.Replace(".", string.Empty) + "LayerTests";
-        var test = $"using System.Reflection;\nusing Xunit;\n\nnamespace {testName};\n\n/// <summary>Architecture rule: dependencies point inwards, so {label} must not know a layer outside what it may reference.</summary>\npublic sealed class {testClass}\n{{\n    private static readonly string[] Forbidden = {{ {string.Join(", ", forbidden)} }};\n\n    [Fact]\n    public void Layer_does_not_reference_a_project_it_must_not_know()\n    {{\n        var offenders = Assembly.Load(\"{target.Name}\").GetReferencedAssemblies()\n            .Select(a => a.Name ?? string.Empty)\n            .Where(name => Forbidden.Contains(name, StringComparer.Ordinal))\n            .ToList();\n\n        Assert.Empty(offenders);\n    }}\n\n    [Fact]\n    public void Layer_assembly_is_loadable() =>\n        Assert.NotNull(Assembly.Load(\"{target.Name}\"));\n}}\n";
+        testName = targetName + ".Tests";
+        dir = sibling != null && sibling.Dir.Contains('/') ? sibling.Dir[..sibling.Dir.LastIndexOf('/')] + "/" + testName : (sourceFolder.Length == 0 ? testName : $"{prefix}{testRoot}/{testName}");
+        var references = new StringBuilder();
+        foreach (var file in new[] { targetFile }.Concat(extraReferences))
+            references.Append($"    <ProjectReference Include=\"{Path.GetRelativePath(dir, file).Replace('/', '\\')}\" />\n");
+        var csproj = $"<Project Sdk=\"Microsoft.NET.Sdk\">\n\n  <PropertyGroup>\n    <TargetFramework>{framework}</TargetFramework>\n    <IsPackable>false</IsPackable>\n    <IsTestProject>true</IsTestProject>\n    <Nullable>enable</Nullable>\n    <ImplicitUsings>enable</ImplicitUsings>\n  </PropertyGroup>\n\n  <ItemGroup>\n{packageLines}  </ItemGroup>\n\n  <ItemGroup>\n{references}  </ItemGroup>\n\n</Project>\n";
         var solution = ctx.Files.FirstOrDefault(f => !f.Contains('/') && f.EndsWith(".sln", StringComparison.OrdinalIgnoreCase));
-        return new[]
-        {
-            new FixAction(new PlannedChange($"{dir}/{testName}.csproj", "create", $"test project for {label}", ruleId), csproj, solution == null ? null : () => RegisterInSolution(root, solution, $"{dir}/{testName}.csproj")),
-            new FixAction(new PlannedChange($"{dir}/{testClass}.cs", "create", $"architecture test: {label} references no project it must not know", ruleId), test),
-        };
+        var csprojPath = $"{dir}/{testName}.csproj";
+        return new[] { new FixAction(new PlannedChange(csprojPath, "create", $"test project for {targetName}", ruleId), csproj, solution == null ? null : () => RegisterInSolution(root, solution, csprojPath)) };
     }
 
     private static void RegisterInSolution(string root, string solution, string project)

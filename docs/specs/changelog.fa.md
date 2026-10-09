@@ -5,6 +5,7 @@
 - یک رجیستری برای همهٔ دستورها: کلمه‌های CLI (`new crud`) و ابزار MCP (`new_crud`) از آن مشتق می‌شوند؛ ۲۶ عملیات. تازه: ‏`add_layer`، `add_tests`، `spec_list`، `spec_add`، `spec_check`، `graph`؛ ‏`adopt --standards=abp`.
 - در پروژهٔ ABP بعد از هر مولد fixerهای ABP (DA-A01، A02، A10، A11، A08، A09) و تازه‌سازی `.net-arch/` اجرا می‌شود؛ solution تولیدشده با entity، action و event بدون هشدار build می‌شود، تست‌هایش پاس است و یافتهٔ ABP ندارد.
 - قالب‌ها: DTO داده‌ی خالص است، نگاشت entity فایل جدا دارد، پورت repository ‏async است (`RemoveAsync`) و `IQueryable` برنمی‌گرداند؛ ریشهٔ تست‌ها از layout پیروی می‌کند (`tests` یا `test`).
+- کلاینت تایپ‌دار همراه تست‌هایش تولید می‌شود و از routeهای بعدی controller پیروی می‌کند (R-I5)؛ فریم‌ورک پروژه‌های تولیدی، وقتی پروژه‌ها نام نبرند، از Directory.Build.props می‌آید.
 - doctor: ‏DA-A10 و DA-A11؛ بررسی `IQueryable` کامنت‌ها را نادیده می‌گیرد.
 
 ## منتشرنشده (در 2.0.0 ادغام می‌شود)

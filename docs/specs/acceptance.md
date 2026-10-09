@@ -33,3 +33,4 @@ Nothing is claimed verified unless the script ran; when the SDK is unavailable t
 - AC-28 (R-I1) `new solution` without apply writes nothing and lists the files; with apply it creates them. `new crud` without apply leaves the solution unchanged.
 - AC-29 (R-I3,I4) A solution generated with layout v3 plus `new crud`, `new action` and `new event` builds with 0 warnings, passes its tests, has the ABP layer projects and a typed client, and `doctor` reports no DA-A finding.
 - AC-30 (R-I2) `add_layer` creates a layer only when something moves into it and `add_tests` adds a registered test project; the MCP schema of `add_layer` has no `empty`.
+- AC-31 (R-I5) After `new crud` then `new action` in a v3 solution the client has the new action, the client test project passes (including route parity) and a second `fix --rules=DA-A08` plans 0 changes.

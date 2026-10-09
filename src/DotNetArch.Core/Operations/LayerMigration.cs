@@ -192,7 +192,7 @@ internal static partial class LayerMigration
         var prefix = domain.Name[..^".Domain".Length];
         var actions = new List<FixAction>();
         var solution = ctx.Files.FirstOrDefault(f => !f.Contains('/') && f.EndsWith(".sln", StringComparison.OrdinalIgnoreCase));
-        var framework = XDocument.Load(Path.Combine(root, domain.File)).Descendants("TargetFramework").FirstOrDefault()?.Value ?? "net8.0";
+        var framework = StructuralFixers.FrameworkOf(root, ctx, domain.File);
 
         var layerDirs = new Dictionary<ProjectLayer, string>();
         foreach (var layer in Targets.Append(ProjectLayer.HttpApiClient))

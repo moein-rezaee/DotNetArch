@@ -285,7 +285,13 @@ public sealed class AbpTests : IDisposable
         Assert.Contains("Shop.Application.Contracts.csproj", File.ReadAllText(Path.Combine(repo, "src", "Shop.HttpApi.Client", "Shop.HttpApi.Client.csproj")), StringComparison.Ordinal);
         Assert.True(File.Exists(Path.Combine(repo, "src", "Shop.HttpApi.Client", "Common", "ApiRoute.cs")));
         Assert.Contains("System.Collections.IEnumerable list and not string", File.ReadAllText(Path.Combine(repo, "src", "Shop.HttpApi.Client", "Common", "ApiRoute.cs")), StringComparison.Ordinal);
-        Assert.Equal(1, runner.Calls.Count(c => c.Arguments.Contains("sln")));
+        Assert.Equal(2, runner.Calls.Count(c => c.Arguments.Contains("sln")));
+        var testFile = Directory.EnumerateFiles(repo, "ItemClientTests.cs", SearchOption.AllDirectories).Single();
+        var clientTests = File.ReadAllText(testFile);
+        Assert.Contains("Assert.Equal(HttpMethod.Get, handler.Method);", clientTests, StringComparison.Ordinal);
+        Assert.Contains("Assert.Equal(\"/v1/api/Item/abc\", handler.Path);", clientTests, StringComparison.Ordinal);
+        Assert.Contains("RouteParityTests", string.Join(' ', Directory.EnumerateFiles(Path.GetDirectoryName(testFile)!, "*.cs")), StringComparison.Ordinal);
+        Assert.Contains("Skipped = 1", File.ReadAllText(Path.Combine(Path.GetDirectoryName(testFile)!, "RouteParityTests.cs")), StringComparison.Ordinal);
         Assert.Empty(Run("fix", repo, apply: false, ("rules", "DA-A08")).Plan!);
         Assert.DoesNotContain("DA-A08", string.Join(',', DoctorRunnerWith(repo).Findings.Select(f => f.Id)));
     }

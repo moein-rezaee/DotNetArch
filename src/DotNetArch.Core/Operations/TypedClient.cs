@@ -60,20 +60,24 @@ internal static partial class TypedClient
         var ns = name;
 
         var actions = new List<FixAction>();
-        var generated = 0;
+        var rendered = new List<(string Client, List<ClientAction> Actions)>();
         foreach (var file in controllers)
         {
-            var (clientName, methods) = Parse(ctx.Read(file), file, known, notes, transport != null);
+            var stem = Path.GetFileNameWithoutExtension(file) + ".";
+            var partials = ctx.Files.Where(f => Path.GetDirectoryName(f)?.Replace('\\', '/') == Path.GetDirectoryName(file)?.Replace('\\', '/') && f != file && Path.GetFileName(f).StartsWith(stem, StringComparison.Ordinal) && f.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)).Order(StringComparer.Ordinal);
+            var (clientName, methods) = Parse(ctx.Read(file) + "\n" + string.Join("\n", partials.Select(f => ctx.Read(f))), file, known, notes, transport != null);
             if (methods.Count == 0)
                 continue;
-            if (ctx.Files.Any(f => f.StartsWith(dir + "/", StringComparison.OrdinalIgnoreCase) && Path.GetFileName(f).Equals(clientName + ".cs", StringComparison.OrdinalIgnoreCase)))
-                continue;
-            var path = $"{dir}/{LayerTree.ClientFolder(features, clientName)}/{clientName}.cs";
-            actions.Add(new FixAction(new PlannedChange(path, "create", $"typed client for {Path.GetFileNameWithoutExtension(file)} ({methods.Count} action(s))", "DA-A08"), Render(ns, clientName, methods, known, transport)));
-            generated++;
+            rendered.Add((clientName, methods));
+            var content = Render(ns, clientName, methods, known, transport);
+            var existingFile = ctx.Files.FirstOrDefault(f => f.StartsWith(dir + "/", StringComparison.OrdinalIgnoreCase) && Path.GetFileName(f).Equals(clientName + ".cs", StringComparison.OrdinalIgnoreCase));
+            if (existingFile == null)
+                actions.Add(new FixAction(new PlannedChange($"{dir}/{LayerTree.ClientFolder(features, clientName)}/{clientName}.cs", "create", $"typed client for {Path.GetFileNameWithoutExtension(file)} ({methods.Count} action(s))", "DA-A08"), content));
+            else if (ctx.Read(existingFile) is var current && current.Contains(GeneratedMarker, StringComparison.Ordinal) && current != content)
+                actions.Add(new FixAction(new PlannedChange(existingFile, "modify", $"typed client follows the controller routes ({methods.Count} action(s))", "DA-A08"), content));
         }
 
-        if (generated == 0)
+        if (rendered.Count == 0)
             return actions;
 
         if (!ctx.Files.Any(f => f.StartsWith(dir + "/", StringComparison.OrdinalIgnoreCase) && Path.GetFileName(f).Equals("ApiRoute.cs", StringComparison.OrdinalIgnoreCase)))
@@ -83,21 +87,52 @@ internal static partial class TypedClient
         {
             var solution = ctx.Files.FirstOrDefault(f => !f.Contains('/') && f.EndsWith(".sln", StringComparison.OrdinalIgnoreCase));
             var csproj = $"{dir}/{name}.csproj";
-            var framework = XDocument.Load(Path.Combine(root, domain.File)).Descendants("TargetFramework").FirstOrDefault()?.Value ?? "net8.0";
+            var framework = StructuralFixers.FrameworkOf(root, ctx, domain.File);
             var relative = Path.GetRelativePath(dir, $"{contracts.Dir}/{contracts.Name}.csproj").Replace('/', '\\');
             actions.Add(new FixAction(new PlannedChange(csproj, "create", "typed client project (references Application.Contracts only)", "DA-A08"),
                 $"<Project Sdk=\"Microsoft.NET.Sdk\">\n\n  <PropertyGroup>\n    <TargetFramework>{framework}</TargetFramework>\n    <Nullable>enable</Nullable>\n    <ImplicitUsings>enable</ImplicitUsings>\n  </PropertyGroup>\n\n  <ItemGroup>\n    <ProjectReference Include=\"{relative}\" />\n  </ItemGroup>\n{(transport == null ? string.Empty : $"\n  <ItemGroup>\n    <PackageReference Include=\"{transport.Package}\" />\n  </ItemGroup>\n")}\n</Project>\n",
                 solution == null ? null : () => Register(root, solution, csproj)));
         }
 
+        // tests ride along with the client: the verb and route of every action, and one test that every controller route has a client method
+        var testProject = ctx.OfLayer(ProjectLayer.HttpApiClient, tests: true).FirstOrDefault();
+        string testDir;
+        string testName;
+        if (testProject != null)
+        {
+            testDir = testProject.Dir;
+            testName = testProject.Name;
+        }
+        else
+        {
+            var controllerProjectFile = ctx.Projects.Where(p => !p.IsTest && controllers[0].StartsWith(p.Dir + "/", StringComparison.OrdinalIgnoreCase)).OrderByDescending(p => p.Dir.Length).First().File;
+            actions.AddRange(StructuralFixers.NewTestProject(root, ctx, name, dir, $"{dir}/{name}.csproj", new[] { controllerProjectFile }, ctx.Has("Directory.Packages.props"), "DA-A08", out testDir, out testName));
+        }
+
+        void Upsert(string fileName, string defaultPath, string content, string reason)
+        {
+            var found = ctx.Files.FirstOrDefault(f => f.StartsWith(testDir + "/", StringComparison.OrdinalIgnoreCase) && Path.GetFileName(f).Equals(fileName, StringComparison.OrdinalIgnoreCase));
+            if (found == null)
+                actions.Add(new FixAction(new PlannedChange(defaultPath, "create", reason, "DA-A08"), content));
+            else if (ctx.Read(found) is var text && text.Contains(GeneratedMarker, StringComparison.Ordinal) && text != content)
+                actions.Add(new FixAction(new PlannedChange(found, "modify", reason, "DA-A08"), content));
+        }
+
+        var controllerText = ctx.Read(controllers[0]);
+        var skipped = notes.Count(n => n.Contains(" skipped: ", StringComparison.Ordinal));
+        Upsert("RouteParityTests.cs", $"{testDir}/RouteParityTests.cs", RenderParityTests(testName, ns, Namespace().Match(controllerText).Groups[1].Value, ControllerClass().Match(controllerText).Groups["name"].Value, skipped), "test: every controller route has a client method");
+        Upsert("Recording.cs", $"{testDir}/Support/Recording.cs", RenderRecording(testName, ns, transport), "test support: records the request a client sends");
+        foreach (var (clientType, clientActions) in rendered)
+            Upsert(clientType + "Tests.cs", $"{testDir}/{clientType}Tests.cs", RenderClientTests(testName, ns, clientType, clientActions, transport), $"tests for {clientType}: verb and route of every action");
+
         return actions;
     }
 
-    /// <summary>True when the HttpApi layer holds controllers and no typed client project exists yet (doctor DA-A08).</summary>
+    private const string GeneratedMarker = "generated from the controller routes";
+
+    /// <summary>True when the typed client (project, clients or their tests) is missing or out of date with the controller routes (doctor DA-A08).</summary>
     public static bool IsMissing(RepoContext ctx) =>
-        ctx.OfLayer(ProjectLayer.HttpApi).Any()
-        && !ctx.OfLayer(ProjectLayer.HttpApiClient).Any()
-        && ctx.OfLayer(ProjectLayer.HttpApi).Any(p => ctx.Files.Any(f => f.StartsWith(p.Dir + "/", StringComparison.OrdinalIgnoreCase) && f.EndsWith("Controller.cs", StringComparison.OrdinalIgnoreCase) && ControllerBase().IsMatch(ctx.Read(f))));
+        ctx.OfLayer(ProjectLayer.HttpApi).Any() && Plan(ctx.Root, ctx, out _).Count > 0;
 
     private static void Register(string root, string solution, string project)
     {
@@ -319,6 +354,100 @@ internal static partial class TypedClient
 
         sb.Append("    }\n\n");
         return sb.ToString();
+    }
+
+    // ---- generated tests ------------------------------------------------------------------------------------------------
+
+    private static string RenderParityTests(string testNamespace, string clientNamespace, string controllerNamespace, string controllerClass, int skipped) =>
+        $"using System.Reflection;\nusing Microsoft.AspNetCore.Mvc;\nusing {controllerNamespace};\nusing Xunit;\n\nnamespace {testNamespace};\n\n/// <summary>Every controller route has a client method (generated from the controller routes); the actions the client cannot express are counted in <see cref=\"Skipped\"/> (the generator lists them).</summary>\npublic sealed class RouteParityTests\n{{\n    private const int Skipped = {skipped};\n\n    [Fact]\n    public void Every_controller_route_has_a_client_method()\n    {{\n        var verbs = new[] {{ typeof(HttpGetAttribute), typeof(HttpPostAttribute), typeof(HttpPutAttribute), typeof(HttpDeleteAttribute), typeof(HttpPatchAttribute) }};\n        var controllers = typeof({controllerClass}).Assembly.GetTypes().Where(t => typeof(ControllerBase).IsAssignableFrom(t));\n        var routes = controllers.SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)).Count(m => verbs.Any(v => m.IsDefined(v, inherit: false)));\n        var clients = Assembly.Load(\"{clientNamespace}\").GetTypes().Where(t => t.IsInterface && t.Name.EndsWith(\"Client\", StringComparison.Ordinal));\n        var methods = clients.SelectMany(t => t.GetMethods()).Count();\n\n        Assert.Equal(routes - Skipped, methods);\n    }}\n}}\n";
+
+    private static string RenderRecording(string testNamespace, string clientNamespace, NetArch.ClientTransport? transport)
+    {
+        if (transport == null)
+            return $"using System.Net;\nusing System.Text;\n\nnamespace {testNamespace}.Support;\n\n/// <summary>A message handler that answers 200 with a JSON null and remembers the request (generated from the controller routes).</summary>\ninternal sealed class RecordingHandler : HttpMessageHandler\n{{\n    public HttpMethod? Method {{ get; private set; }}\n\n    public string? Path {{ get; private set; }}\n\n    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)\n    {{\n        Method = request.Method;\n        Path = request.RequestUri!.AbsolutePath;\n        return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) {{ Content = new StringContent(\"null\", Encoding.UTF8, \"application/json\") }});\n    }}\n\n    public static (HttpClient Client, RecordingHandler Handler) Create()\n    {{\n        var handler = new RecordingHandler();\n        return (new HttpClient(handler) {{ BaseAddress = new Uri(\"http://localhost/\") }}, handler);\n    }}\n}}\n";
+        return $"using {transport.Namespace};\n\nnamespace {testNamespace}.Support;\n\n/// <summary>A REST client that answers a JSON null and remembers the request (generated from the controller routes).</summary>\ninternal sealed class RecordingRest : {transport.Interface}\n{{\n    public string? Verb {{ get; private set; }}\n\n    public string? Path {{ get; private set; }}\n\n    public Task<string> GetAsync(string path, IDictionary<string, string>? headers = null, IDictionary<string, string?>? query = null, CancellationToken ct = default) => Record(\"Get\", path);\n\n    public Task<string> PostAsync(string path, object? body = null, IDictionary<string, string>? headers = null, IDictionary<string, string?>? query = null, CancellationToken ct = default) => Record(\"Post\", path);\n\n    public Task<string> PutAsync(string path, object? body = null, IDictionary<string, string>? headers = null, IDictionary<string, string?>? query = null, CancellationToken ct = default) => Record(\"Put\", path);\n\n    public Task<string> PatchAsync(string path, object? body = null, IDictionary<string, string>? headers = null, IDictionary<string, string?>? query = null, CancellationToken ct = default) => Record(\"Patch\", path);\n\n    public Task<string> DeleteAsync(string path, IDictionary<string, string>? headers = null, IDictionary<string, string?>? query = null, CancellationToken ct = default) => Record(\"Delete\", path);\n\n    private Task<string> Record(string verb, string path)\n    {{\n        Verb = verb;\n        Path = path;\n        return Task.FromResult(\"null\");\n    }}\n}}\n";
+    }
+
+    private static string RenderClientTests(string testNamespace, string clientNamespace, string clientName, List<ClientAction> actions, NetArch.ClientTransport? transport)
+    {
+        var sb = new StringBuilder();
+        sb.Append("using System.Text.Json;\nusing ").Append(clientNamespace).Append(";\nusing ").Append(testNamespace).Append(".Support;\nusing Xunit;\n\nnamespace ").Append(testNamespace).Append(";\n\n");
+        sb.Append("/// <summary>The verb and the route every action of the client sends (generated from the controller routes).</summary>\npublic sealed class ").Append(clientName).Append("Tests\n{\n");
+        sb.Append("    private static async Task Swallow(Func<Task> call)\n    {\n        try\n        {\n            await call();\n        }\n        catch (Exception ex) when (ex is JsonException or NotSupportedException or InvalidOperationException or HttpRequestException)\n        {\n            // only the request matters here; the response is a JSON null\n        }\n    }\n");
+        foreach (var action in actions)
+        {
+            var method = action.Name.EndsWith("Async", StringComparison.Ordinal) ? action.Name : action.Name + "Async";
+            var arguments = string.Join(", ", action.Parameters.Select(p => SampleValue(p.Type)));
+            var (route, exact) = ExpectedRoute(action);
+            var verb = action.Verb;
+            sb.Append("\n    [Fact]\n    public async Task ").Append(action.Name.Replace("Async", string.Empty)).Append("_sends_").Append(verb.ToUpperInvariant()).Append("_to_the_route()\n    {\n");
+            if (transport == null)
+            {
+                sb.Append("        var (http, handler) = RecordingHandler.Create();\n        await Swallow(() => new ").Append(clientName).Append("(http).").Append(method).Append('(').Append(arguments).Append("));\n");
+                sb.Append("        Assert.Equal(HttpMethod.").Append(verb).Append(", handler.Method);\n");
+                sb.Append(exact ? $"        Assert.Equal(\"/{route}\", handler.Path);\n" : $"        Assert.StartsWith(\"/{route}\", handler.Path, StringComparison.Ordinal);\n");
+            }
+            else
+            {
+                sb.Append("        var rest = new RecordingRest();\n        await Swallow(() => new ").Append(clientName).Append("(rest).").Append(method).Append('(').Append(arguments).Append("));\n");
+                sb.Append("        Assert.Equal(\"").Append(verb).Append("\", rest.Verb);\n");
+                sb.Append(exact ? $"        Assert.Equal(\"{route}\", rest.Path);\n" : $"        Assert.StartsWith(\"{route}\", rest.Path, StringComparison.Ordinal);\n");
+            }
+
+            sb.Append("    }\n");
+        }
+
+        sb.Append("}\n");
+        return sb.ToString();
+    }
+
+    /// <summary>A literal for a parameter of the given type (route values are real; anything else is the default, which the client leaves out or sends as null).</summary>
+    private static string SampleValue(string type)
+    {
+        var core = type.TrimEnd('?');
+        return core switch
+        {
+            "string" => "\"abc\"",
+            "Guid" => "Guid.Parse(\"11111111-1111-1111-1111-111111111111\")",
+            "int" or "long" or "short" or "byte" => "7",
+            "bool" => "true",
+            "decimal" or "double" or "float" => "1",
+            "DateTime" => "new DateTime(2024, 1, 2, 3, 4, 5, DateTimeKind.Utc)",
+            "DateTimeOffset" => "new DateTimeOffset(new DateTime(2024, 1, 2, 3, 4, 5, DateTimeKind.Utc))",
+            _ => "default!",
+        };
+    }
+
+    private static string SampleSegment(string type) => type.TrimEnd('?') switch
+    {
+        "string" => "abc",
+        "Guid" => "11111111-1111-1111-1111-111111111111",
+        "int" or "long" or "short" or "byte" => "7",
+        "bool" => "true",
+        "decimal" or "double" or "float" => "1",
+        "DateTime" or "DateTimeOffset" => "2024-01-02T03%3A04%3A05.0000000Z",
+        _ => string.Empty,
+    };
+
+    /// <summary>The path a call with the sample values sends, and whether it can be compared exactly (every route value is a known sample and nothing is sent as query).</summary>
+    private static (string Route, bool Exact) ExpectedRoute(ClientAction action)
+    {
+        var route = action.Url;
+        var exact = action.Parameters.All(p => p.Source != "query");
+        foreach (var parameter in action.Parameters.Where(p => p.Source == "route"))
+        {
+            var segment = SampleSegment(parameter.Type);
+            if (segment.Length == 0)
+            {
+                route = route[..route.IndexOf("{" + parameter.Name, StringComparison.Ordinal)];
+                exact = false;
+                break;
+            }
+
+            route = route.Replace("{" + parameter.Name + "}", segment, StringComparison.Ordinal);
+        }
+
+        return (route, exact);
     }
 
     private static string RenderRoute(string ns, bool rest) =>
