@@ -51,7 +51,7 @@ internal static partial class CodeChecks
     }
 
     private static bool IsTestOrGenerated(string file) =>
-        file.Split('/').Any(s => s.EndsWith(".Tests", StringComparison.Ordinal) || s.Equals("tests", StringComparison.OrdinalIgnoreCase) || s.Equals("Migrations", StringComparison.OrdinalIgnoreCase))
+        file.Split('/').Any(s => s.EndsWith(".Tests", StringComparison.Ordinal) || s.Equals("tests", StringComparison.OrdinalIgnoreCase) || s.Equals("test", StringComparison.OrdinalIgnoreCase) || s.Equals("Migrations", StringComparison.OrdinalIgnoreCase))
         || file.EndsWith("Tests.cs", StringComparison.OrdinalIgnoreCase) || file.EndsWith(".g.cs", StringComparison.OrdinalIgnoreCase) || file.EndsWith(".Designer.cs", StringComparison.OrdinalIgnoreCase);
 
     [GeneratedRegex(@"\bConsole\.(Write|WriteLine)\(")]

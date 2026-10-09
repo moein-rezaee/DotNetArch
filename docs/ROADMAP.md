@@ -105,8 +105,8 @@ Environment: dotnet SDK 8 available (net9 targets cannot be built here; verify n
 
 ## Phase 12 - ABP alignment (R-H1..H5, D-25..D-29)
 - [x] 12.1 Specs and documentation updated from the ABP spec and the owner decisions (abp-alignment, D-25..D-29, R-H, AC-19..22, contracts, changelog)
-- [ ] 12.2 Layout v3 in the model: `adopt`/`doctor` accept `src/test/etc`; fix rule DA-S07 (v2 to v3) with tests (AC-19)
-- [ ] 12.3 Fix rule DA-S08: layer projects with allowed references, registered in the solution (AC-20)
+- [ ] 12.2 Layout v3 in the model: `adopt`/`doctor` accept `src/test/etc`; fix rule DA-A01 (v2 to v3) with tests (AC-19)
+- [ ] 12.3 Fix rule DA-A02: layer projects with allowed references, registered in the solution (AC-20)
 - [ ] 12.4 Built-in opt-in `abp` rule set DA-A01..DA-A06 in `doctor`, `standards: [abp]` (AC-21)
 - [ ] 12.5 Service-published files under `etc/` are recognised by `doctor` as structure (no gateway or product names in the tool)
 - [ ] 12.6 Generator: `new solution --layout=v3 [--layers=abp]` on the registry (with 11.7) (AC-22)

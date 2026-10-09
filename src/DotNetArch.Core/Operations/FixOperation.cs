@@ -12,7 +12,7 @@ internal static class FixOperation
 {
     public static readonly OperationDefinition Definition = new(
         "fix",
-        "Fix doctor findings mechanically and without touching source code. Default: missing global.json, .editorconfig, .gitignore lines, .dockerignore. Opt-in via rules: DA-B03 (central package versions, resolved versions unchanged), DA-B07 (warnings are errors in CI/Release), DA-S04 (Domain test project with an architecture test). Plan first; writes only with apply. Other findings are listed as manual.",
+        "Fix doctor findings mechanically and without touching source code. Default: missing global.json, .editorconfig, .gitignore lines, .dockerignore. Opt-in via rules: DA-B03 (central package versions, resolved versions unchanged), DA-B07 (warnings are errors in CI/Release), DA-S04 (Domain test project with an architecture test), DA-S06 (layout v2: src/ and tests/), DA-A01 (layout v3: tests/ to test/), DA-A02 (ABP layer projects Domain.Shared, Application.Contracts, HttpApi, HttpApi.Client; structure only). Plan first; writes only with apply. Other findings are listed as manual.",
         OperationKind.Mutating,
         new[]
         {
@@ -21,6 +21,9 @@ internal static class FixOperation
             new OperationParameter("rules", "Comma-separated rule ids to fix (default: every default-fixable finding; name opt-in rules here)."),
         },
         Run);
+
+    // idempotent structural rules that can be requested without a doctor finding (the standard may not be switched on yet)
+    private static readonly HashSet<string> RequestedWithoutFinding = new(StringComparer.OrdinalIgnoreCase) { "DA-S06", "DA-A01", "DA-A02" };
 
     private static OperationResult Run(OperationRequest request)
     {
@@ -60,7 +63,7 @@ internal static class FixOperation
 
         foreach (var requested in only ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase))
         {
-            if (requested.Equals("DA-S06", StringComparison.OrdinalIgnoreCase) && !plan.Any(p => p.Change.RuleId?.Equals(requested, StringComparison.OrdinalIgnoreCase) == true) && !report.Findings.Any(f => f.Id.Equals(requested, StringComparison.OrdinalIgnoreCase)))
+            if (RequestedWithoutFinding.Contains(requested) && !plan.Any(p => p.Change.RuleId?.Equals(requested, StringComparison.OrdinalIgnoreCase) == true) && !report.Findings.Any(f => f.Id.Equals(requested, StringComparison.OrdinalIgnoreCase)))
                 plan.AddRange(StructuralFixers.For(requested.ToUpperInvariant(), root, ctx, only!.Contains("DA-B03")));
         }
 

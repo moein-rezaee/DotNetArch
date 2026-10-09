@@ -27,6 +27,9 @@ public sealed class ProjectState
 
     public List<string> Layers { get; set; } = new();
 
+    /// <summary>Built-in opt-in rule sets that apply to the project (for example <c>abp</c>).</summary>
+    public List<string> Standards { get; set; } = new();
+
     public Dictionary<string, string> Kits { get; set; } = new();
 
     public Dictionary<string, EntityState> Entities { get; set; } = new();
@@ -75,6 +78,12 @@ public sealed class ProfileDefinition
 
     /// <summary>Layouts the profile accepts without a warning (for example <c>flat</c> and <c>v2</c>).</summary>
     public List<string> AcceptedLayouts { get; set; } = new();
+
+    /// <summary>Built-in rule sets the profile switches on for every project that uses it (for example <c>abp</c>).</summary>
+    public List<string> Standards { get; set; } = new();
+
+    /// <summary>Severity the profile gives to rule ids (including built-in ones); a project's rules.yml still wins.</summary>
+    public Dictionary<string, string> Severity { get; set; } = new();
 
     public List<ProfileRule> Rules { get; set; } = new();
 }

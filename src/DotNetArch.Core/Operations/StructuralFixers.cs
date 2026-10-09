@@ -12,7 +12,7 @@ namespace DotNetArch.Core.Operations;
 /// </summary>
 internal static partial class StructuralFixers
 {
-    public static readonly IReadOnlySet<string> RuleIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "DA-B03", "DA-B07", "DA-S04", "DA-S06" };
+    public static readonly IReadOnlySet<string> RuleIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "DA-B03", "DA-B07", "DA-S04", "DA-S06", "DA-A01", "DA-A02" };
 
     public static IReadOnlyList<FixAction> For(string ruleId, string root, RepoContext ctx, bool centralPackages) => ruleId switch
     {
@@ -20,6 +20,8 @@ internal static partial class StructuralFixers
         "DA-B07" => StrictWarnings(root),
         "DA-S04" => DomainTests(root, ctx, centralPackages || ctx.Has("Directory.Packages.props")),
         "DA-S06" => LayoutV2(root, ctx),
+        "DA-A01" => LayoutV3(root, ctx),
+        "DA-A02" => AbpLayers(root, ctx),
         _ => Array.Empty<FixAction>(),
     };
 
@@ -140,6 +142,92 @@ internal static partial class StructuralFixers
         var result = ToolHost.Runner.Run(new ProcessSpec("dotnet", new[] { "sln", solution, "add", project }, root), showProgress: false);
         if (!result.Success)
             throw new InvalidOperationException($"dotnet sln add failed: {result.Output}");
+    }
+
+    // ------------------------------------------------------------------------------------------------------------------------------
+    // Layout v3 (ABP): tests/ becomes test/. Same rule as the v2 move: folders move, then every path that points at them is rewritten.
+
+    private static IReadOnlyList<FixAction> LayoutV3(string root, RepoContext ctx)
+    {
+        if (ctx.Layout != "v2" || !ctx.DirectoryExists("tests") || ctx.DirectoryExists("test"))
+            return Array.Empty<FixAction>();
+
+        var actions = new List<FixAction> { new(new PlannedChange("test", "move", "moved from tests", "DA-A01"), string.Empty, MoveFrom: "tests") };
+        foreach (var file in ctx.Files)
+        {
+            var isCode = file.EndsWith(".cs", StringComparison.OrdinalIgnoreCase);
+            var isProject = file.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase) || file.EndsWith(".props", StringComparison.OrdinalIgnoreCase) || file.EndsWith(".targets", StringComparison.OrdinalIgnoreCase);
+            var isSolution = file.EndsWith(".sln", StringComparison.OrdinalIgnoreCase) || file.EndsWith(".slnx", StringComparison.OrdinalIgnoreCase);
+            var isState = file.Equals(".net-arch/project.yml", StringComparison.OrdinalIgnoreCase);
+            if (!isCode && !isProject && !isSolution && !isState && !IsRewriteTarget(file))
+                continue;
+
+            var text = ctx.Read(file);
+            if (text.Length == 0)
+                continue;
+            var rewritten = isState ? Regex.Replace(text, @"(?m)^layout:\s*v2\s*$", "layout: v3", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1))
+                : isCode ? RewriteCodeSegment(text)
+                : RewriteSegment(text);
+            var newPath = file.StartsWith("tests/", StringComparison.Ordinal) ? "test/" + file["tests/".Length..] : file;
+            if (rewritten != text || newPath != file)
+            {
+                if (rewritten != text)
+                    actions.Add(new FixAction(new PlannedChange(newPath, "modify", "paths follow tests/ to test/", "DA-A01"), rewritten));
+            }
+        }
+
+        return actions;
+    }
+
+    /// <summary>A top-level <c>tests</c> path segment becomes <c>test</c>; a segment inside another path (<c>docs/tests/</c>) is left alone.</summary>
+    private static string RewriteSegment(string text) =>
+        Regex.Replace(text, @"(?<![\w./\\-])(?<dot>(?:\.\.?[/\\])*)tests(?=[/\\])", "${dot}test", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(2));
+
+    private static string RewriteCodeSegment(string text)
+    {
+        if (!text.Contains("tests", StringComparison.Ordinal))
+            return text;
+        text = Regex.Replace(text, @"(Path\.Combine\([^;\n]*?)""tests""(?=\s*[,)])", "$1\"test\"", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(2));
+        return Regex.Replace(text, @"(?<=""[^""\n]*?)(?<![\w./\\-])(?<dot>(?:\.\.?/)*)tests(?=/)", "${dot}test", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(2));
+    }
+
+    // ------------------------------------------------------------------------------------------------------------------------------
+    // ABP layer projects: structure only (empty projects with the allowed references); no type is moved.
+
+    private static IReadOnlyList<FixAction> AbpLayers(string root, RepoContext ctx)
+    {
+        var domain = ctx.OfLayer(ProjectLayer.Domain).FirstOrDefault();
+        if (domain == null)
+            return Array.Empty<FixAction>();
+
+        var prefix = domain.Name[..^".Domain".Length];
+        var folder = domain.Dir.Contains('/') ? domain.Dir[..domain.Dir.LastIndexOf('/')] : string.Empty;
+        var domainDoc = XDocument.Load(Path.Combine(root, domain.File));
+        var framework = domainDoc.Descendants("TargetFramework").FirstOrDefault()?.Value ?? "net8.0";
+        var solution = ctx.Files.FirstOrDefault(f => !f.Contains('/') && f.EndsWith(".sln", StringComparison.OrdinalIgnoreCase));
+
+        var specs = new (ProjectLayer Layer, string Suffix, string? Reference)[]
+        {
+            (ProjectLayer.DomainShared, "Domain.Shared", null),
+            (ProjectLayer.ApplicationContracts, "Application.Contracts", "Domain.Shared"),
+            (ProjectLayer.HttpApi, "HttpApi", "Application.Contracts"),
+            (ProjectLayer.HttpApiClient, "HttpApi.Client", "Application.Contracts"),
+        };
+
+        var actions = new List<FixAction>();
+        foreach (var (layer, suffix, reference) in specs)
+        {
+            if (ctx.OfLayer(layer).Any())
+                continue;
+            var name = $"{prefix}.{suffix}";
+            var dir = folder.Length == 0 ? name : $"{folder}/{name}";
+            var references = reference == null ? string.Empty : $"\n  <ItemGroup>\n    <ProjectReference Include=\"..\\{prefix}.{reference}\\{prefix}.{reference}.csproj\" />\n  </ItemGroup>\n";
+            var csproj = $"<Project Sdk=\"Microsoft.NET.Sdk\">\n\n  <PropertyGroup>\n    <TargetFramework>{framework}</TargetFramework>\n    <Nullable>enable</Nullable>\n    <ImplicitUsings>enable</ImplicitUsings>\n  </PropertyGroup>\n{references}\n</Project>\n";
+            var path = $"{dir}/{name}.csproj";
+            actions.Add(new FixAction(new PlannedChange(path, "create", $"ABP layer project {suffix} (structure only)", "DA-A02"), csproj, solution == null ? null : () => RegisterInSolution(root, solution, path)));
+        }
+
+        return actions;
     }
 
     // ------------------------------------------------------------------------------------------------------------------------------

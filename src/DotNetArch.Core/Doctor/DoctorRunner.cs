@@ -13,7 +13,8 @@ public static class DoctorRunner
         var fullRoot = Path.GetFullPath(root);
         var profile = NetArchStore.ResolveProfile(fullRoot, options?.ProfilePath, out var warning);
         var rules = NetArchStore.LoadEffectiveRules(fullRoot);
-        var ctx = new RepoContext(fullRoot, profile, rules);
+        var standards = (NetArchStore.LoadState(fullRoot)?.Standards ?? new List<string>()).Concat(profile?.Standards ?? new List<string>());
+        var ctx = new RepoContext(fullRoot, profile, rules, standards);
         StructureChecks.Run(ctx);
         BuildChecks.Run(ctx);
         ConfigChecks.Run(ctx);
@@ -21,18 +22,27 @@ public static class DoctorRunner
         DocsChecks.Run(ctx);
         TestChecks.Run(ctx);
         CodeChecks.Run(ctx);
+        AbpChecks.Run(ctx);
         ProfileChecks.Run(ctx);
 
         var accepted = new List<AcceptedFinding>();
         var findings = new List<DoctorFinding>();
-        foreach (var finding in ctx.Findings)
+        foreach (var original in ctx.Findings)
         {
+            var finding = original;
             if (rules.Severity.TryGetValue(finding.Id, out var overridden))
             {
                 if (overridden.Equals("off", StringComparison.OrdinalIgnoreCase))
                     continue;
                 findings.Add(finding with { Severity = ProfileChecks.ParseSeverity(overridden) });
                 continue;
+            }
+
+            if (profile != null && profile.Severity.TryGetValue(finding.Id, out var profileSeverity))
+            {
+                if (profileSeverity.Equals("off", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                finding = finding with { Severity = ProfileChecks.ParseSeverity(profileSeverity) };
             }
 
             var exception = rules.Exceptions.FirstOrDefault(e => e.Rule.Equals(finding.Id, StringComparison.OrdinalIgnoreCase) && Covers(e, finding));

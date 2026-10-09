@@ -14,10 +14,14 @@ internal static class StructureChecks
     // layer -> layers it may reference (itself always allowed); Api/Mcp are composition roots.
     private static readonly Dictionary<ProjectLayer, ProjectLayer[]> Allowed = new()
     {
-        [ProjectLayer.Domain] = new[] { ProjectLayer.Contracts },
+        [ProjectLayer.Domain] = new[] { ProjectLayer.Contracts, ProjectLayer.DomainShared },
         [ProjectLayer.Contracts] = Array.Empty<ProjectLayer>(),
-        [ProjectLayer.Application] = new[] { ProjectLayer.Domain, ProjectLayer.Contracts },
-        [ProjectLayer.Infrastructure] = new[] { ProjectLayer.Application, ProjectLayer.Domain, ProjectLayer.Contracts },
+        [ProjectLayer.DomainShared] = Array.Empty<ProjectLayer>(),
+        [ProjectLayer.ApplicationContracts] = new[] { ProjectLayer.DomainShared, ProjectLayer.Contracts },
+        [ProjectLayer.Application] = new[] { ProjectLayer.Domain, ProjectLayer.Contracts, ProjectLayer.DomainShared, ProjectLayer.ApplicationContracts },
+        [ProjectLayer.Infrastructure] = new[] { ProjectLayer.Application, ProjectLayer.Domain, ProjectLayer.Contracts, ProjectLayer.DomainShared, ProjectLayer.ApplicationContracts },
+        [ProjectLayer.HttpApi] = new[] { ProjectLayer.ApplicationContracts, ProjectLayer.DomainShared, ProjectLayer.Contracts },
+        [ProjectLayer.HttpApiClient] = new[] { ProjectLayer.ApplicationContracts, ProjectLayer.DomainShared, ProjectLayer.Contracts },
     };
 
     public static void Run(RepoContext ctx)
@@ -50,10 +54,10 @@ internal static class StructureChecks
         var mcpUntested = ctx.OfLayer(ProjectLayer.Mcp).Any() && !ctx.OfLayer(ProjectLayer.Mcp, tests: true).Any();
         ctx.Check("DA-S05", cat, !mcpUntested, DoctorSeverity.Warning, "MCP host exists without a test project.", hint: "Add <App>.Mcp.Tests (auth, tool catalog, handshake).");
 
-        var layoutOk = ctx.Layout == "v2" || (ctx.Profile?.AcceptedLayouts.Contains(ctx.Layout, StringComparer.OrdinalIgnoreCase) ?? false);
-        ctx.Check("DA-S06", cat, layoutOk, DoctorSeverity.Warning, $"Layout is '{ctx.Layout}', the standard is v2 (src/, tests/, kits/).", hint: "A profile can accept other layouts (accepted_layouts); the move to v2 is a separate opt-in step.");
+        var layoutOk = ctx.Layout is "v2" or "v3" || (ctx.Profile?.AcceptedLayouts.Contains(ctx.Layout, StringComparer.OrdinalIgnoreCase) ?? false);
+        ctx.Check("DA-S06", cat, layoutOk, DoctorSeverity.Warning, $"Layout is '{ctx.Layout}', the standard is v2 or v3 (src/, tests/ or test/).", hint: "A profile can accept other layouts (accepted_layouts); the move is an opt-in step: fix --rules=DA-S06.");
 
         var unclassified = ctx.Source.Where(p => p.Layer == ProjectLayer.Other && !p.Name.Contains(".Kit.", StringComparison.Ordinal)).Select(p => p.Name).ToList();
-        ctx.Check("DA-S07", cat, unclassified.Count == 0, DoctorSeverity.Info, "Projects outside the known layers (Domain/Application/Infrastructure/Api/Mcp/Contracts).", details: unclassified);
+        ctx.Check("DA-S07", cat, unclassified.Count == 0, DoctorSeverity.Info, "Projects outside the known layers (Domain/Application/Infrastructure/Api/Mcp/Contracts and the ABP layers).", details: unclassified);
     }
 }

@@ -58,22 +58,22 @@ Measured on Catalog after the layout v2 move: it already has `src/` and the sepa
 
 ## 5. Decisions (owner, 2026-10-09)
 1. **ABP is the structural reference standard** of the tool (D-25). The ABP runtime framework (module system, multi-tenancy, audit, permissions, localization, settings) is not copied; it stays in Kits.
-2. **Layout v3 = ABP-shaped folders** `src/`, `test/` (singular), `etc/` (D-26). v2 (`tests/`) stays valid for services already adopted; `fix --rules=DA-S07` moves v2 to v3.
+2. **Layout v3 = ABP-shaped folders** `src/`, `test/` (singular), `etc/` (D-26). v2 (`tests/`) stays valid for services already adopted; `fix --rules=DA-A01` moves v2 to v3.
 3. **Layer projects** `Domain.Shared`, `Application.Contracts`, `HttpApi`, `HttpApi.Client` are *optional for the tool and mandatory for a profile* (D-27). The tool creates the empty projects with the allowed references; it never moves types between projects. Moving types is a reviewed migration step (namespaces stay unchanged, so no code is edited).
-4. **A built-in, opt-in `abp` rule set in `doctor`** (D-28), ids `DA-A01..DA-A06`, enabled by `standards: [abp]` in `project.yml`. It contains only structural rules; it has no rule about `Guid` ids or application services, so CQRS services with business ids need no exception.
+4. **A built-in, opt-in `abp` rule set in `doctor`** (D-28), ids `DA-A01..DA-A06`, enabled by `standards: [abp]` in `project.yml` or in a profile; a profile can also raise the severity of any rule id (`severity:` in the profile), so an organisation can require the layer projects while the tool only warns. It contains only structural rules; it has no rule about `Guid` ids or application services, so CQRS services with business ids need no exception.
 5. **Services own what they publish** (D-29): files a service publishes for other systems (for example its gateway route declaration) live in the service under `etc/` and consumers aggregate them; a service never depends on a consumer. Which file and which consumer is organisation-level knowledge and belongs to a profile.
 
 ## 6. Resulting rules
 | Id | Rule | Kind |
 |---|---|---|
-| DA-A01 | Solution roots are `src/`, `test/`, `etc/` (layout v3) | structure |
+| DA-A01 | Layout v3: projects under `src/`, test projects under `test/`; `etc/` is the place for non-code files a service publishes and is optional | structure |
 | DA-A02 | Layer projects `Domain.Shared`, `Application.Contracts`, `HttpApi`, `HttpApi.Client` exist | structure |
-| DA-A03 | Reference direction: Domain.Shared none; Domain to Domain.Shared; Contracts to Domain.Shared; HttpApi and HttpApi.Client to Contracts only; persistence to Domain only | structure |
+| DA-A03 | Reference direction: Domain.Shared none; Domain to Domain.Shared; Contracts to Domain.Shared; HttpApi and HttpApi.Client to Contracts only (the persistence project may reference Application because ports live there) | structure |
 | DA-A04 | Repository interfaces: async methods, optional `CancellationToken` last, no `IQueryable` returned | code |
 | DA-A05 | Domain services end with `Manager`; application service interfaces end with `AppService` and live in Contracts (only when such types exist) | code |
 | DA-A06 | DTO types live in `Application.Contracts` (only when that project exists) | code |
 
 ## 7. Fix and migration path
-- `fix --rules=DA-S07`: v2 to v3 (`tests/` to `test/`, rewriting every path that points at it, same machinery as DA-S06).
-- `fix --rules=DA-S08`: create the four layer projects with the allowed references and register them in the solution (structure only).
+- `fix --rules=DA-A01`: v2 to v3 (flat layouts run DA-S06 first) (`tests/` to `test/`, rewriting every path that points at it, same machinery as DA-S06).
+- `fix --rules=DA-A02`: create the four layer projects with the allowed references and register them in the solution (structure only).
 - Moving DTOs, constants and controllers into the new projects is a migration step done by the service owner or agent, with the namespaces unchanged; `doctor` DA-A02..A06 shows what remains. A file-move fixer is considered only after a real service has proven the pattern (roadmap 12.7).

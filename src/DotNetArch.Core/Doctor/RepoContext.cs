@@ -13,6 +13,10 @@ internal enum ProjectLayer
     Api,
     Mcp,
     Contracts,
+    DomainShared,
+    ApplicationContracts,
+    HttpApi,
+    HttpApiClient,
 }
 
 internal sealed record ProjectInfo(
@@ -39,13 +43,14 @@ internal sealed class RepoContext
     private readonly List<DoctorFinding> _findings = new();
     private readonly List<string> _passed = new();
 
-    public RepoContext(string root, ProfileDefinition? profile, RuleSettings rules)
+    public RepoContext(string root, ProfileDefinition? profile, RuleSettings rules, IEnumerable<string>? standards = null)
     {
         Root = Path.GetFullPath(root);
         Files = Enumerate(Root).ToList();
         Projects = Files.Where(f => f.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase)).Select(ParseProject).ToList();
         Profile = profile;
         Rules = rules;
+        Standards = new HashSet<string>(standards ?? Array.Empty<string>(), StringComparer.OrdinalIgnoreCase);
         Layout = DetectLayout();
     }
 
@@ -56,6 +61,9 @@ internal sealed class RepoContext
     public RuleSettings Rules { get; }
 
     public string Layout { get; }
+
+    /// <summary>Built-in opt-in rule sets that are switched on (project.yml or profile).</summary>
+    public IReadOnlySet<string> Standards { get; }
 
     public IReadOnlyList<string> Files { get; }
 
@@ -105,7 +113,7 @@ internal sealed class RepoContext
         if (Projects.Any(p => p.Name.EndsWith(".Core", StringComparison.Ordinal)) && !Projects.Any(p => p.Layer == ProjectLayer.Domain))
             return "legacy";
         if (Projects.Any(p => p.File.StartsWith("src/", StringComparison.OrdinalIgnoreCase)))
-            return "v2";
+            return Projects.Any(p => p.IsTest && p.File.StartsWith("test/", StringComparison.OrdinalIgnoreCase)) ? "v3" : "v2";
         return Projects.Count == 0 ? "none" : "flat";
     }
 
@@ -168,6 +176,14 @@ internal sealed class RepoContext
     private static ProjectLayer ClassifyLayer(string name)
     {
         var core = Regex.Replace(name, @"\.Tests?$", string.Empty);
+        if (core.EndsWith(".Domain.Shared", StringComparison.Ordinal))
+            return ProjectLayer.DomainShared;
+        if (core.EndsWith(".Application.Contracts", StringComparison.Ordinal))
+            return ProjectLayer.ApplicationContracts;
+        if (core.EndsWith(".HttpApi.Client", StringComparison.Ordinal))
+            return ProjectLayer.HttpApiClient;
+        if (core.EndsWith(".HttpApi", StringComparison.Ordinal))
+            return ProjectLayer.HttpApi;
         if (core.EndsWith(".Domain", StringComparison.Ordinal))
             return ProjectLayer.Domain;
         if (core.EndsWith(".Application", StringComparison.Ordinal))

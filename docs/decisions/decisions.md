@@ -118,10 +118,10 @@ optional and arrive as separate phases; kit grouping is out of scope for now.
 The tool follows the structure and rules of the ABP Framework solution and module conventions (spec: `abp-alignment.md`). The ABP runtime framework (modules, multi-tenancy, audit, permissions, localization, settings) is out of scope and stays in Kits. Where a service deliberately differs (CQRS handlers instead of application services, business ids instead of `Guid`), the built-in rule set simply has no rule about it.
 
 ## D-26 Layout v3: src / test / etc (Owner)
-Layout v3 uses `src/`, `test/` (singular) and `etc/` (docker, scripts, files a service publishes). v2 stays valid for adopted services and is moved by `fix --rules=DA-S07`; legacy flat layouts move with DA-S06 first.
+Layout v3 uses `src/`, `test/` (singular) and `etc/` (docker, scripts, files a service publishes). v2 stays valid for adopted services and is moved by `fix --rules=DA-A01`; legacy flat layouts move with DA-S06 first.
 
 ## D-27 Layer projects: optional for the tool, mandatory for a profile (Owner)
-`Domain.Shared`, `Application.Contracts`, `HttpApi`, `HttpApi.Client` are not required by the tool. A profile may require them (Corevia does). The tool only creates the empty projects with the allowed references (DA-S08); moving types between projects is a reviewed migration step, never done by `fix` (D-21).
+`Domain.Shared`, `Application.Contracts`, `HttpApi`, `HttpApi.Client` are not required by the tool. A profile may require them (Corevia does). The tool only creates the empty projects with the allowed references (DA-A02); moving types between projects is a reviewed migration step, never done by `fix` (D-21).
 
 ## D-28 Built-in opt-in `abp` rule set (Proposed)
 `doctor` ships a general, public rule set `DA-A01..DA-A06` (folders, layer projects, reference direction, repository shape, naming suffixes, DTO location). It is enabled by `standards: [abp]` in `project.yml`, is off by default and carries no organisation name.

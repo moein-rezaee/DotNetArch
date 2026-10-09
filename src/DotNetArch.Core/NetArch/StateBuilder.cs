@@ -14,6 +14,8 @@ internal static partial class StateBuilder
             Mcp = ctx.OfLayer(ProjectLayer.Mcp).Any(),
             Blueprint = previous?.Blueprint ?? NetArchFiles.CurrentBlueprint,
         };
+        if (previous != null)
+            state.Standards.AddRange(previous.Standards);
 
         foreach (var project in ctx.Source.OrderBy(p => p.Name, StringComparer.Ordinal))
             state.Layers.Add(LayerLabel(project));
@@ -60,7 +62,14 @@ internal static partial class StateBuilder
 
     private static string LayerLabel(ProjectInfo project)
     {
-        var layer = project.Layer.ToString().ToLowerInvariant();
+        var layer = project.Layer switch
+        {
+            ProjectLayer.DomainShared => "domain-shared",
+            ProjectLayer.ApplicationContracts => "application-contracts",
+            ProjectLayer.HttpApi => "http-api",
+            ProjectLayer.HttpApiClient => "http-api-client",
+            _ => project.Layer.ToString().ToLowerInvariant(),
+        };
         if (project.Layer == ProjectLayer.Infrastructure)
         {
             var marker = ".Infrastructure.";
