@@ -1,8 +1,9 @@
 # قراردادها (CLI، پیکربندی، MCP)
 
 ## CLI
-دستورها: `new solution`، `new crud`، `new action`، `new event`، `new enum`، `new constant`، `new service`، `new kit`، `add kit`، `add mcp`،
-`ci add`، `docker add`، `git setup`، `exec`، `remove migration`، `mcp serve`.
+دستورها (همه عملیات رجیستری‌اند، D-32؛ دستور دوکلمه‌ای همان عملیات با `_` است: ‏`new crud` = `new_crud`): ‏`new solution`، `new crud`، `new action`، `new event`، `new enum`، `new constant`، `new service`، `new kit`، `add kit`، `add mcp`، `add layer`، `add tests`،
+‏`ci add`، `docker add`، `git setup`، `spec list`، `spec add`، `spec check`، `graph`، `list entities`، `describe config`، `exec`، `remove migration`، `doctor`، `adopt`، `fix`، `mcp serve`.
+هر دستوری که فایل تغییر می‌دهد اول طرح می‌دهد و فقط با `--apply` می‌نویسد؛ در ترمینال طرح نشان داده می‌شود و از کاربر پرسیده می‌شود. ‏`--json` خروجی `{ ok, operation, applied, error?, plan[], data }` را چاپ می‌کند و `--out=file` آن را ذخیره می‌کند. ‏`--path` (معادل `--output`) پوشهٔ solution است؛ مقدارها را می‌توان `--no-migration` یا `--no_migration` نوشت. مقدار الزامیِ نداده‌شده پرسیده می‌شود.
 
 گزینه‌های `new solution <Name>`: `--output`، `--database=SQLite|SqlServer|Postgres`، `--style=controller|fast`، `--layout=v2|legacy` (پیش‌فرض v2)، `--mcp`،
 `--ci=auto|none|github|gitlab|azure|bitbucket|gitea`، `--git-remote`، `--git-provider`، `--git-host`، `--docker-registry`، `--nuget-source`، `--nuget-source-name`،
@@ -27,8 +28,7 @@ kit.prefix kit.<Area> mcp entity.<Name>`. نبودن `layout` یعنی چیدم�
 - کلیدهای kit: `<Area>:Provider` و `<Area>:<Provider>:<Option>`؛ secretها `<PROVIDER>_<NAME>` (مثل `REDIS_PASSWORD`).
 
 ## MCP: سرور ابزار
-`dotnet-arch mcp serve` (stdio). ابزارها غیرتعاملی و بدون shell‌اند: `new_solution`، `new_crud`، `new_action`، `new_event`، `new_enum`، `new_constant`، `new_service`، `new_kit`، `add_kit`، `add_mcp`،
-`ci_add`، `docker_add`، `git_setup`، `list_entities`، `describe_config`. نتیجهٔ هر ابزار `{ ok, command, output, created[], modified[], error? }` است. هیچ ابزاری چیزی را حذف نمی‌کند.
+`dotnet-arch mcp serve` (stdio). هر عملیات رجیستری یک ابزار با همان نام، توضیح و مقدارهای دستور CLI است (`new_solution`، `new_crud`، `new_action`، `new_event`، `new_enum`، `new_constant`، `new_service`، `new_kit`، `add_kit`، `add_mcp`، `add_layer`، `add_tests`، `ci_add`، `docker_add`، `git_setup`، `spec_list`، `spec_add`، `spec_check`، `graph`، `list_entities`، `describe_config`، `exec`، `remove_migration`، `doctor`، `adopt`، `fix`). غیرتعاملی و بدون shell. ابزارهای فقط‌خواندنی علامت read-only دارند؛ هر ابزار تغییردهنده پرچم `apply` دارد (پیش‌فرض false: فقط طرح) و `{ ok, operation, applied, error?, plan[], data }` برمی‌گرداند. پارامترهای فقط‌CLI (مثلاً `empty` در `add_layer`) ارائه نمی‌شوند. هیچ ابزاری destructive نیست؛ ‏`remove_migration` و `exec` فقط با `apply: true` عمل می‌کنند.
 
 ## MCP: host تولیدشده
 `src/<App>.Mcp` با streamable HTTP روی `/mcp` (stateless) و `/health` باز. احراز هویت: bearer token با مقایسهٔ constant-time با `MCP_AUTH_TOKEN` (حداقل ۲۴ نویسه).

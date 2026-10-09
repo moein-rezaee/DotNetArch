@@ -44,71 +44,40 @@ dotnet-arch --help
 
 ## Quick start
 ```bash
-dotnet-arch new solution Shop --database=Postgres --mcp --ci=auto --git-remote=git@github.com:acme/shop.git
+dotnet-arch new solution Shop --database=Postgres --mcp --ci=auto --git-remote=git@github.com:acme/shop.git --apply
 cd Shop
-dotnet-arch new crud --entity=Product
-dotnet-arch new action --entity=Product --action=Archive --method=POST
-dotnet-arch new event --entity=Product --name=Created
-dotnet-arch new service --logic=false --area=Cache --providers=InMemory,Redis   # an external capability becomes a kit
+dotnet-arch new crud --entity=Product --apply
+dotnet-arch new action --entity=Product --action=Archive --method=POST --apply
+dotnet-arch new event --entity=Product --name=Created --apply
+dotnet-arch new service --logic=false --area=Cache --providers=InMemory,Redis --apply   # an external capability becomes a kit
 cp src/Shop.Api/.env.example src/Shop.Api/.env                                  # secrets and run-time values
 dotnet run --project src/Shop.Api
 ```
-Missing options are prompted for (with defaults) when a terminal is attached; with piped input, answer by number or text, blank = default.
+Every command that changes files **plans first**: without `--apply` it prints the plan (nothing is written); at a terminal it then asks whether to apply, in scripts and for agents `--apply` writes. Missing required values are prompted for; with piped input, answer by number or text, blank = default. The default layout is **v3** (ABP: `src/`, `test/`, `etc/`; layer projects only where code belongs in them; typed client); `--layout=v2|legacy` still work.
 
 ## Command reference
+One registry feeds the CLI and the MCP server: every command below is also an MCP tool with the same name (`new crud` is `new_crud`) and the same values. Commands that change files plan first and write only with `--apply` (MCP: `apply: true`). `--json` prints the machine-readable result, `--out=file` saves it.
+
 | Command | Purpose |
 | --- | --- |
-| `new solution <Name>` | Create a solution. Options: `--output`, `--database=SQLite|SqlServer|Postgres`, `--style=controller|fast`, `--layout=v2|legacy`, `--tfm` (from installed SDK), `--mcp`, `--ci=auto|none|github|gitlab|azure|bitbucket|gitea`, `--git-remote`, `--git-provider`, `--git-host`, `--docker-registry`, `--nuget-source`, `--nuget-source-name`, `--no-docker`, `--no-git`, `--no-tests` |
-| `new crud --entity=X` | CRUD slice for an entity (`--no-migration` skips creating the EF migration) |
+| `new solution <Name>` | Create a solution. `--output`, `--database=SQLite|SqlServer|Postgres`, `--style=controller|fast`, `--layout=v3|v2|legacy` (default v3), `--mcp`, `--ci=auto|none|github|gitlab|azure|bitbucket|gitea`, `--git-remote`, `--git-provider`, `--git-host`, `--docker-registry`, `--nuget-source`, `--nuget-source-name`, `--no-docker`, `--no-git`, `--no-tests` |
+| `new crud --entity=X` | CRUD slice for an entity (`--no-migration` skips the EF migration) |
 | `new action --entity=X --action=Name --method=GET|POST|PUT|PATCH|DELETE` | Custom use case |
-| `new event --entity=X --name=Name` | Domain event, then add subscribers interactively |
-| `new enum [--entity=X] --enum=Name` / `new constant [--entity=X] --constant=Name` | Enum / constants scoped to an entity or common |
-| `new service` | Business service, or kit when the service has no business logic. Non-interactive: `--logic=true --name= [--entity=] [--lifetime=]` or `--logic=false --area= [--providers=] [--with-tests]` |
-| `new kit --area=Cache [--providers=A,B] [--kit-prefix=P] [--with-tests]` | Generate an independent kit and wire it in |
-| `add kit <Area>` / `add mcp` | Wire an existing kit / add the MCP host to the solution |
-| `ci add [provider]` / `docker add` / `git setup [--remote=] [--git-provider=] [--git-host=]` | Operations files for an existing solution |
-| `exec [--docker|--docker-detach|--docker-stop]` | Run the API locally or in Docker (applies migrations first) |
-| `remove migration` | Roll back and remove the last migration |
-| `doctor [path] [--profile=file] [--json] [--strict]` | Read-only diagnosis of an existing repository (layers, dependencies, tests and coverage, config/secrets, Docker/CI, docs, code rules, kit boundaries, profile rules). Exit `3` when blocking |
-| `adopt [path] [--profile=file] [--apply]` | Bring an existing project under control: writes only `.net-arch/` (state from the source). Plan first |
-| `fix [path] [--rules=ids] [--apply]` | Mechanical hygiene fixes (global.json, .editorconfig, .gitignore lines, .dockerignore). Never edits code. Plan first |
-| `mcp serve` | Start the MCP server over stdio |
+| `new event --entity=X --name=Name [--subscribers=A,B]` | Domain event and its subscribers |
+| `new enum --enum=Name [--entity=X]` / `new constant --constant=Name [--entity=X]` | Enum / constants scoped to an entity or common |
+| `new service` | Business service (`--logic=true --name= [--entity=] [--lifetime=]`) or a kit for an external capability (`--logic=false --area= [--providers=] [--with-tests]`) |
+| `new kit <Area>` / `add kit <Area>` | Generate an independent kit / wire an existing kit into the solution |
+| `add mcp` | Add the MCP host `src/<App>.Mcp` |
+| `add layer <Domain.Shared\|Application.Contracts\|HttpApi\|HttpApi.Client>` | Add an ABP layer project by moving into it what belongs there (nothing belongs: nothing is created; `--empty` is CLI-only) |
+| `add tests <Layer>` | Add the test project of a layer with an architecture test |
+| `ci add`, `docker add`, `git setup` | CI pipeline, Docker files (compose in `etc/docker/` in v3), git remote |
+| `spec list`, `spec add --name=`, `spec check` | List spec documents, add a bilingual spec pair and index it, check documentation and specs |
+| `graph` | The project graph as data (projects, layers, references, packages, kits) |
+| `doctor`, `adopt`, `fix` | Diagnose, bring an existing project under control (`.net-arch/` only), fix mechanically (opt-in structural rules) |
+| `remove migration`, `exec`, `list entities`, `describe config` | Remove the last EF migration, run the service, inspect `dotnet-arch.yml` |
+| `mcp serve` | MCP server over stdio |
 
-Exit codes: `0` success, `1` usage/validation error, `2` missing .NET SDK. All names are validated before they reach the file system or a command line; child processes run without a shell.
-
-## Generated microservice (layout v2)
-```text
-Shop/
-├── src/
-│   ├── Shop.Domain            entities (private setters, behaviour), events, enums, constants
-│   ├── Shop.Application       ports, Features/<Plural>/{Commands,Queries,Actions,Events,Dtos,Services}/<UseCase>/, validators
-│   ├── Shop.Infrastructure    EF Core persistence, repositories, unit of work, configuration loading
-│   ├── Shop.Api               controllers (or minimal-API endpoints), composition root
-│   └── Shop.Mcp               optional MCP host (tools mirror the use cases)
-├── kits/                      independent kits (Abstractions / Core / Providers.*)
-├── tests/                     one test project per layer
-├── docs/                      specs, roadmap, decisions (English + Persian)
-├── AGENTS.md  Directory.Build.props  Directory.Packages.props  global.json
-├── docker-compose.yml  CI pipeline  NuGet.config (when private feed)  dotnet-arch.yml
-```
-Dependencies point inwards (`Api/Mcp -> Infrastructure -> Application -> Domain`). Every layer registers its own services (`AddApplication`, `AddInfrastructure`, `AddApi`/`AddMcpHost`) and references only its own packages. Repositories are async and never expose `IQueryable`.
-
-## Configuration model
-- **appsettings.json** - non-sensitive settings (PascalCase, colon keys). **Environment / `.env`** - secrets and run-time values (UPPER_CASE, single underscores; `__` for nesting).
-- Loaded by one step, `AddAppConfiguration()`, before any options binding: appsettings, appsettings.{Env}, `.env`, `.env.{env}`, real environment variables, command line (later wins).
-- `.env.example` and `appsettings.example.json` are generated and checked by tests (`Category=Configuration`, `scripts/validate-examples.sh`); `ConfigurationContract` lists every secret key.
-
-## Kits (external services)
-External capabilities are packaged as kits, named by capability (never by product): `MediaStorage` (Minio, RustFs), `Cache` (InMemory, Redis), `MessageBroker` (RabbitMq) or any new area.
-```text
-kits/Cache/
-├── <Prefix>.Kit.Cache.Abstractions     contracts (ICache), no third-party dependencies
-├── <Prefix>.Kit.Cache.Core             options, provider selection, AddCacheKit(configuration)
-├── <Prefix>.Kit.Cache.Providers.Redis  thin: own config section, own secrets, AddRedisCacheProvider()
-├── <Prefix>.Kit.Cache.Providers.InMemory
-├── Directory.Build.props (own version)  README (en/fa)  AGENTS.md  docs/specs  scripts/pack.sh
-```
-`Providers.* -> Core -> Abstractions`. Application references only the Abstractions; the composition root references Core and the providers. The provider is chosen with `Cache:Provider`. Kits build, pack and publish on their own (`scripts/pack-kits.sh`, CI job when `--nuget-source` is set). Built-in provider implementations are verified against stubs, not against live servers.
+In an ABP project (layout v3) every generator is followed by the tool's own fixers (layer projects, folder tree, references, typed client), so generated code lands where the standard wants it and `doctor` stays clean.
 
 ## Docker, Git, CI and private registries
 - Dockerfile (restore-cached multi-stage, non-root), `.dockerignore`, `docker-compose.yml` matching the database (SQLite volume, PostgreSQL, SQL Server).
@@ -116,7 +85,7 @@ kits/Cache/
 - `--docker-registry` and `--nuget-source` add the private registry/feed to the compose image names, CI login and push jobs, `NuGet.config` and the Dockerfile restore. Credentials are never written to files; CI secrets (`REGISTRY_USER`, `REGISTRY_PASSWORD`, `NUGET_USER`, `NUGET_PASSWORD`, `NUGET_API_KEY`) are referenced by name.
 
 ## MCP
-- **Tool server**: `dotnet-arch mcp serve` (stdio) exposes `new_solution`, `new_crud`, `new_action`, `new_event`, `new_enum`, `new_constant`, `new_service`, `new_kit`, `add_kit`, `add_mcp`, `ci_add`, `docker_add`, `git_setup`, `list_entities`, `describe_config`, `doctor`, `adopt`, `fix`. Non-interactive; each result lists created/modified files and the equivalent CLI command. No destructive tools.
+- **Tool server**: `dotnet-arch mcp serve` (stdio) exposes every command of the registry as a tool (`new_solution`, `new_crud`, `add_layer`, `add_tests`, `spec_add`, `graph`, `doctor`, `fix`, ...). Non-interactive; mutating tools return the plan unless `apply` is true. Creating an empty layer is CLI-only: an agent migrates what belongs or does nothing.
 ```json
 { "mcpServers": { "dotnet-arch": { "command": "dotnet-arch", "args": ["mcp", "serve"] } } }
 ```

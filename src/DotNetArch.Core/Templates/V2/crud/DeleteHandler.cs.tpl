@@ -13,7 +13,7 @@ internal sealed class Delete{{Entity}}CommandHandler(IUnitOfWork unitOfWork) : I
         var entity = await repository.GetByIdAsync(request.Id, cancellationToken)
             ?? throw new NotFoundException(nameof({{Entity}}), request.Id);
 
-        repository.Remove(entity);
+        await repository.RemoveAsync(entity, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
     }
 }

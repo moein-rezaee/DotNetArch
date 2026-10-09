@@ -1,7 +1,7 @@
 namespace DotNetArch.Core.Hosting;
 
 /// <summary>The services Core needs from whoever hosts it (console, MCP server, tests).</summary>
-public sealed record HostContext(IPrompter Prompter, IToolOutput Output, IProcessRunner Runner, bool SkipMigrations = false);
+public sealed record HostContext(IPrompter Prompter, IToolOutput Output, IProcessRunner Runner, bool SkipMigrations = false, bool Planning = false);
 
 /// <summary>
 /// Ambient access to the host (D-18). <see cref="Configure"/> sets the process default; <see cref="Use"/> overrides it
@@ -22,6 +22,9 @@ public static class ToolHost
 
     /// <summary>True when the host asked generators not to create EF migrations (they can be added later).</summary>
     public static bool SkipMigrations => Current.SkipMigrations;
+
+    /// <summary>True while a generator runs in plan mode (a throw-away copy): nothing outside that copy may be written.</summary>
+    public static bool Planning => Current.Planning;
 
     public static void Configure(HostContext context) => _default = context ?? throw new ArgumentNullException(nameof(context));
 

@@ -1,47 +1,52 @@
-using System.ComponentModel;
-using System.Reflection;
 using System.Text.RegularExpressions;
+using DotNetArch.Core.Operations;
 using DotNetArch.Mcp.Tools;
-using ModelContextProtocol.Server;
 using Xunit;
 
 namespace DotNetArch.Mcp.Tests;
 
+/// <summary>The command catalogue (CLI list == MCP tools == registry) and its rules.</summary>
 public class ToolCatalogTests
 {
-    private static readonly (MethodInfo Method, McpServerToolAttribute Tool)[] Tools = typeof(DotNetArchTools)
-        .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
-        .Select(method => (Method: method, Tool: method.GetCustomAttribute<McpServerToolAttribute>()!))
-        .Where(entry => entry.Tool is not null)
-        .ToArray();
+    private static readonly string[] Documented =
+    {
+        "add_kit", "add_layer", "add_mcp", "add_tests", "adopt", "ci_add", "describe_config", "docker_add", "doctor", "exec", "fix", "git_setup", "graph",
+        "list_entities", "new_action", "new_constant", "new_crud", "new_enum", "new_event", "new_kit", "new_service", "new_solution", "remove_migration",
+        "spec_add", "spec_check", "spec_list",
+    };
 
     [Fact]
-    public void The_documented_tools_exist() =>
-        Assert.Equal(
-            new[]
-            {
-                "add_kit", "add_mcp", "ci_add", "describe_config", "docker_add", "git_setup", "list_entities", "new_action", "new_constant",
-                "new_crud", "new_enum", "new_event", "new_kit", "new_service", "new_solution"
-            },
-            Tools.Select(entry => entry.Tool.Name!).Order(StringComparer.Ordinal).ToArray());
+    public void The_documented_commands_exist_in_the_registry_and_as_tools() =>
+        Assert.Equal(Documented, OperationRegistry.All.Select(o => o.Name).Order(StringComparer.Ordinal).ToArray());
 
     [Fact]
     public void Names_are_unique_snake_case() =>
-        Assert.All(Tools, entry => Assert.Matches("^[a-z]+(_[a-z]+)*$", entry.Tool.Name!));
+        Assert.All(OperationRegistry.All, o => Assert.Matches("^[a-z]+(_[a-z]+)*$", o.Name));
 
     [Fact]
-    public void Every_tool_and_parameter_that_needs_explaining_has_a_description()
-    {
-        Assert.All(Tools, entry => Assert.False(string.IsNullOrWhiteSpace(entry.Method.GetCustomAttribute<DescriptionAttribute>()?.Description), entry.Tool.Name));
-    }
+    public void Every_command_and_parameter_has_a_description() =>
+        Assert.All(OperationRegistry.All, o =>
+        {
+            Assert.False(string.IsNullOrWhiteSpace(o.Description), o.Name);
+            Assert.All(o.Parameters, p => Assert.False(string.IsNullOrWhiteSpace(p.Description), $"{o.Name}.{p.Name}"));
+        });
 
     [Fact]
-    public void Only_the_read_only_tools_are_marked_read_only() =>
+    public void Only_the_inspecting_commands_are_read_only() =>
         Assert.Equal(
-            new[] { "describe_config", "list_entities" },
-            Tools.Where(entry => entry.Tool.ReadOnly).Select(entry => entry.Tool.Name!).Order(StringComparer.Ordinal).ToArray());
+            new[] { "describe_config", "doctor", "graph", "list_entities", "spec_check", "spec_list" },
+            OperationRegistry.All.Where(o => o.Kind == OperationKind.ReadOnly).Select(o => o.Name).Order(StringComparer.Ordinal).ToArray());
 
     [Fact]
-    public void No_tool_deletes_anything() =>
-        Assert.DoesNotContain(Tools, entry => Regex.IsMatch(entry.Tool.Name!, "delete|remove|drop", RegexOptions.IgnoreCase));
+    public void Commands_that_remove_or_run_something_are_mutating_and_therefore_plan_first() =>
+        Assert.All(OperationRegistry.All.Where(o => Regex.IsMatch(o.Name, "remove|exec")), o => Assert.Equal(OperationKind.Mutating, o.Kind));
+
+    [Fact]
+    public void Cli_only_parameters_are_not_offered_to_agents()
+    {
+        var tool = RegistryTools.Create().Single(t => t.ProtocolTool.Name == "add_layer");
+        var properties = tool.ProtocolTool.InputSchema.GetProperty("properties");
+        Assert.True(properties.TryGetProperty("layer", out _));
+        Assert.False(properties.TryGetProperty("empty", out _));
+    }
 }

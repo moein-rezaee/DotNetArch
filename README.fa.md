@@ -29,7 +29,8 @@
 | `new crud`، `new action`، `new event`، `new enum`، `new constant` | یک vertical slice به‌ازای هر entity (command، query، action، event، DTO، validator، نگاشت EF، controller یا endpoint، تست، ابزار MCP) |
 | `new service` | سرویس Application اگر منطق کسب‌وکار دارد، یا **kit** اگر قابلیت خارجی است |
 | `new kit` / `add kit` | `kits/<Area>`: ‏Abstractions و Core و providerها، وصل‌شده به solution |
-| `mcp serve` | سرور MCP روی stdio که مولدها را به‌صورت ابزار ارائه می‌دهد |
+| `mcp serve` | سرور MCP روی stdio؛ هر دستور رجیستری یک ابزار با همان نام و همان مقدارهاست |
+| `add layer`، `add tests`، `spec list\|add\|check`، `graph` | افزودن لایهٔ ABP فقط وقتی محتوا دارد، پروژهٔ تست یک لایه، مدیریت اسپک، گراف پروژه |
 
 کد تولیدشده Clean Architecture، ports و adapters، vertical slice با CQRS ‏(MediatR)، unit of work و repository، SOLID و Clean Code را رعایت می‌کند، در Release بدون warning build می‌شود و تست‌های خودش را دارد.
 

@@ -1,6 +1,13 @@
 # تغییرات
 
-## منتشرنشده
+## 2.0.0 (منتشرنشده)
+- **شکستنده** (D-32..D-34): مولدها عملیات رجیستری‌اند. هر دستور تغییردهنده اول طرح می‌دهد و فقط با `--apply` می‌نویسد (MCP: ‏`apply: true`)؛ رفتار فوری قبلی در 1.3.x است. ابزارهای MCP مقدارهای رجیستری (`path`، `entity`، ...) را می‌گیرند نه نام‌های camelCase قبلی (`solutionPath`، ...). ‏`new solution` پیش‌فرض layout v3 (ABP) دارد؛ ‏`--layout=v2|legacy` می‌ماند.
+- یک رجیستری برای همهٔ دستورها: کلمه‌های CLI (`new crud`) و ابزار MCP (`new_crud`) از آن مشتق می‌شوند؛ ۲۶ عملیات. تازه: ‏`add_layer`، `add_tests`، `spec_list`، `spec_add`، `spec_check`، `graph`؛ ‏`adopt --standards=abp`.
+- در پروژهٔ ABP بعد از هر مولد fixerهای ABP (DA-A01، A02، A10، A11، A08، A09) و تازه‌سازی `.net-arch/` اجرا می‌شود؛ solution تولیدشده با entity، action و event بدون هشدار build می‌شود، تست‌هایش پاس است و یافتهٔ ABP ندارد.
+- قالب‌ها: DTO داده‌ی خالص است، نگاشت entity فایل جدا دارد، پورت repository ‏async است (`RemoveAsync`) و `IQueryable` برنمی‌گرداند؛ ریشهٔ تست‌ها از layout پیروی می‌کند (`tests` یا `test`).
+- doctor: ‏DA-A10 و DA-A11؛ بررسی `IQueryable` کامنت‌ها را نادیده می‌گیرد.
+
+## منتشرنشده (در 2.0.0 ادغام می‌شود)
 - دستور جدید `dotnet-arch doctor` (تشخیص فقط‌خواندنی: لایه‌ها، جهت وابستگی، تست و پوشش، بهداشت build، پیکربندی و secretها، Docker/CI، مستندات، قواعد کد، مرز kitها؛ خروجی متن یا `--json`؛ کد خروج ۳ برای حالت مسدودکننده).
 - دستور جدید `dotnet-arch adopt` ‏(پروژهٔ موجود را فقط با نوشتن `.net-arch/` تحت کنترل می‌آورد) و `dotnet-arch fix` ‏(اصلاحات مکانیکی بهداشتی، اول طرح، با `--apply` می‌نویسد).
 - پوشهٔ جدید `.net-arch/` ‏(`project.yml`، `rules.yml`، `profile.yml`، `generated.lock`) با `~/.net-arch/` سراسری؛ rules.yml تغییر شدت، آستانه‌ها و استثنا با دلیل را نگه می‌دارد.

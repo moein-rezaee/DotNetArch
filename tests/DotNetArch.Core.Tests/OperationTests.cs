@@ -43,7 +43,9 @@ public sealed class OperationTests : IDisposable
     [Fact]
     public void Registry_defines_every_operation_once_with_a_read_only_or_mutating_kind()
     {
-        Assert.Equal(new[] { "adopt", "doctor", "fix" }, OperationRegistry.All.Select(o => o.Name).OrderBy(n => n, StringComparer.Ordinal));
+        var names = OperationRegistry.All.Select(o => o.Name).ToList();
+        Assert.Equal(names.Count, names.Distinct(StringComparer.Ordinal).Count());
+        Assert.All(new[] { "adopt", "doctor", "fix", "new_solution", "new_crud", "add_layer", "add_tests", "spec_add", "graph" }, n => Assert.Contains(n, names));
         Assert.Equal(OperationKind.ReadOnly, OperationRegistry.Find("doctor")!.Kind);
         Assert.All(new[] { "adopt", "fix" }, n => Assert.Equal(OperationKind.Mutating, OperationRegistry.Find(n)!.Kind));
     }

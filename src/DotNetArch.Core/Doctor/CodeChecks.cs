@@ -29,7 +29,7 @@ internal static partial class CodeChecks
             if (HardCodedSecret().IsMatch(text))
                 secrets.Add(file);
             var project = ctx.Projects.Where(p => file.StartsWith(p.Dir + "/", StringComparison.OrdinalIgnoreCase)).OrderByDescending(p => p.Dir.Length).FirstOrDefault();
-            if (project is { Layer: ProjectLayer.Domain or ProjectLayer.Application } && QueryableUse().IsMatch(text))
+            if (project is { Layer: ProjectLayer.Domain or ProjectLayer.Application } && QueryableUse().IsMatch(Operations.LayerMigration.Strip(text)))
                 queryable.Add(file);
         }
 

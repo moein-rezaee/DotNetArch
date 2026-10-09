@@ -51,10 +51,10 @@ public static class McpV2Generator
             writer.Write("docker-compose.mcp.yml", TemplateRenderer.RenderTemplate("V2/mcp/docker-compose.mcp.yml.tpl", tokens));
 
         var projects = new List<string> { $"{host}/{app}.Mcp.csproj" };
-        var withTests = Directory.Exists(Path.Combine(config.SolutionPath, "tests", $"{app}.Domain.Tests"));
+        var withTests = Directory.Exists(Path.Combine(config.SolutionPath, config.TestsRoot, $"{app}.Domain.Tests"));
         if (withTests)
         {
-            var tests = $"tests/{app}.Mcp.Tests";
+            var tests = $"{config.TestsRoot}/{app}.Mcp.Tests";
             writer.Write($"{tests}/{app}.Mcp.Tests.csproj", TemplateRenderer.RenderTemplate("V2/mcp-tests/Mcp.Tests.csproj.tpl", tokens));
             writer.Write($"{tests}/McpFactory.cs", TemplateRenderer.RenderTemplate("V2/mcp-tests/McpFactory.cs.tpl", tokens));
             writer.Write($"{tests}/McpEndpointTests.cs", TemplateRenderer.RenderTemplate("V2/mcp-tests/McpEndpointTests.cs.tpl", tokens));
@@ -88,8 +88,8 @@ public static class McpV2Generator
         var plural = tokens["Plural"];
         writer.Write($"src/{config.SolutionName}.Mcp/Tools/{plural}/{plural}Tools.cs", TemplateRenderer.RenderTemplate("V2/mcp-crud/Tools.cs.tpl", tokens));
 
-        if (Directory.Exists(Path.Combine(config.SolutionPath, "tests", $"{config.SolutionName}.Mcp.Tests")))
-            writer.Write($"tests/{config.SolutionName}.Mcp.Tests/Tools/{plural}ToolsTests.cs", TemplateRenderer.RenderTemplate("V2/mcp-tests/ToolsTests.cs.tpl", tokens));
+        if (Directory.Exists(Path.Combine(config.SolutionPath, config.TestsRoot, $"{config.SolutionName}.Mcp.Tests")))
+            writer.Write($"{config.TestsRoot}/{config.SolutionName}.Mcp.Tests/Tools/{plural}ToolsTests.cs", TemplateRenderer.RenderTemplate("V2/mcp-tests/ToolsTests.cs.tpl", tokens));
 
         ToolHost.Info($"MCP tools generated for {entity}.", $"{tokens["ToolName"]}_list|get|create|update|delete");
     }

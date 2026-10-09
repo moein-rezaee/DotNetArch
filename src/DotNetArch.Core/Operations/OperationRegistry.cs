@@ -14,11 +14,14 @@ public static class OperationRegistry
     };
 
     public static IReadOnlyList<OperationDefinition> All { get; } = new[]
-    {
-        DoctorOperation.Definition,
-        AdoptOperation.Definition,
-        FixOperation.Definition,
-    };
+        {
+            DoctorOperation.Definition,
+            AdoptOperation.Definition,
+            FixOperation.Definition,
+        }
+        .Concat(ScaffoldOperations.All)
+        .Concat(ProjectOperations.All)
+        .ToList();
 
     public static OperationDefinition? Find(string name) =>
         All.FirstOrDefault(o => o.Name.Equals(name, StringComparison.OrdinalIgnoreCase));

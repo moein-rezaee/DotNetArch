@@ -24,7 +24,19 @@ public class CommandArgsTests
     [Theory]
     [InlineData("new", "crud", true)]
     [InlineData("NEW", "CRUD", true)]
-    [InlineData("new", "enum", false)]
-    public void CommandMatch_is_case_insensitive(string a, string b, bool expected) =>
-        Assert.Equal(expected, new NewCrudCommand().Matches(new[] { a, b }));
+    [InlineData("new", "enum", true)]
+    [InlineData("new", "nothing", false)]
+    [InlineData("doctor", "--json", true)]
+    public void Two_word_commands_resolve_to_registry_operations_case_insensitively(string a, string b, bool expected) =>
+        Assert.Equal(expected, new RegistryCommand().Matches(new[] { a, b }));
+
+    [Fact]
+    public void Every_registry_operation_is_reachable_from_the_cli_by_its_words()
+    {
+        foreach (var operation in DotNetArch.Core.Operations.OperationRegistry.All)
+        {
+            var words = operation.Name.Contains('_') ? operation.Name.Split('_', 2) : new[] { operation.Name };
+            Assert.True(new RegistryCommand().Matches(words), operation.Name);
+        }
+    }
 }

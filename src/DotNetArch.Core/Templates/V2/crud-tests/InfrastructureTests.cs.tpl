@@ -60,7 +60,7 @@ public sealed class {{Entity}}PersistenceTests : IDisposable
         {
             var unitOfWork = new UnitOfWork(delete, new RecordingDispatcher());
             var repository = unitOfWork.Repository<{{Entity}}>();
-            repository.Remove((await repository.GetByIdAsync(entity.Id))!);
+            await repository.RemoveAsync((await repository.GetByIdAsync(entity.Id))!);
             await unitOfWork.SaveChangesAsync();
         }
 

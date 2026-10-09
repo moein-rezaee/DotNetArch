@@ -9,6 +9,8 @@ public static class PathState
 
     public static void Save(string solutionPath)
     {
+        if (DotNetArch.Core.Hosting.ToolHost.Planning)
+            return;
         var file = GetFile();
         File.WriteAllText(file, solutionPath);
     }

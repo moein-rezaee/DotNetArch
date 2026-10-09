@@ -34,7 +34,7 @@ public static class RegistryTools
         protected override ValueTask<object?> InvokeCoreAsync(AIFunctionArguments arguments, CancellationToken cancellationToken)
         {
             var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var parameter in operation.Parameters)
+            foreach (var parameter in operation.Parameters.Where(p => !p.CliOnly))
             {
                 if (!arguments.TryGetValue(parameter.Name, out var raw) || raw is null)
                     continue;
@@ -55,13 +55,16 @@ public static class RegistryTools
         {
             var properties = new JsonObject();
             var required = new JsonArray();
-            foreach (var parameter in definition.Parameters)
+            foreach (var parameter in definition.Parameters.Where(p => !p.CliOnly))
             {
-                properties[parameter.Name] = new JsonObject
+                var property = new JsonObject
                 {
                     ["type"] = parameter.Type == ParameterType.Flag ? "boolean" : "string",
-                    ["description"] = parameter.Description,
+                    ["description"] = parameter.Default is { } fallback && !fallback.StartsWith('@') ? $"{parameter.Description} Default: {fallback}." : parameter.Description,
                 };
+                if (parameter.Choices is { Count: > 0 } choices && parameter.Type == ParameterType.Text)
+                    property["enum"] = new JsonArray(choices.Select(c => (JsonNode)JsonValue.Create(c)!).ToArray());
+                properties[parameter.Name] = property;
                 if (parameter.Required)
                     required.Add(parameter.Name);
             }

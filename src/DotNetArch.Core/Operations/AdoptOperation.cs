@@ -30,6 +30,7 @@ internal static class AdoptOperation
         {
             new OperationParameter("path", "Repository root (default: current folder).", Positional: true),
             new OperationParameter("profile", "Shared profile file to reference from .net-arch/profile.yml (path relative to the repository root or absolute)."),
+            new OperationParameter("standards", "Comma-separated standards to record in project.yml (for example abp).", Choices: new[] { "abp" }),
         },
         Run);
 
@@ -42,6 +43,12 @@ internal static class AdoptOperation
         var folder = NetArchStore.ProjectFolder(root);
         var ctx = new RepoContext(root, null, new RuleSettings());
         var state = StateBuilder.Build(ctx, NetArchStore.LoadState(root));
+        foreach (var standard in (request.Get("standards") ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (!state.Standards.Contains(standard, StringComparer.OrdinalIgnoreCase))
+                state.Standards.Add(standard.ToLowerInvariant());
+        }
+
         var files = new List<(string Relative, string Content, bool Overwrite, string Reason)>
         {
             ($"{NetArchFiles.Folder}/{NetArchFiles.State}", NetArchStore.ToYaml(state), true, "state derived from the source"),

@@ -1,6 +1,13 @@
 # Changelog
 
-## Unreleased
+## 2.0.0 (unreleased)
+- **Breaking** (D-32..D-34): the generators are registry operations. Every file-changing command plans first and writes only with `--apply` (MCP: `apply: true`); the old immediate behaviour is in 1.3.x. MCP tools take the registry values (`path`, `entity`, ...), not the old camelCase names (`solutionPath`, ...). `new solution` defaults to layout v3 (ABP); `--layout=v2|legacy` remain.
+- One registry for all commands: CLI words (`new crud`) and MCP tools (`new_crud`) derive from it; 26 operations. New: `add_layer`, `add_tests`, `spec_list`, `spec_add`, `spec_check`, `graph`; `adopt --standards=abp`.
+- In an ABP project every generator is followed by the ABP fixers (DA-A01, A02, A10, A11, A08, A09) and an `.net-arch/` refresh; a generated solution with entities, actions and events builds without warnings, passes its tests and has no ABP finding.
+- Templates: DTOs are pure data, entity mapping is a separate file, repository ports are async (`RemoveAsync`) and return no `IQueryable`; the tests root follows the layout (`tests` or `test`).
+- Doctor: DA-A10, DA-A11 (see Unreleased list below); `IQueryable` check ignores comments.
+
+## Unreleased (folded into 2.0.0)
 - New `dotnet-arch doctor` (read-only diagnosis: layers, dependency direction, tests and coverage, build hygiene, configuration and secrets, Docker/CI, documentation, code rules, kit boundaries; text or `--json`; exit code 3 when blocking).
 - New `dotnet-arch adopt` (brings an existing project under control by writing only `.net-arch/`) and `dotnet-arch fix` (mechanical hygiene fixes, plan first, `--apply` to write).
 - New `.net-arch/` folder (`project.yml`, `rules.yml`, `profile.yml`, `generated.lock`) with a global `~/.net-arch/`; rules.yml carries severity overrides, thresholds and exceptions with a reason.

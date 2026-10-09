@@ -28,7 +28,6 @@ public static class McpServerHost
                 };
             })
             .WithStdioServerTransport()
-            .WithTools<DotNetArchTools>()
             .WithTools(RegistryTools.Create());
 
         using var host = builder.Build();

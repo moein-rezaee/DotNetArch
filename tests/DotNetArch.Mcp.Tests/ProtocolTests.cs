@@ -46,11 +46,13 @@ public class ProtocolTests
         var tools = await Exchange(new { jsonrpc = "2.0", id = 2, method = "tools/list" });
         var names = tools.GetProperty("result").GetProperty("tools").EnumerateArray().Select(tool => tool.GetProperty("name").GetString()).ToList();
         Assert.Contains("new_solution", names);
-        Assert.Equal(18, names.Count);
+        Assert.Equal(DotNetArch.Core.Operations.OperationRegistry.All.Count, names.Count);
+        Assert.Contains("new_crud", names);
+        Assert.Contains("add_layer", names);
 
-        var call = await Exchange(new { jsonrpc = "2.0", id = 3, method = "tools/call", @params = new { name = "describe_config", arguments = new { solutionPath = Path.GetTempPath() + "/does-not-exist" } } });
+        var call = await Exchange(new { jsonrpc = "2.0", id = 3, method = "tools/call", @params = new { name = "describe_config", arguments = new { path = Path.GetTempPath() + "/does-not-exist" } } });
         var text = call.GetProperty("result").GetProperty("content")[0].GetProperty("text").GetString()!;
-        Assert.Contains("\"ok\":false", text);
+        Assert.Contains("\"ok\": false", text);
 
         var doctor = await Exchange(new { jsonrpc = "2.0", id = 4, method = "tools/call", @params = new { name = "doctor", arguments = new { path = Path.GetTempPath() } } });
         var doctorText = doctor.GetProperty("result").GetProperty("content")[0].GetProperty("text").GetString()!;

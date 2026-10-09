@@ -47,7 +47,16 @@ public class SolutionConfig
     public const string LegacyLayout = "legacy";
     public const string V2Layout = "v2";
 
-    public bool IsV2 => Layout.Equals(V2Layout, StringComparison.OrdinalIgnoreCase);
+    /// <summary>ABP-aligned layout (D-26): the v2 tree with a singular <c>test/</c> folder and the ABP layer projects.</summary>
+    public const string V3Layout = "v3";
+
+    /// <summary>True for the layouts that keep projects under <c>src/</c> (v2 and v3).</summary>
+    public bool IsV2 => Layout.Equals(V2Layout, StringComparison.OrdinalIgnoreCase) || IsV3;
+
+    public bool IsV3 => Layout.Equals(V3Layout, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Solution-relative folder of the test projects: <c>tests</c> (v2) or <c>test</c> (v3).</summary>
+    public string TestsRoot => IsV3 ? "test" : "tests";
 
     /// <summary>Solution-relative path of a project's csproj for the active layout.</summary>
     public string ProjectFile(string projectName) =>

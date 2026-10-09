@@ -41,5 +41,9 @@ internal sealed class EfRepository<TEntity>(AppDbContext context) : IRepository<
     public async Task AddAsync(TEntity entity, CancellationToken cancellationToken = default) =>
         await _set.AddAsync(entity, cancellationToken);
 
-    public void Remove(TEntity entity) => _set.Remove(entity);
+    public Task RemoveAsync(TEntity entity, CancellationToken cancellationToken = default)
+    {
+        _set.Remove(entity);
+        return Task.CompletedTask;
+    }
 }

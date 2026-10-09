@@ -4,7 +4,7 @@ using {{App}}.Domain.Common;
 
 namespace {{App}}.Application.Abstractions.Persistence;
 
-/// <summary>Port for aggregate persistence. Returns materialised results only: no <c>IQueryable</c> leaks out of the adapter.</summary>
+/// <summary>Port for aggregate persistence. Returns materialised results only: no query object leaks out of the adapter.</summary>
 public interface IRepository<TEntity>
     where TEntity : Entity
 {
@@ -20,5 +20,5 @@ public interface IRepository<TEntity>
 
     Task AddAsync(TEntity entity, CancellationToken cancellationToken = default);
 
-    void Remove(TEntity entity);
+    Task RemoveAsync(TEntity entity, CancellationToken cancellationToken = default);
 }

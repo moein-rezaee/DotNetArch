@@ -60,5 +60,9 @@ internal sealed class FakeRepository<TEntity> : IRepository<TEntity>
         return Task.CompletedTask;
     }
 
-    public void Remove(TEntity entity) => Items.Remove(entity);
+    public Task RemoveAsync(TEntity entity, CancellationToken cancellationToken = default)
+    {
+        Items.Remove(entity);
+        return Task.CompletedTask;
+    }
 }

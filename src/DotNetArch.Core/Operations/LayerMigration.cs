@@ -72,6 +72,21 @@ internal static partial class LayerMigration
             }
         }
 
+        // the parts of a partial type travel together: a controller's extra partial file (an added action) goes where the controller goes
+        foreach (var file in files.Where(f => !f.Placed && !target.ContainsKey(f)))
+        {
+            var names = PartialType().Matches(file.Text).Select(m => m.Groups[1].Value).ToList();
+            if (names.Count == 0)
+                continue;
+            var mate = files.FirstOrDefault(other => other != file && target.ContainsKey(other)
+                && PartialType().Matches(other.Text).Any(m => names.Contains(m.Groups[1].Value)));
+            if (mate != null)
+            {
+                target[file] = target[mate];
+                initial[file] = target[mate];
+            }
+        }
+
         var rejected = new Dictionary<SourceFile, string>();
         string? togetherNote = null;
         bool changed;
@@ -166,7 +181,7 @@ internal static partial class LayerMigration
     }
 
     /// <summary>Plans the fix: the new projects, the file moves, the references between layers and the restore lines of the Dockerfile.</summary>
-    public static IReadOnlyList<FixAction> Plan(string root, RepoContext ctx, bool allowEmpty, out IReadOnlyList<string> manual)
+    public static IReadOnlyList<FixAction> Plan(string root, RepoContext ctx, bool allowEmpty, out IReadOnlyList<string> manual, ProjectLayer? emptyOnly = null)
     {
         var analysis = Analyze(ctx);
         manual = analysis.Manual;
@@ -191,7 +206,7 @@ internal static partial class LayerMigration
         foreach (var layer in Targets.Append(ProjectLayer.HttpApiClient))
         {
             var receives = analysis.Moves.TryGetValue(layer, out var list) && list.Count > 0;
-            if (layerDirs.ContainsKey(layer) || (!receives && !allowEmpty))
+            if (layerDirs.ContainsKey(layer) || (!receives && !allowEmpty && emptyOnly != layer))
                 continue;
             layerDirs[layer] = NewProjectDir(ctx, layer)!;
             created.Add(layer);
@@ -583,6 +598,9 @@ internal static partial class LayerMigration
 
     [GeneratedRegex(@"""(?:[^""\\\n]|\\.)*""", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 2000)]
     private static partial Regex StringLiteral();
+
+    [GeneratedRegex(@"\bpartial\s+(?:class|record|struct|interface)\s+([A-Za-z_]\w*)", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 2000)]
+    private static partial Regex PartialType();
 
     [GeneratedRegex(@"(?m)^\s*(?:global\s+)?using\s+(?:static\s+)?([A-Za-z_][\w.]*)\s*;", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 2000)]
     private static partial Regex UsingDirective();

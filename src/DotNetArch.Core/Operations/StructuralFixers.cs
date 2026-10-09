@@ -18,7 +18,7 @@ internal static partial class StructuralFixers
     {
         "DA-B03" => CentralPackages(root, ctx),
         "DA-B07" => StrictWarnings(root),
-        "DA-S04" => DomainTests(root, ctx, centralPackages || ctx.Has("Directory.Packages.props")),
+        "DA-S04" => LayerTests(root, ctx, ProjectLayer.Domain, centralPackages || ctx.Has("Directory.Packages.props"), "DA-S04"),
         "DA-S06" => LayoutV2(root, ctx),
         "DA-A01" => LayoutV3(root, ctx),
         "DA-A02" => LayerMigration.Plan(root, ctx, allowEmpty: false, out _),
@@ -106,16 +106,19 @@ internal static partial class StructuralFixers
         return new[] { new FixAction(new PlannedChange("Directory.Build.props", "modify", "warnings are errors in CI and Release", "DA-B07"), text[..close].TrimEnd('\n') + "\n\n" + group + text[close..]) };
     }
 
-    /// <summary>Adds the missing Domain test project with an architecture test (the Domain references no outer layer) and registers it in the solution.</summary>
-    private static IReadOnlyList<FixAction> DomainTests(string root, RepoContext ctx, bool central)
+    /// <summary>
+    /// Adds the missing test project of a layer (<c>&lt;Project&gt;.Tests</c> in the test folder) with an architecture test: the assembly loads and references no project its layer must not know.
+    /// Used by DA-S04 (Domain) and by the <c>add_tests</c> operation (any layer). The project is registered in the solution.
+    /// </summary>
+    internal static IReadOnlyList<FixAction> LayerTests(string root, RepoContext ctx, ProjectLayer layer, bool central, string ruleId)
     {
-        var domain = ctx.OfLayer(ProjectLayer.Domain).FirstOrDefault();
-        if (domain == null || ctx.OfLayer(ProjectLayer.Domain, tests: true).Any())
+        var target = ctx.OfLayer(layer).FirstOrDefault();
+        if (target == null || ctx.OfLayer(layer, tests: true).Any())
             return Array.Empty<FixAction>();
 
         var sibling = ctx.Projects.FirstOrDefault(p => p.IsTest);
         var siblingDoc = sibling == null ? null : XDocument.Load(Path.Combine(root, sibling.File));
-        var framework = siblingDoc?.Descendants("TargetFramework").FirstOrDefault()?.Value ?? "net8.0";
+        var framework = siblingDoc?.Descendants("TargetFramework").FirstOrDefault()?.Value ?? XDocument.Load(Path.Combine(root, target.File)).Descendants("TargetFramework").FirstOrDefault()?.Value ?? "net8.0";
         var testPackages = new[] { "Microsoft.NET.Test.Sdk", "xunit", "xunit.runner.visualstudio" };
         var packageLines = new StringBuilder();
         foreach (var name in testPackages)
@@ -127,17 +130,22 @@ internal static partial class StructuralFixers
                 : $"    <PackageReference Include=\"{name}\" Version=\"{version}\" />\n");
         }
 
-        var folder = domain.Dir.Contains('/') ? domain.Dir[..domain.Dir.LastIndexOf('/')] : string.Empty;
-        var name2 = domain.Name + ".Tests";
-        var dir = folder.Length == 0 ? name2 : $"{folder}/{name2}";
-        var relativeToDomain = Path.GetRelativePath(dir, domain.File).Replace('/', '\\');
-        var csproj = $"<Project Sdk=\"Microsoft.NET.Sdk\">\n\n  <PropertyGroup>\n    <TargetFramework>{framework}</TargetFramework>\n    <IsPackable>false</IsPackable>\n    <IsTestProject>true</IsTestProject>\n    <Nullable>enable</Nullable>\n    <ImplicitUsings>enable</ImplicitUsings>\n  </PropertyGroup>\n\n  <ItemGroup>\n{packageLines}  </ItemGroup>\n\n  <ItemGroup>\n    <ProjectReference Include=\"{relativeToDomain}\" />\n  </ItemGroup>\n\n</Project>\n";
-        var test = $"using System.Reflection;\nusing Xunit;\n\nnamespace {name2};\n\n/// <summary>Architecture rule: dependencies point inwards, so the Domain must not know any outer layer.</summary>\npublic sealed class DomainLayerTests\n{{\n    private static readonly string[] OuterLayers = {{ \".Application\", \".Infrastructure\", \".Api\", \".Mcp\" }};\n\n    [Fact]\n    public void Domain_does_not_reference_an_outer_layer()\n    {{\n        var domain = Assembly.Load(\"{domain.Name}\");\n        var offenders = domain.GetReferencedAssemblies()\n            .Select(a => a.Name ?? string.Empty)\n            .Where(n => n.StartsWith(\"{domain.Name[..^".Domain".Length]}\", StringComparison.Ordinal) && OuterLayers.Any(layer => n.Contains(layer, StringComparison.Ordinal)))\n            .ToList();\n\n        Assert.Empty(offenders);\n    }}\n\n    [Fact]\n    public void Domain_assembly_is_loadable_and_has_types() =>\n        Assert.NotEmpty(Assembly.Load(\"{domain.Name}\").GetTypes());\n}}\n";
+        var testRoot = ctx.DirectoryExists("test") || !ctx.DirectoryExists("tests") ? "test" : "tests";
+        var sourceFolder = target.Dir.Contains('/') ? target.Dir[..target.Dir.LastIndexOf('/')] : string.Empty;
+        var prefix = sourceFolder.Length == 0 ? string.Empty : sourceFolder.Contains('/') ? sourceFolder[..sourceFolder.LastIndexOf('/')] + "/" : string.Empty;
+        var testName = target.Name + ".Tests";
+        var dir = sibling != null && sibling.Dir.Contains('/') ? sibling.Dir[..sibling.Dir.LastIndexOf('/')] + "/" + testName : (sourceFolder.Length == 0 ? testName : $"{prefix}{testRoot}/{testName}");
+        var relative = Path.GetRelativePath(dir, target.File).Replace('/', '\\');
+        var csproj = $"<Project Sdk=\"Microsoft.NET.Sdk\">\n\n  <PropertyGroup>\n    <TargetFramework>{framework}</TargetFramework>\n    <IsPackable>false</IsPackable>\n    <IsTestProject>true</IsTestProject>\n    <Nullable>enable</Nullable>\n    <ImplicitUsings>enable</ImplicitUsings>\n  </PropertyGroup>\n\n  <ItemGroup>\n{packageLines}  </ItemGroup>\n\n  <ItemGroup>\n    <ProjectReference Include=\"{relative}\" />\n  </ItemGroup>\n\n</Project>\n";
+        var forbidden = ctx.Source.Where(p => p.Name != target.Name && p.Layer != ProjectLayer.Other && !LayerReferences.Allowed(layer, p.Layer)).Select(p => $"\"{p.Name}\"").ToList();
+        var label = target.Name[(target.Name.IndexOf('.') + 1)..];
+        var testClass = label.Replace(".", string.Empty) + "LayerTests";
+        var test = $"using System.Reflection;\nusing Xunit;\n\nnamespace {testName};\n\n/// <summary>Architecture rule: dependencies point inwards, so {label} must not know a layer outside what it may reference.</summary>\npublic sealed class {testClass}\n{{\n    private static readonly string[] Forbidden = {{ {string.Join(", ", forbidden)} }};\n\n    [Fact]\n    public void Layer_does_not_reference_a_project_it_must_not_know()\n    {{\n        var offenders = Assembly.Load(\"{target.Name}\").GetReferencedAssemblies()\n            .Select(a => a.Name ?? string.Empty)\n            .Where(name => Forbidden.Contains(name, StringComparer.Ordinal))\n            .ToList();\n\n        Assert.Empty(offenders);\n    }}\n\n    [Fact]\n    public void Layer_assembly_is_loadable() =>\n        Assert.NotNull(Assembly.Load(\"{target.Name}\"));\n}}\n";
         var solution = ctx.Files.FirstOrDefault(f => !f.Contains('/') && f.EndsWith(".sln", StringComparison.OrdinalIgnoreCase));
         return new[]
         {
-            new FixAction(new PlannedChange($"{dir}/{name2}.csproj", "create", "test project for the Domain layer", "DA-S04"), csproj, solution == null ? null : () => RegisterInSolution(root, solution, $"{dir}/{name2}.csproj")),
-            new FixAction(new PlannedChange($"{dir}/DomainLayerTests.cs", "create", "architecture test: Domain references no outer layer", "DA-S04"), test),
+            new FixAction(new PlannedChange($"{dir}/{testName}.csproj", "create", $"test project for {label}", ruleId), csproj, solution == null ? null : () => RegisterInSolution(root, solution, $"{dir}/{testName}.csproj")),
+            new FixAction(new PlannedChange($"{dir}/{testClass}.cs", "create", $"architecture test: {label} references no project it must not know", ruleId), test),
         };
     }
 

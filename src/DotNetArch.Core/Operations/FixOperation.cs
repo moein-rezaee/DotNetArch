@@ -48,7 +48,7 @@ internal static class FixOperation
                     continue;
                 }
 
-                var structural = Structural(finding.Id, root, ctx, only?.Contains("DA-B03") == true, request.Flag("empty"), manual);
+                var structural = Structural(finding.Id, root, ctx, only?.Contains("DA-B03") == true, request.Flag("empty"), manual, EmptyOnly(request));
                 if (structural.Count == 0)
                     manual.Add($"{finding.Id}  {finding.Message}");
                 else
@@ -66,37 +66,11 @@ internal static class FixOperation
         foreach (var requested in only ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase))
         {
             if (RequestedWithoutFinding.Contains(requested) && !plan.Any(p => p.Change.RuleId?.Equals(requested, StringComparison.OrdinalIgnoreCase) == true) && !report.Findings.Any(f => f.Id.Equals(requested, StringComparison.OrdinalIgnoreCase)))
-                plan.AddRange(Structural(requested.ToUpperInvariant(), root, ctx, only!.Contains("DA-B03"), request.Flag("empty"), manual));
+                plan.AddRange(Structural(requested.ToUpperInvariant(), root, ctx, only!.Contains("DA-B03"), request.Flag("empty"), manual, EmptyOnly(request)));
         }
 
         if (request.Apply)
-        {
-            foreach (var move in plan.Where(a => a.MoveFrom != null))
-            {
-                var source = Path.Combine(root, move.MoveFrom!);
-                var target = Path.Combine(root, move.Change.Path);
-                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-                if (File.Exists(source))
-                {
-                    File.Move(source, target);
-                    RemoveEmptyParents(root, Path.GetDirectoryName(source)!);
-                }
-                else
-                {
-                    Directory.Move(source, target);
-                }
-            }
-
-            foreach (var action in plan.Where(a => a.MoveFrom == null))
-            {
-                var path = Path.Combine(root, action.Change.Path);
-                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-                File.WriteAllText(path, action.Content);
-            }
-
-            foreach (var action in plan.Where(a => a.AfterWrite != null))
-                action.AfterWrite!();
-        }
+            PlanApplier.Apply(root, plan);
 
         var lines = plan.Select(p => $"  {p.Change.Action,-7} {p.Change.Path}  [{p.Change.RuleId}] {p.Change.Reason}").ToList();
         var text = $"fix: {(request.Apply ? "applied" : "plan (dry run, add --apply to write)")} - {plan.Count} change(s), {manual.Count} manual finding(s)\n"
@@ -105,7 +79,17 @@ internal static class FixOperation
         return new OperationResult(true, text, new { manual }, plan.Select(p => p.Change).ToList(), request.Apply);
     }
 
-    private static IReadOnlyList<FixAction> Structural(string ruleId, string root, RepoContext ctx, bool centralPackages, bool allowEmpty, List<string> manual)
+    /// <summary>The single layer an <c>add_layer</c> call may create empty (internal value, not a declared parameter).</summary>
+    private static ProjectLayer? EmptyOnly(OperationRequest request) => request.Get("empty_only") switch
+    {
+        "Domain.Shared" => ProjectLayer.DomainShared,
+        "Application.Contracts" => ProjectLayer.ApplicationContracts,
+        "HttpApi" => ProjectLayer.HttpApi,
+        "HttpApi.Client" => ProjectLayer.HttpApiClient,
+        _ => null,
+    };
+
+    internal static IReadOnlyList<FixAction> Structural(string ruleId, string root, RepoContext ctx, bool centralPackages, bool allowEmpty, List<string> manual, ProjectLayer? emptyOnly = null)
     {
         if (ruleId.Equals("DA-A08", StringComparison.OrdinalIgnoreCase))
         {
@@ -123,17 +107,9 @@ internal static class FixOperation
 
         if (!ruleId.Equals("DA-A02", StringComparison.OrdinalIgnoreCase))
             return StructuralFixers.For(ruleId, root, ctx, centralPackages);
-        var actions = LayerMigration.Plan(root, ctx, allowEmpty, out var left);
+        var actions = LayerMigration.Plan(root, ctx, allowEmpty, out var left, emptyOnly);
         manual.AddRange(left.Select(m => $"DA-A02  {m}"));
         return actions;
-    }
-
-    /// <summary>Folders left empty by a file move are removed (up to, never including, the repository root).</summary>
-    private static void RemoveEmptyParents(string root, string directory)
-    {
-        var rootPath = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar);
-        for (var current = Path.GetFullPath(directory); current.Length > rootPath.Length && Directory.Exists(current) && !Directory.EnumerateFileSystemEntries(current).Any(); current = Path.GetDirectoryName(current)!)
-            Directory.Delete(current);
     }
 
     private static FixAction? Fixer(string root, DoctorFinding finding)

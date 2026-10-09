@@ -80,3 +80,7 @@ Status legend: `[ ]` not started, `[~]` in progress, `[x]` done and verified. St
 - R-H9. `doctor` DA-A11 checks project references (reachable, direction-respecting, no unused forbidden reference), solution membership and Dockerfile restore lines; `fix --rules=DA-A11` repairs them and lists a used forbidden reference as manual.
 - R-H7. `fix --rules=DA-A09` moves root Compose files to `etc/docker/`, re-bases their relative paths and updates mentions; `doctor` DA-A09 reports root Compose files.
 - R-H5. The tool has no rule about `Guid` ids, application services or ABP runtime features.
+- R-I1. All commands (generators, ops, inspection) are operations of one registry; the CLI (`new crud`) and MCP (`new_crud`) surfaces are derived from it and list the same commands with the same values. A command that changes files returns a plan and writes only with apply.
+- R-I2. `add_layer`, `add_tests`, `spec_list|add|check` and `graph` exist as registry operations; `add_layer` creates a layer only when files move into it, an empty layer is CLI-only (`--empty`).
+- R-I3. `new solution` defaults to layout v3; in an ABP project every generator is followed by the ABP fixers and an `.net-arch/` refresh, and the generated solution builds without warnings, passes its tests and has no ABP finding.
+- R-I4. The generated templates are fixer-friendly: DTOs are pure data, the entity mapping is a separate file, repository ports are async and return no `IQueryable`.

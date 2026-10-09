@@ -16,7 +16,20 @@ public enum ParameterType
 }
 
 /// <param name="Positional">The CLI accepts the value as the first bare argument.</param>
-public sealed record OperationParameter(string Name, string Description, ParameterType Type = ParameterType.Text, bool Required = false, bool Positional = false);
+/// <param name="CliOnly">Not offered to MCP agents (for example creating an empty layer: an agent migrates what belongs or does nothing).</param>
+/// <param name="Alias">Another CLI spelling of the same value (for example <c>output</c> for <c>path</c>).</param>
+/// <param name="Choices">The values the parameter accepts (shown in the MCP schema and offered by the interactive CLI).</param>
+/// <param name="Default">Value used when none is given; <c>@cwd</c> means the current folder and is resolved by the CLI only.</param>
+public sealed record OperationParameter(
+    string Name,
+    string Description,
+    ParameterType Type = ParameterType.Text,
+    bool Required = false,
+    bool Positional = false,
+    bool CliOnly = false,
+    string? Alias = null,
+    IReadOnlyList<string>? Choices = null,
+    string? Default = null);
 
 public sealed record OperationRequest(IReadOnlyDictionary<string, string> Values, bool Apply)
 {

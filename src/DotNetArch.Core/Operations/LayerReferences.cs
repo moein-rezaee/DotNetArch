@@ -196,7 +196,7 @@ internal static partial class LayerReferences
     }
 
     // layers a layer may reference: the clean-architecture rules and, when present, the ABP package rules
-    private static bool Allowed(ProjectLayer from, ProjectLayer to)
+    internal static bool Allowed(ProjectLayer from, ProjectLayer to)
     {
         if (from == to || from == ProjectLayer.Other || to == ProjectLayer.Other)
             return true;
