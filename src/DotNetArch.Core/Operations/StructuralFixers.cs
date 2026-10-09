@@ -12,7 +12,7 @@ namespace DotNetArch.Core.Operations;
 /// </summary>
 internal static partial class StructuralFixers
 {
-    public static readonly IReadOnlySet<string> RuleIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "DA-B03", "DA-B07", "DA-S04", "DA-S06", "DA-A01", "DA-A02", "DA-A08", "DA-A09" };
+    public static readonly IReadOnlySet<string> RuleIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "DA-B03", "DA-B07", "DA-S04", "DA-S06", "DA-A01", "DA-A02", "DA-A08", "DA-A09", "DA-A10", "DA-A11" };
 
     public static IReadOnlyList<FixAction> For(string ruleId, string root, RepoContext ctx, bool centralPackages) => ruleId switch
     {
@@ -24,6 +24,8 @@ internal static partial class StructuralFixers
         "DA-A02" => LayerMigration.Plan(root, ctx, allowEmpty: false, out _),
         "DA-A08" => TypedClient.Plan(root, ctx, out _),
         "DA-A09" => EtcMove.Plan(ctx),
+        "DA-A10" => LayerTree.Plan(ctx),
+        "DA-A11" => LayerReferences.Plan(root, ctx, out _),
         _ => Array.Empty<FixAction>(),
     };
 

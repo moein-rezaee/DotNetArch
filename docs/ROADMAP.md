@@ -111,9 +111,11 @@ Environment: dotnet SDK 8 available (net9 targets cannot be built here; verify n
 - [x] 12.5 Service-published files under `etc/`: no tool change needed; a profile requires them with the existing `require-files` kind (Corevia: CV-09), the tool names no product
 - [x] 12.10 `fix` DA-A08: typed client project generated from the controllers (D-30, AC-23); Catalog: all 45 routes
 - [x] 12.11 `fix` DA-A09: Compose files to `etc/docker/` with re-based paths (AC-24)
+- [x] 12.12 `fix` DA-A10: folder tree inside the layers, typed client generated into it (D-31, AC-25)
+- [x] 12.13 `fix` DA-A11: project references, solution and Dockerfile restore repaired (D-31, AC-26); this also covers 12.9
 - [ ] 12.6 Generator: `new solution --layout=v3 [--layers=abp]` on the registry (with 11.7) (AC-22)
 - [x] 12.7 File-move fixer: part of DA-A02 (type-name dependency closure, pull-in of self-contained data types, blocked files reported); proven on Catalog (tool alone on the v2 state: build 0 warnings, 506 tests pass; HttpApi waits for one split interface)
-- [ ] 12.9 `doctor` check: the Dockerfile restore stage copies every project reachable from the host (DA-A02 now writes the lines for the layers it creates; the check protects hand-made changes)
+- [x] 12.9 `doctor` check: the Dockerfile restore stage copies every project reachable from the host (DA-A02 now writes the lines for the layers it creates; the check protects hand-made changes)
 - [ ] 12.8 Independence smoke on v3 (generate, adopt, delete `.net-arch/`, build and test)
 
 ## Phase 9 - Verification and release

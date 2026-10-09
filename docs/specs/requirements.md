@@ -73,8 +73,10 @@ Status legend: `[ ]` not started, `[~]` in progress, `[x]` done and verified. St
 ### ABP alignment (R-H)
 - R-H1. Layout v3 (`src/`, `test/`, `etc/`) is supported by `adopt`, `doctor` and `fix`; v2 stays valid; `fix --rules=DA-A01` moves v2 to v3 and rewrites every path that points at the moved folders.
 - R-H2. The layer projects `Domain.Shared`, `Application.Contracts`, `HttpApi`, `HttpApi.Client` are optional and exist only where there is something for them; `fix --rules=DA-A02` creates a layer together with the files that move into it (namespaces and in-project paths unchanged, references, packages and Dockerfile restore lines wired), lists what cannot move with the blocking file, moves controllers together or not at all, and creates an empty layer only with `--empty`. `doctor` DA-A07 flags a layer project without sources.
-- R-H3. `doctor` has a built-in opt-in rule set `abp` (`DA-A01..DA-A09`), enabled by `standards: [abp]`; a profile can require it and can list accepted exceptions with a reason.
+- R-H3. `doctor` has a built-in opt-in rule set `abp` (`DA-A01..DA-A11`), enabled by `standards: [abp]`; a profile can require it and can list accepted exceptions with a reason.
 - R-H4. `new solution --layout=v3` generates the ABP-shaped tree (optionally with the layer projects) and passes the `abp` rule set.
 - R-H6. `fix --rules=DA-A08` generates the typed client project from the controllers (only contract types; unsupported actions listed as manual); `doctor` DA-A08 reports a service with controllers and no client.
+- R-H8. `doctor` DA-A10 flags loose files at a project root and folders crowded with several features; `fix --rules=DA-A10` moves them into kind and feature folders inside the project (namespaces unchanged); the typed client is generated into the same tree.
+- R-H9. `doctor` DA-A11 checks project references (reachable, direction-respecting, no unused forbidden reference), solution membership and Dockerfile restore lines; `fix --rules=DA-A11` repairs them and lists a used forbidden reference as manual.
 - R-H7. `fix --rules=DA-A09` moves root Compose files to `etc/docker/`, re-bases their relative paths and updates mentions; `doctor` DA-A09 reports root Compose files.
 - R-H5. The tool has no rule about `Guid` ids, application services or ABP runtime features.

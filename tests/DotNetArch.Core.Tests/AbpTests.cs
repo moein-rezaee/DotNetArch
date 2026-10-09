@@ -269,7 +269,7 @@ public sealed class AbpTests : IDisposable
             Assert.Contains("ItemController.Odd skipped: response type Unknown", plan.Text, StringComparison.Ordinal);
         }
 
-        var client = File.ReadAllText(Path.Combine(repo, "src", "Shop.HttpApi.Client", "ItemClient.cs"));
+        var client = File.ReadAllText(Path.Combine(repo, "src", "Shop.HttpApi.Client", "Item", "ItemClient.cs"));
         Assert.Contains("public interface IItemClient", client, StringComparison.Ordinal);
         Assert.Contains("Task<ItemDto?> GetByIdAsync(string id, CancellationToken cancellationToken = default);", client, StringComparison.Ordinal);
         Assert.Contains("var url = \"v1/api/Item/\" + ApiRoute.Segment(id);", client, StringComparison.Ordinal);
@@ -283,8 +283,8 @@ public sealed class AbpTests : IDisposable
         Assert.Contains("using Shop.Api.Contracts;", client, StringComparison.Ordinal);
         Assert.Contains("using Shop.Application;", client, StringComparison.Ordinal);
         Assert.Contains("Shop.Application.Contracts.csproj", File.ReadAllText(Path.Combine(repo, "src", "Shop.HttpApi.Client", "Shop.HttpApi.Client.csproj")), StringComparison.Ordinal);
-        Assert.True(File.Exists(Path.Combine(repo, "src", "Shop.HttpApi.Client", "ApiRoute.cs")));
-        Assert.Contains("System.Collections.IEnumerable list and not string", File.ReadAllText(Path.Combine(repo, "src", "Shop.HttpApi.Client", "ApiRoute.cs")), StringComparison.Ordinal);
+        Assert.True(File.Exists(Path.Combine(repo, "src", "Shop.HttpApi.Client", "Common", "ApiRoute.cs")));
+        Assert.Contains("System.Collections.IEnumerable list and not string", File.ReadAllText(Path.Combine(repo, "src", "Shop.HttpApi.Client", "Common", "ApiRoute.cs")), StringComparison.Ordinal);
         Assert.Equal(1, runner.Calls.Count(c => c.Arguments.Contains("sln")));
         Assert.Empty(Run("fix", repo, apply: false, ("rules", "DA-A08")).Plan!);
         Assert.DoesNotContain("DA-A08", string.Join(',', DoctorRunnerWith(repo).Findings.Select(f => f.Id)));
@@ -346,7 +346,7 @@ public sealed class AbpTests : IDisposable
             Assert.Contains("ItemController.Export skipped: the response is raw bytes", plan.Text, StringComparison.Ordinal);
         }
 
-        var client = File.ReadAllText(Path.Combine(repo, "src", "Shop.HttpApi.Client", "ItemClient.cs"));
+        var client = File.ReadAllText(Path.Combine(repo, "src", "Shop.HttpApi.Client", "Item", "ItemClient.cs"));
         Assert.Contains("using Acme.Http.Abstractions;", client, StringComparison.Ordinal);
         Assert.Contains("public ItemClient(IRestClient rest)", client, StringComparison.Ordinal);
         Assert.Contains("var json = await _rest.GetAsync(url, null, null, cancellationToken).ConfigureAwait(false);", client, StringComparison.Ordinal);
@@ -356,7 +356,7 @@ public sealed class AbpTests : IDisposable
         Assert.DoesNotContain("HttpClient", client, StringComparison.Ordinal);
         Assert.DoesNotContain("ExportAsync", client, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"Acme.Http.Abstractions\" />", File.ReadAllText(Path.Combine(repo, "src", "Shop.HttpApi.Client", "Shop.HttpApi.Client.csproj")), StringComparison.Ordinal);
-        Assert.Contains("internal static class ApiJson", File.ReadAllText(Path.Combine(repo, "src", "Shop.HttpApi.Client", "ApiRoute.cs")), StringComparison.Ordinal);
+        Assert.Contains("internal static class ApiJson", File.ReadAllText(Path.Combine(repo, "src", "Shop.HttpApi.Client", "Common", "ApiRoute.cs")), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -370,5 +370,54 @@ public sealed class AbpTests : IDisposable
         Assert.True(File.Exists(Path.Combine(repo, "src", "Shop.HttpApi", "Services", "ExportService.cs")));
         Assert.False(Directory.Exists(Path.Combine(repo, "src", "Shop.Api", "Services")));
         Assert.Contains("<InternalsVisibleTo Include=\"Shop.Api\" />", File.ReadAllText(Path.Combine(repo, "src", "Shop.HttpApi", "Shop.HttpApi.csproj")), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Loose_files_and_crowded_folders_are_flagged_and_moved_into_feature_and_kind_folders_inside_their_project()
+    {
+        var repo = Repo();
+        Write(repo, ".net-arch/project.yml", "schema: 2\nblueprint: 1.0.0\nlayout: v3\nstandards:\n- abp\n");
+        Write(repo, "src/Shop.Application/Features/Products/Marker.cs", "namespace Shop.Application.Features.Products;\npublic sealed class Marker { }\n");
+        Write(repo, "src/Shop.Application/Features/Orders/Marker.cs", "namespace Shop.Application.Features.Orders;\npublic sealed class Marker2 { }\n");
+        Write(repo, "src/Shop.Application/ShopOptions.cs", "namespace Shop.Application;\npublic sealed class ShopOptions { }\n");
+        Write(repo, "src/Shop.Application/AssemblyMarker.cs", "namespace Shop.Application;\npublic sealed class AssemblyMarker { }\n");
+        for (var i = 0; i < 14; i++)
+            Write(repo, $"src/Shop.Domain/Ports/{(i % 2 == 0 ? "IProduct" : "IOrder")}Thing{i}.cs", $"namespace Shop.Domain.Ports;\npublic interface {(i % 2 == 0 ? "IProduct" : "IOrder")}Thing{i} {{ }}\n");
+
+        Assert.Contains(DoctorRunner.Run(repo).Findings, f => f.Id == "DA-A10" && f.Details!.Any(d => d.Contains("ShopOptions.cs", StringComparison.Ordinal)));
+
+        Run("fix", repo, apply: true, ("rules", "DA-A10"));
+
+        Assert.True(File.Exists(Path.Combine(repo, "src", "Shop.Application", "Options", "ShopOptions.cs")));
+        Assert.True(File.Exists(Path.Combine(repo, "src", "Shop.Application", "AssemblyMarker.cs")));
+        Assert.True(File.Exists(Path.Combine(repo, "src", "Shop.Domain", "Ports", "Products", "IProductThing0.cs")));
+        Assert.True(File.Exists(Path.Combine(repo, "src", "Shop.Domain", "Ports", "Orders", "IOrderThing1.cs")));
+        Assert.Contains("namespace Shop.Domain.Ports;", File.ReadAllText(Path.Combine(repo, "src", "Shop.Domain", "Ports", "Products", "IProductThing0.cs")), StringComparison.Ordinal);
+        Assert.DoesNotContain(DoctorRunner.Run(repo).Findings, f => f.Id == "DA-A10");
+        Assert.Empty(Run("fix", repo, apply: false, ("rules", "DA-A10")).Plan!);
+    }
+
+    [Fact]
+    public void Missing_references_are_added_forbidden_unused_ones_removed_and_the_solution_and_dockerfile_follow()
+    {
+        var repo = Repo();
+        Write(repo, ".net-arch/project.yml", "schema: 2\nblueprint: 1.0.0\nlayout: v3\nstandards:\n- abp\n");
+        Write(repo, "src/Shop.Domain.Shared/Shop.Domain.Shared.csproj", "<Project Sdk=\"Microsoft.NET.Sdk\"></Project>\n");
+        Write(repo, "src/Shop.Domain.Shared/Kinds/Color.cs", "namespace Shop.Domain.Shared;\npublic enum Color { Red }\n");
+        Write(repo, "src/Shop.Application.Contracts/Shop.Application.Contracts.csproj", "<Project Sdk=\"Microsoft.NET.Sdk\">\n  <ItemGroup><ProjectReference Include=\"..\\Shop.Domain\\Shop.Domain.csproj\" /></ItemGroup>\n</Project>\n");
+        Write(repo, "src/Shop.Application.Contracts/Dtos/PaintDto.cs", "using Shop.Domain.Shared;\n\nnamespace Shop.Application.Contracts;\npublic sealed record PaintDto(Color Color);\n");
+
+        var finding = DoctorRunner.Run(repo).Findings.Single(f => f.Id == "DA-A11");
+        Assert.Contains(finding.Details!, d => d.StartsWith("missing: Shop.Application.Contracts -> Shop.Domain.Shared", StringComparison.Ordinal));
+        Assert.Contains(finding.Details!, d => d.StartsWith("forbidden: Shop.Application.Contracts -> Shop.Domain", StringComparison.Ordinal));
+        Assert.Contains(finding.Details!, d => d.StartsWith("solution: Shop.Domain.Shared", StringComparison.Ordinal));
+
+        using (ToolHost.Use(new HostContext(new NonInteractivePrompter(), new BufferedToolOutput(), new FakeProcessRunner())))
+            Run("fix", repo, apply: true, ("rules", "DA-A11"));
+
+        var csproj = File.ReadAllText(Path.Combine(repo, "src", "Shop.Application.Contracts", "Shop.Application.Contracts.csproj"));
+        Assert.Contains("Shop.Domain.Shared.csproj", csproj, StringComparison.Ordinal);
+        Assert.DoesNotContain("Shop.Domain.csproj", csproj, StringComparison.Ordinal);
+        Assert.DoesNotContain(DoctorRunner.Run(repo).Findings, f => f.Id == "DA-A11" && f.Details!.Any(d => d.StartsWith("missing", StringComparison.Ordinal) || d.StartsWith("forbidden", StringComparison.Ordinal)));
     }
 }

@@ -24,6 +24,10 @@ internal static class StructureChecks
         [ProjectLayer.HttpApiClient] = new[] { ProjectLayer.ApplicationContracts, ProjectLayer.DomainShared, ProjectLayer.Contracts },
     };
 
+    /// <summary>True when the clean-architecture direction lets a project of layer <paramref name="from"/> reference one of layer <paramref name="to"/>.</summary>
+    internal static bool Permitted(ProjectLayer from, ProjectLayer to) =>
+        !Allowed.TryGetValue(from, out var allowed) || allowed.Contains(to);
+
     public static void Run(RepoContext ctx)
     {
         const string cat = "structure";

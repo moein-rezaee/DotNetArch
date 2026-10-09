@@ -50,6 +50,7 @@ internal static partial class TypedClient
         }
 
         var known = KnownTypes(ctx);
+        var features = LayerTree.Features(ctx);
         var transport = ctx.Profile?.Client is { Transport: "rest-client", Interface.Length: > 0 } client ? client : null;
         var prefix = domain.Name[..^".Domain".Length];
         var existing = ctx.OfLayer(ProjectLayer.HttpApiClient).FirstOrDefault();
@@ -65,9 +66,9 @@ internal static partial class TypedClient
             var (clientName, methods) = Parse(ctx.Read(file), file, known, notes, transport != null);
             if (methods.Count == 0)
                 continue;
-            var path = $"{dir}/{clientName}.cs";
-            if (ctx.Has(path))
+            if (ctx.Files.Any(f => f.StartsWith(dir + "/", StringComparison.OrdinalIgnoreCase) && Path.GetFileName(f).Equals(clientName + ".cs", StringComparison.OrdinalIgnoreCase)))
                 continue;
+            var path = $"{dir}/{LayerTree.ClientFolder(features, clientName)}/{clientName}.cs";
             actions.Add(new FixAction(new PlannedChange(path, "create", $"typed client for {Path.GetFileNameWithoutExtension(file)} ({methods.Count} action(s))", "DA-A08"), Render(ns, clientName, methods, known, transport)));
             generated++;
         }
@@ -75,8 +76,8 @@ internal static partial class TypedClient
         if (generated == 0)
             return actions;
 
-        if (!ctx.Has($"{dir}/ApiRoute.cs"))
-            actions.Add(new FixAction(new PlannedChange($"{dir}/ApiRoute.cs", "create", "URL helpers of the typed client", "DA-A08"), RenderRoute(ns, transport != null)));
+        if (!ctx.Files.Any(f => f.StartsWith(dir + "/", StringComparison.OrdinalIgnoreCase) && Path.GetFileName(f).Equals("ApiRoute.cs", StringComparison.OrdinalIgnoreCase)))
+            actions.Add(new FixAction(new PlannedChange($"{dir}/Common/ApiRoute.cs", "create", "URL helpers of the typed client", "DA-A08"), RenderRoute(ns, transport != null)));
 
         if (existing == null)
         {

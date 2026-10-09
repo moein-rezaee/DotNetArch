@@ -524,7 +524,7 @@ internal static partial class LayerMigration
     /// Replaces the name of a member, parameter or variable (<c>string Unit,</c>, <c>Unit? Unit { get; }</c>) so that a property called like a type is
     /// not read as a use of that type. What follows a type is a name when it is followed by <c>, ; ) = {</c>, <c>=&gt;</c> or <c>(</c>.
     /// </summary>
-    private static string WithoutMemberNames(string text)
+    internal static string WithoutMemberNames(string text)
     {
         text = EnumBody().Replace(text, match => match.Groups["head"].Value + EnumMember().Replace(match.Groups["body"].Value, "_") + "}");
         text = MemberAccess().Replace(text, "._");
@@ -551,7 +551,7 @@ internal static partial class LayerMigration
     [GeneratedRegex(@"(?<prev>[A-Za-z_][\w.]*(?:<[^<>;{}]*(?:<[^<>;{}]*>[^<>;{}]*)*>)?[?\]]*)\s+(?<name>[A-Za-z_]\w*)(?=\s*(?:[,;)=]|\{|=>|\())", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 2000)]
     private static partial Regex MemberName();
 
-    private static string Strip(string text)
+    internal static string Strip(string text)
     {
         text = BlockComment().Replace(text, " ");
         text = LineComment().Replace(text, string.Empty);
