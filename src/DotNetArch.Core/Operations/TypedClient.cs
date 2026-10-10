@@ -92,7 +92,7 @@ internal static partial class TypedClient
             var kitVersion = KitVersion(ctx);
             var relative = Path.GetRelativePath(dir, $"{contracts.Dir}/{contracts.Name}.csproj").Replace('/', '\\');
             actions.Add(new FixAction(new PlannedChange(csproj, "create", "typed client project (references Application.Contracts only)", "DA-A08"),
-                $"<Project Sdk=\"Microsoft.NET.Sdk\">\n\n  <PropertyGroup>\n    <TargetFramework>{framework}</TargetFramework>\n    <Nullable>enable</Nullable>\n    <ImplicitUsings>enable</ImplicitUsings>\n  </PropertyGroup>\n\n  <ItemGroup>\n    <ProjectReference Include=\"{relative}\" />\n  </ItemGroup>\n{(transport == null ? string.Empty : $"\n  <ItemGroup>\n    <PackageReference Include=\"{transport.Package}\"{(central ? string.Empty : $" Version=\"{kitVersion}\"")} />\n  </ItemGroup>\n")}\n</Project>\n",
+                $"<Project Sdk=\"Microsoft.NET.Sdk\">\n\n  <PropertyGroup>\n    <TargetFramework>{framework}</TargetFramework>\n{StructuralFixers.LangVersionLine(root, ctx)}    <Nullable>enable</Nullable>\n    <ImplicitUsings>enable</ImplicitUsings>\n  </PropertyGroup>\n\n  <ItemGroup>\n    <ProjectReference Include=\"{relative}\" />\n  </ItemGroup>\n{(transport == null ? string.Empty : $"\n  <ItemGroup>\n    <PackageReference Include=\"{transport.Package}\"{(central ? string.Empty : $" Version=\"{kitVersion}\"")} />\n  </ItemGroup>\n")}\n</Project>\n",
                 solution == null ? null : () => Register(root, solution, csproj)));
             if (transport != null && central && !ctx.Read("Directory.Packages.props").Contains($"Include=\"{transport.Package}\"", StringComparison.OrdinalIgnoreCase))
             {
@@ -116,7 +116,7 @@ internal static partial class TypedClient
         else
         {
             var controllerProjectFile = ctx.Projects.Where(p => !p.IsTest && controllers[0].StartsWith(p.Dir + "/", StringComparison.OrdinalIgnoreCase)).OrderByDescending(p => p.Dir.Length).First().File;
-            actions.AddRange(StructuralFixers.NewTestProject(root, ctx, name, dir, $"{dir}/{name}.csproj", new[] { controllerProjectFile }, ctx.Has("Directory.Packages.props"), "DA-A08", out testDir, out testName));
+            actions.AddRange(StructuralFixers.NewTestProject(root, ctx, name, dir, $"{dir}/{name}.csproj", new[] { controllerProjectFile }, ctx.Has("Directory.Packages.props"), "DA-A08", out testDir, out testName, actions));
         }
 
         void Upsert(string fileName, string defaultPath, string content, string reason)

@@ -420,6 +420,77 @@ public sealed class AbpTests : IDisposable
     }
 
     [Fact]
+    public void A_new_layer_project_carries_the_language_version_the_repository_pins()
+    {
+        var repo = Repo();
+        Write(repo, "src/Shop.Domain/Shop.Domain.csproj", "<Project Sdk=\"Microsoft.NET.Sdk\">\n  <PropertyGroup><TargetFramework>netstandard2.0</TargetFramework><LangVersion>10.0</LangVersion></PropertyGroup>\n</Project>\n");
+
+        using (ToolHost.Use(new HostContext(new NonInteractivePrompter(), new BufferedToolOutput(), new FakeProcessRunner())))
+            Run("fix", repo, apply: true, ("rules", "DA-A02"));
+
+        var contracts = File.ReadAllText(Path.Combine(repo, "src", "Shop.Application.Contracts", "Shop.Application.Contracts.csproj"));
+        Assert.Contains("<TargetFramework>netstandard2.0</TargetFramework>", contracts, StringComparison.Ordinal);
+        Assert.Contains("<LangVersion>10.0</LangVersion>", contracts, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_layer_test_for_a_net_framework_project_silences_the_cross_framework_version_notice()
+    {
+        var repo = Repo();
+        Write(repo, "tests/Shop.Api.Tests/Shop.Api.Tests.csproj", "<Project Sdk=\"Microsoft.NET.Sdk\">\n  <PropertyGroup><TargetFramework>net9.0</TargetFramework></PropertyGroup>\n</Project>\n");
+        Write(repo, "src/Shop.Application/Shop.Application.csproj", "<Project Sdk=\"Microsoft.NET.Sdk\">\n  <PropertyGroup><TargetFramework>net48</TargetFramework></PropertyGroup>\n  <ItemGroup><ProjectReference Include=\"..\\Shop.Domain\\Shop.Domain.csproj\" /></ItemGroup>\n</Project>\n");
+
+        using (ToolHost.Use(new HostContext(new NonInteractivePrompter(), new BufferedToolOutput(), new FakeProcessRunner())))
+            Run("add_tests", repo, apply: true, ("layer", "Application"));
+
+        var csproj = Directory.EnumerateFiles(repo, "Shop.Application.Tests.csproj", SearchOption.AllDirectories).Single();
+        Assert.Contains("<NoWarn>$(NoWarn);MSB3277;NU1701</NoWarn>", File.ReadAllText(csproj), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Test_packages_get_central_versions_when_the_repository_uses_them_and_has_none()
+    {
+        var repo = Repo();
+        Write(repo, "Directory.Packages.props", "<Project>\n  <PropertyGroup><ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally></PropertyGroup>\n  <ItemGroup>\n    <PackageVersion Include=\"MediatR\" Version=\"12.2.0\" />\n  </ItemGroup>\n</Project>\n");
+
+        using (ToolHost.Use(new HostContext(new NonInteractivePrompter(), new BufferedToolOutput(), new FakeProcessRunner())))
+            Run("fix", repo, apply: true, ("rules", "DA-S04"));
+
+        var props = File.ReadAllText(Path.Combine(repo, "Directory.Packages.props"));
+        Assert.Contains("PackageVersion Include=\"xunit\"", props, StringComparison.Ordinal);
+        Assert.Contains("PackageVersion Include=\"Microsoft.NET.Test.Sdk\"", props, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Nested_or_misnamed_project_folders_move_directly_under_src_and_every_path_follows()
+    {
+        var repo = Path.Combine(_root, "nested");
+        Write(repo, "Shop.sln", "Project(\"{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}\") = \"Shop.Api\", \"src\\api\\Shop.Api\\Shop.Api.csproj\", \"{11111111-1111-1111-1111-111111111111}\"\nEndProject\nProject(\"{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}\") = \"Shop.Domain\", \"src\\domain\\Shop.Domain\\Shop.Domain.csproj\", \"{22222222-2222-2222-2222-222222222222}\"\nEndProject\n");
+        Write(repo, "src/domain/Shop.Domain/Shop.Domain.csproj", "<Project Sdk=\"Microsoft.NET.Sdk\">\n  <PropertyGroup><TargetFramework>net9.0</TargetFramework></PropertyGroup>\n</Project>\n");
+        Write(repo, "src/domain/Shop.Domain/Item.cs", "namespace Shop.Domain;\npublic sealed class Item { }\n");
+        Write(repo, "src/api/Shop.Api/Shop.Api.csproj", "<Project Sdk=\"Microsoft.NET.Sdk.Web\">\n  <ItemGroup><ProjectReference Include=\"..\\..\\domain\\Shop.Domain\\Shop.Domain.csproj\" /></ItemGroup>\n</Project>\n");
+        Write(repo, "src/api/Shop.Api/Dockerfile", "COPY src/domain/Shop.Domain/Shop.Domain.csproj src/domain/Shop.Domain/\nCOPY --from=build /src/src/api/Shop.Api/appsettings.json ./appsettings.json\n");
+        Write(repo, "src/api/Shop.Api/Program.cs", "class P { }\n");
+        Write(repo, "tests/Shop.Api.Tests/Shop.Api.Tests.csproj", "<Project Sdk=\"Microsoft.NET.Sdk\">\n  <ItemGroup><ProjectReference Include=\"..\\..\\src\\api\\Shop.Api\\Shop.Api.csproj\" /></ItemGroup>\n</Project>\n");
+        Write(repo, "README.md", "Run `dotnet run --project src/api/Shop.Api/Shop.Api.csproj`.\n");
+
+        Assert.Contains("DA-A13", string.Join(',', DoctorRunnerWith(repo).Findings.Select(f => f.Id)));
+        using (ToolHost.Use(new HostContext(new NonInteractivePrompter(), new BufferedToolOutput(), new FakeProcessRunner())))
+            Run("fix", repo, apply: true, ("rules", "DA-A13"));
+
+        Assert.True(File.Exists(Path.Combine(repo, "src", "Shop.Api", "Program.cs")));
+        Assert.True(File.Exists(Path.Combine(repo, "src", "Shop.Domain", "Item.cs")));
+        Assert.Contains("..\\Shop.Domain\\Shop.Domain.csproj", File.ReadAllText(Path.Combine(repo, "src", "Shop.Api", "Shop.Api.csproj")), StringComparison.Ordinal);
+        Assert.Contains("..\\..\\src\\Shop.Api\\Shop.Api.csproj", File.ReadAllText(Path.Combine(repo, "tests", "Shop.Api.Tests", "Shop.Api.Tests.csproj")), StringComparison.Ordinal);
+        Assert.Contains("src\\Shop.Api\\Shop.Api.csproj", File.ReadAllText(Path.Combine(repo, "Shop.sln")), StringComparison.Ordinal);
+        var dockerfile = File.ReadAllText(Path.Combine(repo, "src", "Shop.Api", "Dockerfile"));
+        Assert.Contains("COPY src/Shop.Domain/Shop.Domain.csproj src/Shop.Domain/", dockerfile, StringComparison.Ordinal);
+        Assert.Contains("/src/src/Shop.Api/appsettings.json", dockerfile, StringComparison.Ordinal);
+        Assert.Contains("src/Shop.Api/Shop.Api.csproj", File.ReadAllText(Path.Combine(repo, "README.md")), StringComparison.Ordinal);
+        Assert.DoesNotContain("DA-A13", string.Join(',', DoctorRunnerWith(repo).Findings.Select(f => f.Id)));
+    }
+
+    [Fact]
     public void Host_services_move_to_the_http_layer_with_internals_visible_to_the_host()
     {
         var repo = Repo();

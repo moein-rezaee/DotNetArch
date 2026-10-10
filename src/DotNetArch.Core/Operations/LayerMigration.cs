@@ -255,7 +255,7 @@ internal static partial class LayerMigration
     {
         var dir = dirs[layer];
         var sb = new StringBuilder();
-        sb.Append("<Project Sdk=\"Microsoft.NET.Sdk\">\n\n  <PropertyGroup>\n    <TargetFramework>").Append(framework).Append("</TargetFramework>\n    <Nullable>enable</Nullable>\n    <ImplicitUsings>enable</ImplicitUsings>\n  </PropertyGroup>\n");
+        sb.Append("<Project Sdk=\"Microsoft.NET.Sdk\">\n\n  <PropertyGroup>\n    <TargetFramework>").Append(framework).Append("</TargetFramework>\n").Append(StructuralFixers.LangVersionLine(root, ctx)).Append("    <Nullable>enable</Nullable>\n    <ImplicitUsings>enable</ImplicitUsings>\n  </PropertyGroup>\n");
 
         var inner = ReferenceTargets(layer, dirs);
         if (inner.Count > 0)

@@ -12,7 +12,7 @@ namespace DotNetArch.Core.Operations;
 /// </summary>
 internal static partial class StructuralFixers
 {
-    public static readonly IReadOnlySet<string> RuleIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "DA-B03", "DA-B07", "DA-S04", "DA-S06", "DA-A01", "DA-A02", "DA-A08", "DA-A09", "DA-A10", "DA-A11", "DA-A12" };
+    public static readonly IReadOnlySet<string> RuleIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "DA-B03", "DA-B07", "DA-S04", "DA-S06", "DA-A01", "DA-A02", "DA-A08", "DA-A09", "DA-A10", "DA-A11", "DA-A12", "DA-A13" };
 
     public static IReadOnlyList<FixAction> For(string ruleId, string root, RepoContext ctx, bool centralPackages) => ruleId switch
     {
@@ -26,6 +26,7 @@ internal static partial class StructuralFixers
         "DA-A09" => EtcMove.Plan(ctx),
         "DA-A10" => LayerTree.Plan(ctx),
         "DA-A12" => FolderMoves.Plan(ctx),
+        "DA-A13" => ProjectFolders.Plan(ctx),
         "DA-A11" => LayerReferences.Plan(root, ctx, out _),
         _ => Array.Empty<FixAction>(),
     };
@@ -142,7 +143,23 @@ internal static partial class StructuralFixers
         return From(Path.Combine(root, "Directory.Build.props")) ?? "net8.0";
     }
 
-    internal static IReadOnlyList<FixAction> NewTestProject(string root, RepoContext ctx, string targetName, string targetDir, string targetFile, IReadOnlyList<string> extraReferences, bool central, string ruleId, out string dir, out string testName)
+    /// <summary>The C# language version a project of the repository pins (older target frameworks need it for nullable and modern syntax), as a property line; empty when none pins one.</summary>
+    internal static string LangVersionLine(string root, RepoContext ctx)
+    {
+        foreach (var project in ctx.Projects.Where(p => !p.IsTest))
+        {
+            var path = Path.Combine(root, project.File);
+            if (!File.Exists(path))
+                continue;
+            var version = XDocument.Load(path).Descendants("LangVersion").FirstOrDefault()?.Value;
+            if (!string.IsNullOrWhiteSpace(version))
+                return $"    <LangVersion>{version}</LangVersion>\n";
+        }
+
+        return string.Empty;
+    }
+
+    internal static IReadOnlyList<FixAction> NewTestProject(string root, RepoContext ctx, string targetName, string targetDir, string targetFile, IReadOnlyList<string> extraReferences, bool central, string ruleId, out string dir, out string testName, IReadOnlyList<FixAction>? planned = null)
     {
         var sibling = ctx.Projects.FirstOrDefault(p => p.IsTest);
         var siblingDoc = sibling == null ? null : XDocument.Load(Path.Combine(root, sibling.File));
@@ -166,10 +183,28 @@ internal static partial class StructuralFixers
         var references = new StringBuilder();
         foreach (var file in new[] { targetFile }.Concat(extraReferences))
             references.Append($"    <ProjectReference Include=\"{Path.GetRelativePath(dir, file).Replace('/', '\\')}\" />\n");
-        var csproj = $"<Project Sdk=\"Microsoft.NET.Sdk\">\n\n  <PropertyGroup>\n    <TargetFramework>{framework}</TargetFramework>\n    <IsPackable>false</IsPackable>\n    <IsTestProject>true</IsTestProject>\n    <Nullable>enable</Nullable>\n    <ImplicitUsings>enable</ImplicitUsings>\n  </PropertyGroup>\n\n  <ItemGroup>\n{packageLines}  </ItemGroup>\n\n  <ItemGroup>\n{references}  </ItemGroup>\n\n</Project>\n";
+        // a .NET Framework project referenced from a modern test project resolves assembly versions differently; the version-conflict notice is not a defect of the guard
+        var targetFramework = File.Exists(Path.Combine(root, targetFile)) ? XDocument.Load(Path.Combine(root, targetFile)).Descendants("TargetFramework").FirstOrDefault()?.Value ?? string.Empty : string.Empty;
+        var crossFramework = targetFramework.StartsWith("net4", StringComparison.OrdinalIgnoreCase) && !framework.StartsWith("net4", StringComparison.OrdinalIgnoreCase);
+        var noWarn = crossFramework ? "    <NoWarn>$(NoWarn);MSB3277;NU1701</NoWarn>\n" : string.Empty;
+        var csproj = $"<Project Sdk=\"Microsoft.NET.Sdk\">\n\n  <PropertyGroup>\n    <TargetFramework>{framework}</TargetFramework>\n{noWarn}    <IsPackable>false</IsPackable>\n    <IsTestProject>true</IsTestProject>\n    <Nullable>enable</Nullable>\n    <ImplicitUsings>enable</ImplicitUsings>\n  </PropertyGroup>\n\n  <ItemGroup>\n{packageLines}  </ItemGroup>\n\n  <ItemGroup>\n{references}  </ItemGroup>\n\n</Project>\n";
         var solution = ctx.Files.FirstOrDefault(f => !f.Contains('/') && f.EndsWith(".sln", StringComparison.OrdinalIgnoreCase));
         var csprojPath = $"{dir}/{testName}.csproj";
-        return new[] { new FixAction(new PlannedChange(csprojPath, "create", $"test project for {targetName}", ruleId), csproj, solution == null ? null : () => RegisterInSolution(root, solution, csprojPath)) };
+        var result = new List<FixAction> { new FixAction(new PlannedChange(csprojPath, "create", $"test project for {targetName}", ruleId), csproj, solution == null ? null : () => RegisterInSolution(root, solution, csprojPath)) };
+        if (central && ctx.Has("Directory.Packages.props"))
+        {
+            // under central versions the test packages need a version there; a repository whose tests do not use xunit (a console runner) has none yet
+            // build on an edit of the same file already planned in this run (the last write wins, so it must contain both)
+            var props = planned?.LastOrDefault(a => a.Change.Path == "Directory.Packages.props")?.Content ?? ctx.Read("Directory.Packages.props");
+            var defaults = new Dictionary<string, string> { ["Microsoft.NET.Test.Sdk"] = "17.14.1", ["xunit"] = "2.9.3", ["xunit.runner.visualstudio"] = "3.1.5" };
+            var missing = defaults.Where(d => !props.Contains($"Include=\"{d.Key}\"", StringComparison.OrdinalIgnoreCase)).ToList();
+            var close = props.LastIndexOf("</ItemGroup>", StringComparison.Ordinal);
+            if (missing.Count > 0 && close > 0)
+                result.Add(new FixAction(new PlannedChange("Directory.Packages.props", "modify", "central versions for the test packages", ruleId),
+                    props.Insert(close, string.Concat(missing.Select(d => $"  <PackageVersion Include=\"{d.Key}\" Version=\"{d.Value}\" />\n  ")))));
+        }
+
+        return result;
     }
 
     private static void RegisterInSolution(string root, string solution, string project)
@@ -287,6 +322,9 @@ internal static partial class StructuralFixers
         if (HistoryMarkers.Any(h => lower.Contains(h, StringComparison.Ordinal)))
             return false;
         var name = Path.GetFileName(lower);
+        // the loose Markdown guides (RUN.md, INSTALL.md, DEPLOYMENT.md, docs/*.md) quote project paths too; their sub-folders are history or specs handled above
+        if (name.EndsWith(".md", StringComparison.Ordinal) && (!lower.Contains('/') || lower.Count(c => c == '/') == 1 && lower.StartsWith("docs/", StringComparison.Ordinal)))
+            return true;
         return RewriteGlobs.Any(g => g.EndsWith('/') ? lower.StartsWith(g, StringComparison.Ordinal)
             : g.Contains('*') ? GlobMatch(name, g.ToLowerInvariant())
             : name.StartsWith(g.ToLowerInvariant(), StringComparison.Ordinal) && !lower.Contains('/')

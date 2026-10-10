@@ -24,7 +24,7 @@ internal static class FixOperation
         Run);
 
     // idempotent structural rules that can be requested without a doctor finding (the standard may not be switched on yet)
-    private static readonly HashSet<string> RequestedWithoutFinding = new(StringComparer.OrdinalIgnoreCase) { "DA-S06", "DA-A01", "DA-A02", "DA-A08", "DA-A09", "DA-A10", "DA-A11", "DA-A12" };
+    private static readonly HashSet<string> RequestedWithoutFinding = new(StringComparer.OrdinalIgnoreCase) { "DA-S06", "DA-A01", "DA-A02", "DA-A08", "DA-A09", "DA-A10", "DA-A13", "DA-A11", "DA-A12" };
 
     private static OperationResult Run(OperationRequest request)
     {

@@ -61,6 +61,9 @@ internal static partial class AbpChecks
         var folderMoves = Operations.FolderMoves.Pending(ctx);
         ctx.Check("DA-A12", cat, folderMoves.Count == 0, DoctorSeverity.Warning, "A folder the profile moves is still at the repository root.", hint: "dotnet-arch fix --rules=DA-A12 moves it and rewrites the paths that point at it.", details: folderMoves.Select(m => $"{m.From} -> {m.To}").ToList());
 
+        var misplaced = Operations.ProjectFolders.Misplaced(ctx);
+        ctx.Check("DA-A13", cat, misplaced.Count == 0, DoctorSeverity.Warning, "A project folder is not directly under src/ (or the tests root) with the exact name of its project.", hint: "dotnet-arch fix --rules=DA-A13 moves the folders and rewrites the project references, the solution and the paths in Dockerfiles, Compose, CI and docs.", details: misplaced.Select(m => $"{m.Key} -> {m.Value}").ToList());
+
         var references = Operations.LayerReferences.Issues(ctx);
         ctx.Check("DA-A11", cat, references.Count == 0, DoctorSeverity.Warning, "Project references: a used project is not reachable, a forbidden reference remains, a project is not in the solution or a Dockerfile restore line is missing.", hint: "dotnet-arch fix --rules=DA-A11 adds the missing references, removes the unused forbidden ones, registers projects in the solution and completes the Dockerfile; a used forbidden reference is listed as manual.", details: references.Select(i => $"{i.Kind}: {i.Project} -> {i.Target} ({i.Detail})").ToList());
 
