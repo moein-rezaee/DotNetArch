@@ -97,7 +97,7 @@ Environment: dotnet SDK 8 available (net9 targets cannot be built here; verify n
 - [x] 11.5 `adopt` (state from source, only `.net-arch/` written) and `fix` (hygiene files from tool templates), independence test
 - [x] 11.6 Doctor: documentation validation (DA-M06..M09) and test checks (DA-T01..T02, coverage threshold)
 - [x] 11.10 `fix` structural opt-in rules (DA-B03, DA-B07, DA-S04, DA-S06 layout v2 move with path rewriting); first real use: Catalog (506 tests pass, Release 0 warnings)
-- [ ] 11.7 Move the existing generators onto the registry (one definition for CLI and MCP)
+- [x] 11.7 Move the existing generators onto the registry (one definition for CLI and MCP) (done in phase 13: 13.1, 13.2, 13.4)
 - [ ] 11.8 Independence smoke: generate, adopt, delete `.net-arch/`, build and test (needs SDK; add to `scripts/smoke.sh`)
 - [ ] 11.9 Blueprint upgrade steps (versioned migrations); opt-in `format` fixer (the baseline of Catalog failed `dotnet format --verify-no-changes`)
 - [x] 11.12 ABP alignment spec (`docs/specs/abp-alignment.md`); decisions accepted 2026-10-09 (D-25..D-29); implementation moved to Phase 12
