@@ -77,6 +77,9 @@ public static class McpV2Generator
                 AddActionTool(config, entity, action.Name, action.IsQuery);
         }
 
+        foreach (var useCase in config.UseCases.Values.OrderBy(u => u.Entity, StringComparer.Ordinal).ThenBy(u => u.Action, StringComparer.Ordinal))
+            AddTypedActionTool(config, useCase);
+
         ToolHost.Success($"MCP host added ({writer.Created.Count} files).", $"run it with: dotnet run --project {host}; clients send 'Authorization: Bearer <MCP_AUTH_TOKEN>' to /mcp");
         return true;
     }
@@ -108,6 +111,17 @@ public static class McpV2Generator
             TemplateRenderer.RenderTemplate("V2/mcp-crud/ActionTool.cs.tpl", tokens));
     }
 
+    /// <summary>The MCP tool of a typed use case: its own arguments and result, the same request as the controller action.</summary>
+    internal static void AddTypedActionTool(SolutionConfig config, UseCaseState useCase)
+    {
+        var spec = TypedActionV2Generator.SpecOf(useCase);
+        var tokens = TypedActionV2Generator.Tokens(config, useCase.Entity, useCase.Action, useCase.Method, spec, useCase.Anonymous, null);
+        var plural = tokens["Plural"];
+        new FileWriter(config.SolutionPath).Write(
+            $"src/{config.SolutionName}.Mcp/Tools/{plural}/{plural}Tools.{useCase.Action}.cs",
+            TemplateRenderer.RenderTemplate("V2/action-typed/mcp-tool.cs.tpl", tokens));
+    }
+
     /// <summary>Actions of an entity, recovered from the folders <c>Actions/&lt;Action&gt;&lt;Entity&gt;</c> (a Query file means a read-only action).</summary>
     private static IEnumerable<(string Name, bool IsQuery)> FindActions(SolutionConfig config, string entity)
     {
@@ -122,6 +136,8 @@ public static class McpV2Generator
                 continue;
 
             var action = name[..^entity.Length];
+            if (config.UseCases.ContainsKey($"{entity}.{action}"))
+                continue;
             yield return (action, File.Exists(Path.Combine(directory, $"{name}Query.cs")));
         }
     }

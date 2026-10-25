@@ -148,6 +148,10 @@ internal static class ScaffoldOperations
             new OperationParameter("entity", "Existing entity.", Required: true),
             new OperationParameter("action", "Action name, for example Archive (empty: inferred from the method)."),
             new OperationParameter("method", "HTTP method.", Required: true, Choices: Methods),
+            new OperationParameter("input", "Typed use case: request properties as Name:Type,Name:Type (a trailing ? makes one optional), for example Code:string,DeviceName:string?. Without it the action takes the entity id."),
+            new OperationParameter("output", "Typed use case: result as Name:Type,... (a generated result record), a type, or none. Empty: the entity DTO."),
+            new OperationParameter("anonymous", "The endpoint needs no authentication ([AllowAnonymous]); for public use cases such as activation.", ParameterType.Flag),
+            new OperationParameter("description", "One sentence for the endpoint summary and the MCP tool description."),
             NoMigration(),
         },
         request =>
@@ -163,7 +167,7 @@ internal static class ScaffoldOperations
                 throw new ArgumentException($"Action name '{action}' conflicts with HTTP method '{method}'. Allowed for {method}: {string.Join(", ", allowed)}.");
             var entity = Identifier.Sanitize(request.Get("entity")!);
             var name = Identifier.Sanitize(action!);
-            return InSolution(request, "new_action", config => ActionScaffolder.Generate(config, entity, name, method, auto));
+            return InSolution(request, "new_action", config => ActionScaffolder.Generate(config, entity, name, method, auto, request.Get("input"), request.Get("output"), request.Flag("anonymous"), request.Get("description")));
         });
 
     private static OperationDefinition NewEvent() => Mutating(

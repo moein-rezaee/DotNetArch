@@ -5,8 +5,11 @@ namespace DotNetArch.Core.Scaffolding.V2;
 /// <summary>Adds a custom use case (<c>new action</c>) to an existing entity in a v2 solution.</summary>
 internal static class ActionV2Generator
 {
-    public static bool Generate(SolutionConfig config, string entity, string actionName, string httpMethod)
+    public static bool Generate(SolutionConfig config, string entity, string actionName, string httpMethod, UseCaseSpec? useCase = null, bool anonymous = false, string? description = null)
     {
+        if (useCase is not null)
+            return TypedActionV2Generator.Generate(config, entity, actionName, httpMethod, useCase, anonymous, description);
+
         Identifier.RequireIdentifier(entity, "entity name");
         Identifier.RequireIdentifier(actionName, "action name");
 

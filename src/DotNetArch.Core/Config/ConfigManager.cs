@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 
 namespace DotNetArch.Core.Config;
 
@@ -58,6 +59,14 @@ public static class ConfigManager
                 config.DockerImage = value;
             else if (key.Equals("docker.container", StringComparison.OrdinalIgnoreCase))
                 config.DockerContainer = value;
+            else if (key.StartsWith("usecase.", StringComparison.OrdinalIgnoreCase))
+            {
+                var name = key.Substring("usecase.".Length);
+                var parts2 = value.Split('|');
+                var names = name.Split('.', 2);
+                if (names.Length == 2 && parts2.Length == 4)
+                    config.UseCases[name] = new UseCaseState { Entity = names[0], Action = names[1], Method = parts2[0], Anonymous = parts2[1] == "anonymous", Input = parts2[2], Output = parts2[3] };
+            }
             else if (key.StartsWith("entity.", StringComparison.OrdinalIgnoreCase))
             {
                 var name = key.Substring("entity.".Length);
@@ -118,6 +127,8 @@ public static class ConfigManager
             var status = kv.Value.HasCrud && kv.Value.HasAction ? "both" : kv.Value.HasCrud ? "crud" : "action";
             content += $"entity.{kv.Key}: {status}{nl}";
         }
+        foreach (var useCase in config.UseCases.OrderBy(entry => entry.Key, StringComparer.Ordinal))
+            content += $"usecase.{useCase.Key}: {useCase.Value.Method}|{(useCase.Value.Anonymous ? "anonymous" : "protected")}|{useCase.Value.Input}|{useCase.Value.Output}{nl}";
         File.WriteAllText(path, content);
     }
 }

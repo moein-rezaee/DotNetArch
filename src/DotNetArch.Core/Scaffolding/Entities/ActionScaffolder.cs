@@ -9,7 +9,7 @@ namespace DotNetArch.Core.Scaffolding.Entities;
 
 public static class ActionScaffolder
 {
-    public static void Generate(SolutionConfig config, string entity, string action, string httpMethod, bool crudStyle)
+    public static void Generate(SolutionConfig config, string entity, string action, string httpMethod, bool crudStyle, string? input = null, string? output = null, bool anonymous = false, string? description = null)
     {
         Identifier.RequireIfPresent(entity, "entity name");
         Identifier.RequireIfPresent(action, "action name");
@@ -23,7 +23,8 @@ public static class ActionScaffolder
                 return;
             }
 
-            V2.ActionV2Generator.Generate(config, entity, action, httpMethod);
+            var typed = input is not null || output is not null ? V2.UseCaseSpec.Parse(input, output) : null;
+            V2.ActionV2Generator.Generate(config, entity, action, httpMethod, typed, anonymous, description);
             return;
         }
         if (string.IsNullOrWhiteSpace(config.SolutionName) || string.IsNullOrWhiteSpace(entity) || string.IsNullOrWhiteSpace(action))

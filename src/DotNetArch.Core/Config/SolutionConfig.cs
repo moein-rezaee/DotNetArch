@@ -66,6 +66,20 @@ public class SolutionConfig
     public string ProjectDirectory(string projectName) => IsV2 ? $"src/{projectName}" : projectName;
 
     public Dictionary<string, EntityStatus> Entities { get; set; } = new();
+
+    /// <summary>Typed use cases, keyed <c>Entity.Action</c>.</summary>
+    public Dictionary<string, UseCaseState> UseCases { get; set; } = new();
+}
+
+/// <summary>A typed use case of an entity (<c>new action --input --output</c>), kept so later generators (MCP host, CLI host) can produce the same operation.</summary>
+public sealed class UseCaseState
+{
+    public string Entity { get; set; } = "";
+    public string Action { get; set; } = "";
+    public string Method { get; set; } = "POST";
+    public bool Anonymous { get; set; }
+    public string Input { get; set; } = "";
+    public string Output { get; set; } = "";
 }
 
 public class EntityStatus

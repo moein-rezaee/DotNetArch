@@ -23,6 +23,13 @@ internal static class SpecsV2
             $"| {entity} | `{httpMethod.ToUpperInvariant()} /api/{route}/{{id}}/{Naming.ToKebabCase(action)}` | action {action} |\n");
     }
 
+    public static void AddTypedAction(SolutionConfig config, string entity, string action, string httpMethod)
+    {
+        var route = Naming.ToKebabCase(Naming.Pluralize(entity));
+        InsertBefore(Path.Combine(config.SolutionPath, "docs", "specs", "contracts.md"), ContractsMarker,
+            $"| {entity} | `{httpMethod.ToUpperInvariant()} /api/{route}/{Naming.ToKebabCase(action)}` | use case {action} |\n");
+    }
+
     public static void AddKit(SolutionConfig config, string area, IReadOnlyList<string> providers)
     {
         var path = Path.Combine(config.SolutionPath, "docs", "specs", "openspec.yaml");
