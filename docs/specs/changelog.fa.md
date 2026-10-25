@@ -1,6 +1,8 @@
 # تغییرات
 
 ## 2.0.0 (منتشرنشده)
+- پرچم `~` روی propertyهای `new entity` آن را از DTO بیرون نگه می‌دارد؛ use caseهای تایپ‌دار که نام یک enum را می‌آورند namespace ‏enum را می‌گیرند.
+- ‏Dockerfile تولیدشده دیگر با خط `# syntax=` شروع نمی‌شود (frontend پیش‌فرض BuildKit برای `RUN --mount` کافی است؛ آن خط به image ‏frontend نیاز دارد که registry آفلاین یا خصوصی ممکن است نداشته باشد).
 - ‏`new entity` (propertyهای تایپ‌دار و persistence بدون CRUD)، `new feature` (گروه use case بدون entity)، `new enum --members`، متدهای repository ‏`FirstOrDefaultAsync` / `ListAsync`، ‏`DomainException.OptionalText` (R-J5، R-J6)؛ ۲۹ عملیات.
 - ‏`external_kits` پروفایل و `new solution --profile`: kitهای منتشرشده از روی داده در hostهای Api و MCP و CLI wire می‌شوند و در صورت اعلام kit، کد دستی Swagger و exception-handler برداشته می‌شود (R-J4، D-39).
 - ‏`new solution --in-place`؛ use caseهای تایپ‌دار (‏`new action --input --output --anonymous --description` که به شکل `usecase.*` در `dotnet-arch.yml` ثبت می‌شود)؛ ‏`add_cli` و `new solution --cli`: میزبان CLI هم‌سطح میزبان MCP با تست برابری (R-J1..R-J3، D-36..D-38)؛ ۲۷ عملیات. رفع شد: متغیر بلااستفاده‌ای که build حالت Release ابزار را می‌شکست.

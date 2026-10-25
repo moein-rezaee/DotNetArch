@@ -1,3 +1,3 @@
-{{EnumUsing}}namespace {{App}}.Application.Features.{{Plural}}.Dtos;
+{{DtoEnumUsing}}namespace {{App}}.Application.Features.{{Plural}}.Dtos;
 
 public sealed record {{Entity}}Dto({{DtoParameters}});

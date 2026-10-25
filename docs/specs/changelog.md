@@ -1,6 +1,8 @@
 # Changelog
 
 ## 2.0.0 (unreleased)
+- `new entity` property flag `~` keeps a property out of the DTO; typed use cases that name an enum get the enum namespace.
+- The generated Dockerfile no longer starts with a `# syntax=` line (the default BuildKit frontend covers `RUN --mount`; the line needs the frontend image, which an offline or private registry may not have).
 - `new entity` (typed properties and persistence without CRUD), `new feature` (use-case groups without an entity), `new enum --members`, repository `FirstOrDefaultAsync` / `ListAsync`, `DomainException.OptionalText` (R-J5, R-J6); 29 operations.
 - Profile `external_kits` and `new solution --profile`: published kits are wired into the Api, MCP and CLI hosts from data, replacing the hand-rolled Swagger and exception-handler code when the kit says so (R-J4, D-39).
 - `new solution --in-place`; typed use cases (`new action --input --output --anonymous --description`, recorded as `usecase.*` in `dotnet-arch.yml`); `add_cli` and `new solution --cli`: a CLI host that is a peer of the MCP host, with a parity test (R-J1..R-J3, D-36..D-38); 27 operations. Fixed: an unused variable that stopped Release builds of the tool.

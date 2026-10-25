@@ -72,8 +72,10 @@ internal static class EntityV2Generator
             .Concat(optional.Select(p => $"{p.ClrType} {p.ParameterName} = default")));
         tokens["Assignments"] = string.Join("\n", properties.Select(p => "            " + p.Name + " = " + Assignment(p) + ","));
         tokens["Mappings"] = Mappings(entity, properties);
-        tokens["DtoParameters"] = string.Join(", ", new[] { "Guid Id" }.Concat(properties.Select(p => $"{p.ClrType} {p.Name}")).Concat(new[] { "DateTime CreatedAtUtc", "DateTime? UpdatedAtUtc" }));
-        tokens["DtoArguments"] = string.Join(", ", new[] { "entity.Id" }.Concat(properties.Select(p => $"entity.{p.Name}")).Concat(new[] { "entity.CreatedAtUtc", "entity.UpdatedAtUtc" }));
+        var exposed = properties.Where(p => !p.IsHidden).ToList();
+        tokens["DtoParameters"] = string.Join(", ", new[] { "Guid Id" }.Concat(exposed.Select(p => $"{p.ClrType} {p.Name}")).Concat(new[] { "DateTime CreatedAtUtc", "DateTime? UpdatedAtUtc" }));
+        tokens["DtoArguments"] = string.Join(", ", new[] { "entity.Id" }.Concat(exposed.Select(p => $"entity.{p.Name}")).Concat(new[] { "entity.CreatedAtUtc", "entity.UpdatedAtUtc" }));
+        tokens["DtoEnumUsing"] = exposed.Any(p => p.IsEnum) ? enumUsing : string.Empty;
         tokens["SampleArguments"] = SampleArguments(ordered, entity);
         tokens["StateAssertions"] = string.Join("\n", properties.Select(p => $"        Assert.Equal({p.Sample()}, entity.{p.Name});"));
         tokens["LoadedAssertions"] = string.Join("\n", properties.Select(p => $"        Assert.Equal({p.Sample()}, loaded.{p.Name});"));

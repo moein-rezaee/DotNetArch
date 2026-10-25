@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1
 ARG DOTNET_VERSION={{DotnetMajor}}.0
 
 FROM mcr.microsoft.com/dotnet/sdk:${DOTNET_VERSION} AS build

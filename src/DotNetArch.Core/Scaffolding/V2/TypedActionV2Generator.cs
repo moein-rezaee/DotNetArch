@@ -105,7 +105,9 @@ internal static class TypedActionV2Generator
         tokens["RecordParameters"] = spec.RecordParameters();
         tokens["ResultParameters"] = spec.Output.Kind == UseCaseOutputKind.Generated ? string.Join(", ", spec.Output.Properties.OrderBy(p => p.IsOptional).Select(p => p.Declaration)) : string.Empty;
         tokens["ValidatorRules"] = spec.ValidatorRules();
-        tokens["DtoUsing"] = NeedsDtos(spec) ? $"using {config.SolutionName}.Application.Features.{names.Plural}.Dtos;\n" : string.Empty;
+        var (needsDtos, needsEnums) = ClassifyTypes(config, spec);
+        tokens["DtoUsing"] = (needsDtos ? $"using {config.SolutionName}.Application.Features.{names.Plural}.Dtos;\n" : string.Empty)
+                             + (needsEnums ? $"using {config.SolutionName}.Domain.Enums;\n" : string.Empty);
         tokens["AnonymousAttribute"] = anonymous ? "\n    [AllowAnonymous]" : string.Empty;
         tokens["ControllerBody"] = ControllerBody(actionName, request, resultType, hasResult, spec, isQuery);
 
@@ -153,14 +155,28 @@ internal static class TypedActionV2Generator
         _ => string.Empty,
     };
 
-    private static bool NeedsDtos(UseCaseSpec spec)
+    /// <summary>Which namespaces the types of a use case need: the DTOs of the feature (a DTO name), the common enums (a name found under an <c>Enums</c> folder).</summary>
+    private static (bool Dtos, bool Enums) ClassifyTypes(SolutionConfig config, UseCaseSpec spec)
     {
-        var scalars = new HashSet<string>(StringComparer.Ordinal) { "string", "int", "long", "bool", "decimal", "double", "float", "Guid", "DateTime", "DateTimeOffset", "TimeSpan", "List", "Dictionary" };
-        bool Uses(string type) => Regex.Matches(type, "[A-Za-z_][A-Za-z0-9_]*").Any(m => !scalars.Contains(m.Value));
-        return spec.Output.Kind == UseCaseOutputKind.EntityDto
-               || (spec.Output.Kind == UseCaseOutputKind.Existing && Uses(spec.Output.Type))
-               || spec.Output.Properties.Any(p => Uses(p.Type))
-               || spec.Input.Any(p => Uses(p.Type));
+        var known = new HashSet<string>(StringComparer.Ordinal) { "string", "int", "long", "bool", "decimal", "double", "float", "Guid", "DateTime", "DateTimeOffset", "TimeSpan", "List", "Dictionary" };
+        var enums = new HashSet<string>(StringComparer.Ordinal);
+        var src = Path.Combine(config.SolutionPath, "src");
+        if (Directory.Exists(src))
+        {
+            foreach (var file in Directory.EnumerateFiles(src, "*.cs", SearchOption.AllDirectories))
+            {
+                if (file.Replace('\\', '/').Contains("/Enums/", StringComparison.Ordinal))
+                    enums.Add(Path.GetFileNameWithoutExtension(file));
+            }
+        }
+
+        var identifiers = spec.Input.Select(p => p.Type)
+            .Concat(spec.Output.Properties.Select(p => p.Type))
+            .Concat(spec.Output.Kind == UseCaseOutputKind.Existing ? new[] { spec.Output.Type } : Array.Empty<string>())
+            .SelectMany(type => Regex.Matches(type, "[A-Za-z_][A-Za-z0-9_]*").Select(m => m.Value))
+            .Where(name => !known.Contains(name))
+            .ToList();
+        return (spec.Output.Kind == UseCaseOutputKind.EntityDto || identifiers.Any(name => !enums.Contains(name)), identifiers.Any(enums.Contains));
     }
 
     private static string Summary(string? description, string actionName, string entity)

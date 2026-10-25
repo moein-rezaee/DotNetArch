@@ -49,12 +49,12 @@ public sealed class EntityFeatureTests : IDisposable
         var config = Solution();
 
         using (Host())
-            EntityV2Generator.Generate(config, "Badge", EntityProperty.ParseList("Code:string(64)!,Owner:string(100)#,Status:BadgeStatus,Limit:int,Note:string(300)?,ExpiresAtUtc:DateTime?"), "A badge.");
+            EntityV2Generator.Generate(config, "Badge", EntityProperty.ParseList("Code:string(64)!,Owner:string(100)#,Status:BadgeStatus,Limit:int,Note:string(300)?,ExpiresAtUtc:DateTime?,Hash:string(128)!~"), "A badge.");
 
         var entity = File.ReadAllText(P("src/Acme.Domain/Entities/Badge.cs"));
         Assert.Contains("public const int CodeMaxLength = 64;", entity);
         Assert.Contains("public string? Note { get; private set; }", entity);
-        Assert.Contains("Create(string code, string owner, BadgeStatus status, int limit, DateTime nowUtc, string? note = default, DateTime? expiresAtUtc = default)", entity);
+        Assert.Contains("Create(string code, string owner, BadgeStatus status, int limit, string hash, DateTime nowUtc, string? note = default, DateTime? expiresAtUtc = default)", entity);
         Assert.Contains("Code = DomainException.RequireText(code, nameof(Code), CodeMaxLength),", entity);
         Assert.Contains("Note = DomainException.OptionalText(note, nameof(Note), NoteMaxLength),", entity);
 
@@ -63,6 +63,8 @@ public sealed class EntityFeatureTests : IDisposable
         Assert.Contains("builder.HasIndex(entity => entity.Owner);", mapping);
         Assert.Contains("entity.Status).HasConversion<string>()", mapping);
         Assert.Contains("BadgeDto(Guid Id, string Code, string Owner, BadgeStatus Status, int Limit, string? Note, DateTime? ExpiresAtUtc, DateTime CreatedAtUtc, DateTime? UpdatedAtUtc)", File.ReadAllText(P("src/Acme.Application/Features/Badges/Dtos/BadgeDto.cs")));
+        Assert.DoesNotContain("Hash", File.ReadAllText(P("src/Acme.Application/Features/Badges/Dtos/BadgeDto.cs")));
+        Assert.Contains("public string Hash { get; private set; }", entity);
         Assert.Contains("Create_rejects_a_blank_code", File.ReadAllText(P("tests/Acme.Domain.Tests/Entities/BadgeTests.cs")));
         Assert.Contains("Code_is_unique", File.ReadAllText(P("tests/Acme.Infrastructure.Tests/Persistence/BadgePersistenceTests.cs")));
         Assert.False(Directory.Exists(P("src/Acme.Application/Features/Badges/Commands")));
@@ -86,6 +88,21 @@ public sealed class EntityFeatureTests : IDisposable
         using var _ = Host();
         Assert.Throws<ArgumentException>(() => EntityV2Generator.Generate(config, "Badge", EntityProperty.ParseList("Kind:MissingEnum"), null));
         Assert.False(File.Exists(P("src/Acme.Domain/Entities/Badge.cs")));
+    }
+
+    [Fact]
+    public void A_use_case_that_names_an_enum_gets_the_enum_namespace()
+    {
+        var config = Solution();
+
+        using (Host())
+        {
+            FeatureV2Generator.Generate(config, "Setting", null);
+            ActionScaffolder.Generate(config, "Setting", "Find", "GET", crudStyle: false, "Status:BadgeStatus?", "Names:List<string>", false, null);
+        }
+
+        Assert.Contains("using Acme.Domain.Enums;", File.ReadAllText(P("src/Acme.Application/Features/Settings/Actions/FindSetting/FindSettingQuery.cs")));
+        Assert.DoesNotContain("Features.Settings.Dtos", File.ReadAllText(P("src/Acme.Application/Features/Settings/Actions/FindSetting/FindSettingQuery.cs")));
     }
 
     [Fact]

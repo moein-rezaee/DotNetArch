@@ -3,8 +3,8 @@ using System.Text.RegularExpressions;
 
 namespace DotNetArch.Core.Scaffolding.V2;
 
-/// <summary>One persisted property of an entity: <c>Name:Type[(max)][?][!|#]</c>. <c>!</c> adds a unique index, <c>#</c> a plain index; <c>(max)</c> is the length of a string.</summary>
-internal sealed partial record EntityProperty(string Name, string Type, bool IsOptional, int? MaxLength, bool IsUnique, bool IsIndexed)
+/// <summary>One persisted property of an entity: <c>Name:Type[(max)][?][!#~]</c>. <c>!</c> adds a unique index, <c>#</c> a plain index, <c>~</c> keeps it out of the DTO (a hash, a secret); <c>(max)</c> is the length of a string.</summary>
+internal sealed partial record EntityProperty(string Name, string Type, bool IsOptional, int? MaxLength, bool IsUnique, bool IsIndexed, bool IsHidden = false)
 {
     private static readonly HashSet<string> Scalars = new(StringComparer.Ordinal)
     {
@@ -59,14 +59,15 @@ internal sealed partial record EntityProperty(string Name, string Type, bool IsO
         if (name is "Id" or "CreatedAtUtc" or "UpdatedAtUtc")
             throw new ArgumentException($"'{name}' is provided by the entity base class.");
 
-        var flag = match.Groups["flag"].Value;
+        var flags = match.Groups["flags"].Value;
         return new EntityProperty(
             name,
             type,
             match.Groups["optional"].Success,
             match.Groups["len"].Success ? int.Parse(match.Groups["len"].Value, System.Globalization.CultureInfo.InvariantCulture) : null,
-            flag == "!",
-            flag == "#");
+            flags.Contains('!'),
+            flags.Contains('#'),
+            flags.Contains('~'));
     }
 
     public static IReadOnlyList<EntityProperty> ParseList(string? text)
@@ -80,6 +81,6 @@ internal sealed partial record EntityProperty(string Name, string Type, bool IsO
         return properties;
     }
 
-    [GeneratedRegex(@"^(?<name>[A-Z][A-Za-z0-9_]*):(?<type>[A-Za-z][A-Za-z0-9_]*)(\((?<len>\d{1,4})\))?(?<optional>\?)?(?<flag>[!#])?$", RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"^(?<name>[A-Z][A-Za-z0-9_]*):(?<type>[A-Za-z][A-Za-z0-9_]*)(\((?<len>\d{1,4})\))?(?<optional>\?)?(?<flags>[!#~]*)$", RegexOptions.CultureInvariant)]
     private static partial Regex Pattern();
 }
