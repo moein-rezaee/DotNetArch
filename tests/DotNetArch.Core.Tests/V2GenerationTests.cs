@@ -31,6 +31,22 @@ public sealed class V2GenerationTests : IDisposable
     private string Read(string relative) => File.ReadAllText(Path_(relative));
 
     [Fact]
+    public void In_place_generation_writes_into_the_output_folder_and_keeps_existing_files()
+    {
+        var repository = Path.Combine(_root, "corevia-acme");
+        Directory.CreateDirectory(repository);
+        File.WriteAllText(Path.Combine(repository, "AGENTS.md"), "# provisioned agents file");
+
+        using (Host())
+            SolutionGenerator.Generate(new SolutionRequest("AcmeService", repository, "AcmeService.Api", "controller", "SQLite", InPlace: true));
+
+        Assert.True(File.Exists(Path.Combine(repository, "src", "AcmeService.Domain", "AcmeService.Domain.csproj")));
+        Assert.True(File.Exists(Path.Combine(repository, "dotnet-arch.yml")));
+        Assert.False(Directory.Exists(Path.Combine(repository, "AcmeService")));
+        Assert.Equal("# provisioned agents file", File.ReadAllText(Path.Combine(repository, "AGENTS.md")));
+    }
+
+    [Fact]
     public void Solution_has_the_four_layers_wired_per_layer()
     {
         var config = Generate();

@@ -47,7 +47,6 @@ internal static class FolderMoves
     internal static string Rewrite(string text, string from, string to)
     {
         var name = Regex.Escape(from);
-        var tail = @"(?=[/\\](?:\*|[\w.-]+\.\w+|(?![\w-])))";
         var start = @"(?:(?<![\w./\\-])|(?<=/src/[\w.-]+/))";
         text = Regex.Replace(text, $@"(?<!Link="")" + start + $@"(?<dot>(?:\.\.?[/\\])*){name}(?=/(?:\*|[\w.-]+\.\w+|(?![\w-])))", m => m.Groups["dot"].Value + to, RegexOptions.CultureInvariant, TimeSpan.FromSeconds(2));
         return Regex.Replace(text, $@"(?<!Link="")" + start + $@"(?<dot>(?:\.\.?[/\\])*){name}(?=\\(?:\*|[\w.-]+\.\w+|(?![\w-])))", m => m.Groups["dot"].Value + to.Replace('/', '\\'), RegexOptions.CultureInvariant, TimeSpan.FromSeconds(2));

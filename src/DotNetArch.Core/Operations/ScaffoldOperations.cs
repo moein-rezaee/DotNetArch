@@ -97,6 +97,7 @@ internal static class ScaffoldOperations
             new OperationParameter("no_docker", "Skip Dockerfile and compose.", ParameterType.Flag),
             new OperationParameter("no_git", "Skip git init.", ParameterType.Flag),
             new OperationParameter("no_tests", "Skip the generated test projects.", ParameterType.Flag),
+            new OperationParameter("in_place", "Create the solution directly in the output folder instead of a folder named after it (for a repository folder that already exists, such as corevia-<slug>). Existing files are never overwritten.", ParameterType.Flag),
             new OperationParameter("mcp", "Also generate an MCP host (src/<App>.Mcp) whose tools mirror every entity.", ParameterType.Flag),
         },
         request =>
@@ -117,13 +118,15 @@ internal static class ScaffoldOperations
             {
                 var startup = $"{name}.{(layout == "legacy" ? "API" : "Api")}";
                 var provider = layout == "legacy" && database.Equals("None", StringComparison.OrdinalIgnoreCase) ? "None" : database;
-                SolutionGenerator.Generate(new SolutionRequest(name, work, startup, style, provider, layout == "legacy" ? SolutionConfig.LegacyLayout : SolutionConfig.V2Layout, ops));
-                if (layout == "v3" && ConfigManager.Load(System.IO.Path.Combine(work, name)) is { } config)
+                var generation = new SolutionRequest(name, work, startup, style, provider, layout == "legacy" ? SolutionConfig.LegacyLayout : SolutionConfig.V2Layout, ops, request.Flag("in_place"));
+                SolutionGenerator.Generate(generation);
+                var solutionDirectory = generation.SolutionDirectory;
+                if (layout == "v3" && ConfigManager.Load(solutionDirectory) is { } config)
                 {
                     config.Layout = SolutionConfig.V3Layout;
-                    ConfigManager.Save(System.IO.Path.Combine(work, name), config);
+                    ConfigManager.Save(solutionDirectory, config);
                     var manual = new List<string>();
-                    Normalization.Run(System.IO.Path.Combine(work, name), manual);
+                    Normalization.Run(solutionDirectory, manual);
                     foreach (var note in manual)
                         ToolHost.Info(note);
                 }

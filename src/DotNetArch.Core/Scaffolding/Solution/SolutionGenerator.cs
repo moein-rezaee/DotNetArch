@@ -9,7 +9,12 @@ public sealed record SolutionRequest(
     string ApiStyle,
     string? ProviderOverride = null,
     string Layout = SolutionConfig.V2Layout,
-    Ops.OpsOptions? Ops = null);
+    Ops.OpsOptions? Ops = null,
+    bool InPlace = false)
+{
+    /// <summary>The folder that holds the solution: <see cref="OutputPath"/> itself when <see cref="InPlace"/>, otherwise a folder named after the solution inside it.</summary>
+    public string SolutionDirectory => InPlace ? OutputPath : Path.Combine(OutputPath, Name);
+}
 
 /// <summary>Creates a new solution (<c>new solution</c>): layout v2 by default, flat legacy layout on request.</summary>
 public static class SolutionGenerator

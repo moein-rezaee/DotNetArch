@@ -14,7 +14,7 @@ public static class SolutionV2Generator
     {
         var app = Identifier.RequireSolutionName(request.Name);
         Identifier.RequirePath(request.OutputPath, "output path");
-        var solutionDir = Path.Combine(request.OutputPath, app);
+        var solutionDir = request.InPlace ? request.OutputPath : Path.Combine(request.OutputPath, app);
         Directory.CreateDirectory(solutionDir);
 
         var tfm = $"net{PackageVersionResolver.ResolveTargetMajor(SolutionTooling.ResolveTargetFramework())}.0";
