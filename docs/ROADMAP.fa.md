@@ -55,3 +55,10 @@
 انجام‌شده: 13.1 (مولدها به‌عنوان عملیات رجیستری؛ کلمه‌های CLI و ابزار MCP از یک تعریف؛ طرح اول با کپی موقت) 13.2 (عملیات تازه `add_layer`، `add_tests`، `spec_list|add|check`، `graph`؛ `adopt --standards`) 13.3 (fixerهای ABP بعد از هر مولد؛ قالب‌های fixer-friendly) 13.4 (پیش‌فرض layout v3 در `new solution`؛ 12.6 را می‌بندد)
 انجام‌شده (ادامه): 13.5 (تست کلاینت تایپ‌دار همراه کلاینت تولید می‌شود؛ کلاینت از routeهای تازهٔ controller، از جمله فایل‌های partial، پیروی می‌کند)
 باز: 13.6 (smoke روی ابزار بسته‌بندی‌شده؛ 12.8 را هم می‌بندد) 13.7 (تأیید تعاملی بعد از طرح برای `exec` و `remove migration` روی پایگاه داده واقعی)
+
+## فاز ۱۴ - توانمندسازی سرویس‌های Corevia (R-J1..J3، D-36..D-38)
+- [x] ۱۴.۱ ‏`new solution --in-place` (AC-33)
+- [x] ۱۴.۲ use caseهای تایپ‌دار: ‏`new action --input --output --anonymous --description`؛ ثبت در `dotnet-arch.yml`؛ ابزار MCP و کلاینت تایپ‌دار همراه می‌آیند (AC-34)
+- [x] ۱۴.۳ ‏`add_cli` / `new solution --cli`: میزبان CLI هم‌سطح MCP، دستور برای هر entity/action/use case، تست‌ها و تست برابری؛ ‏`ProjectLayer.Cli` در `doctor` (AC-35)
+- [ ] ۱۴.۴ kitهای بیرونی مبتنی بر پروفایل: پروفایل بسته‌ها، خطوط ثبت میزبان، تنظیمات و secretهای kitهای منتشرشده (مثل `Corevia.Kit.*`) را فهرست می‌کند و `new solution --profile` / `add kit` آن‌ها را wire می‌کنند (جای بارگذار کانفیگ، exception handler و Swagger دستی)
+- [ ] ۱۴.۵ ‏Doctor: بررسی برابری CLI/MCP و هشدار CLI بدون تست (DA-S05 برای `.Cli`)

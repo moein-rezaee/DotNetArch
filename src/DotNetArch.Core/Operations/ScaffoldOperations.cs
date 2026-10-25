@@ -45,6 +45,7 @@ internal static class ScaffoldOperations
         NewKit(),
         AddKit(),
         AddMcp(),
+        AddCli(),
         CiAdd(),
         DockerAdd(),
         GitSetup(),
@@ -98,6 +99,7 @@ internal static class ScaffoldOperations
             new OperationParameter("no_git", "Skip git init.", ParameterType.Flag),
             new OperationParameter("no_tests", "Skip the generated test projects.", ParameterType.Flag),
             new OperationParameter("in_place", "Create the solution directly in the output folder instead of a folder named after it (for a repository folder that already exists, such as corevia-<slug>). Existing files are never overwritten.", ParameterType.Flag),
+            new OperationParameter("cli", "Also generate a CLI host (src/<App>.Cli), a peer of the MCP host: commands that send the same requests as the API.", ParameterType.Flag),
             new OperationParameter("mcp", "Also generate an MCP host (src/<App>.Mcp) whose tools mirror every entity.", ParameterType.Flag),
         },
         request =>
@@ -109,7 +111,7 @@ internal static class ScaffoldOperations
             var layout = (request.Get("layout") ?? "v3").ToLowerInvariant();
             if (layout is not ("v3" or "v2" or "legacy"))
                 throw new ArgumentException($"Unknown layout '{layout}'. Use v3, v2 or legacy.");
-            var ops = new OpsOptions(request.Get("ci") ?? "none", request.Get("git_remote"), request.Get("git_host"), request.Get("git_provider"), request.Get("docker_registry"), request.Get("nuget_source"), request.Get("nuget_source_name"), request.Flag("no_docker"), request.Flag("no_git"), request.Flag("no_tests"), request.Flag("mcp"));
+            var ops = new OpsOptions(request.Get("ci") ?? "none", request.Get("git_remote"), request.Get("git_host"), request.Get("git_provider"), request.Get("docker_registry"), request.Get("nuget_source"), request.Get("nuget_source_name"), request.Flag("no_docker"), request.Flag("no_git"), request.Flag("no_tests"), request.Flag("mcp"), request.Flag("cli"));
             var database = request.Get("database") ?? "SQLite";
             var style = request.Get("style") ?? "controller";
             Directory.CreateDirectory(output);
@@ -294,6 +296,12 @@ internal static class ScaffoldOperations
         "Add an MCP host (src/<App>.Mcp) to a layout v2/v3 solution; existing and future entities and actions get tools that run the same use cases as the API. Plan first; writes only with apply.",
         new[] { PathParam() },
         request => InSolution(request, "add_mcp", config => McpV2Generator.Add(config)));
+
+    private static OperationDefinition AddCli() => Mutating(
+        "add_cli",
+        "Add a CLI host (src/<App>.Cli) to a layout v2/v3 solution, a peer of the MCP host: every entity, action and typed use case gets a command that sends the same MediatR request as the API and the MCP tool. Plan first; writes only with apply.",
+        new[] { PathParam() },
+        request => InSolution(request, "add_cli", config => CliV2Generator.Add(config)));
 
     private static OperationDefinition CiAdd() => Mutating(
         "ci_add",

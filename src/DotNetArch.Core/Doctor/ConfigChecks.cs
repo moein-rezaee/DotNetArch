@@ -11,7 +11,7 @@ internal static partial class ConfigChecks
     public static void Run(RepoContext ctx)
     {
         const string cat = "config";
-        var hosts = ctx.Projects.Where(p => !p.IsTest && p.Layer is ProjectLayer.Api or ProjectLayer.Mcp).ToList();
+        var hosts = ctx.Projects.Where(p => !p.IsTest && p.Layer is ProjectLayer.Api or ProjectLayer.Mcp or ProjectLayer.Cli).ToList();
         if (hosts.Count == 0)
         {
             ctx.Note("DA-C00", cat, "No Api/Mcp host project found; configuration checks skipped.");

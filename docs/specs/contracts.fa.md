@@ -1,13 +1,17 @@
 # قراردادها (CLI، پیکربندی، MCP)
 
 ## CLI
-دستورها (همه عملیات رجیستری‌اند، D-32؛ دستور دوکلمه‌ای همان عملیات با `_` است: ‏`new crud` = `new_crud`): ‏`new solution`، `new crud`، `new action`، `new event`، `new enum`، `new constant`، `new service`، `new kit`، `add kit`، `add mcp`، `add layer`، `add tests`،
+دستورها (همه عملیات رجیستری‌اند، D-32؛ دستور دوکلمه‌ای همان عملیات با `_` است: ‏`new crud` = `new_crud`): ‏`new solution`، `new crud`، `new action`، `new event`، `new enum`، `new constant`، `new service`، `new kit`، `add kit`، `add mcp`، `add cli`، `add layer`، `add tests`،
 ‏`ci add`، `docker add`، `git setup`، `spec list`، `spec add`، `spec check`، `graph`، `list entities`، `describe config`، `exec`، `remove migration`، `doctor`، `adopt`، `fix`، `mcp serve`.
 هر دستوری که فایل تغییر می‌دهد اول طرح می‌دهد و فقط با `--apply` می‌نویسد؛ در ترمینال طرح نشان داده می‌شود و از کاربر پرسیده می‌شود. ‏`--json` خروجی `{ ok, operation, applied, error?, plan[], data }` را چاپ می‌کند و `--out=file` آن را ذخیره می‌کند. ‏`--path` (معادل `--output`) پوشهٔ solution است؛ مقدارها را می‌توان `--no-migration` یا `--no_migration` نوشت. مقدار الزامیِ نداده‌شده پرسیده می‌شود.
 
-گزینه‌های `new solution <Name>`: `--output`، `--database=SQLite|SqlServer|Postgres`، `--style=controller|fast`، `--layout=v2|legacy` (پیش‌فرض v2)، `--mcp`،
+گزینه‌های `new solution <Name>`: `--output`، `--database=SQLite|SqlServer|Postgres`، `--style=controller|fast`، `--layout=v2|legacy` (پیش‌فرض v2)، `--mcp`، `--cli`، `--in-place`،
 `--ci=auto|none|github|gitlab|azure|bitbucket|gitea`، `--git-remote`، `--git-provider`، `--git-host`، `--docker-registry`، `--nuget-source`، `--nuget-source-name`،
 `--no-docker`، `--no-git`، `--no-tests`. فریم‌ورک هدف از بالاترین SDK نصب‌شده (۸ یا ۹) گرفته می‌شود.
+
+`new action --entity= --method= [--action=] [--input=Name:Type,...] [--output=Name:Type,...|Type|none] [--anonymous] [--description=]`: بدون `--input`/`--output` همان action کلاسیکِ مبتنی بر id؛ با آن‌ها use case تایپ‌دار (نیازمند `--style=controller`). نوع‌ها: string، int، long، bool، decimal، double، float، Guid، DateTime، DateTimeOffset، TimeSpan، ‏`T[]`، ‏`List<T>`، ‏`Dictionary<string,T>`، ‏`?` پایانی یا نام DTO. use case در `dotnet-arch.yml` به شکل `usecase.<Entity>.<Action>: METHOD|anonymous|protected|input|output` ذخیره می‌شود.
+
+`add cli` / `new solution --cli`: ‏`src/<App>.Cli` (کنسول؛ نام assembly همان نام kebab-case solution)، دستورهای `<entity> list|get|create|update|delete`، ‏`<entity> <action>` و `<entity> <use-case> --option=value`؛ کد خروج ۰ انجام شد، ۱ رد شد (validation، پیدا نشد، قاعدهٔ دامنه)، ۲ خطای استفاده؛ نتیجه JSON است. ‏`dotnet-arch.yml` مقدار `cli: true` را ثبت می‌کند.
 
 `new service`: با منطق کسب‌وکار (`--logic=true --name=`) یک سرویس Application تولید و در `AddApplication()` ثبت می‌کند؛ بدون منطق (`--logic=false --area= [--providers=]`) یک kit می‌سازد و wire می‌کند.
 بدون `--logic` تعاملی است.

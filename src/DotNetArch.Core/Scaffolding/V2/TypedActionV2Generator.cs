@@ -59,6 +59,8 @@ internal static class TypedActionV2Generator
 
         if (config.McpEnabled)
             McpV2Generator.AddTypedActionTool(config, useCase);
+        if (config.CliEnabled)
+            CliV2Generator.AddTypedActionCommand(config, useCase);
 
         SpecsV2.AddTypedAction(config, entity, actionName, httpMethod);
         ToolHost.Success($"Use case {actionName} for {entity} generated ({writer.Created.Count} files).", "implement the handler: the generated body throws NotImplementedException");

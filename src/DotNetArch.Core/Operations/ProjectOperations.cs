@@ -22,6 +22,7 @@ internal static class ProjectOperations
         ["HttpApi.Client"] = ProjectLayer.HttpApiClient,
         ["Api"] = ProjectLayer.Api,
         ["Mcp"] = ProjectLayer.Mcp,
+        ["Cli"] = ProjectLayer.Cli,
     };
 
     private static OperationParameter PathParam(bool positional = true) => new("path", "Repository root (default: current folder).", Positional: positional, Default: "@cwd");

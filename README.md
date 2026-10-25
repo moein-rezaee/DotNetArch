@@ -68,6 +68,7 @@ One registry feeds the CLI and the MCP server: every command below is also an MC
 | `new service` | Business service (`--logic=true --name= [--entity=] [--lifetime=]`) or a kit for an external capability (`--logic=false --area= [--providers=] [--with-tests]`) |
 | `new kit <Area>` / `add kit <Area>` | Generate an independent kit / wire an existing kit into the solution |
 | `add mcp` | Add the MCP host `src/<App>.Mcp` |
+| `add cli` | Add the CLI host `src/<App>.Cli`, a peer of the MCP host (commands per entity, action and use case; same requests as the API) |
 | `add layer <Domain.Shared\|Application.Contracts\|HttpApi\|HttpApi.Client>` | Add an ABP layer project by moving into it what belongs there (nothing belongs: nothing is created; `--empty` is CLI-only) |
 | `add tests <Layer>` | Add the test project of a layer with an architecture test |
 | `ci add`, `docker add`, `git setup` | CI pipeline, Docker files (compose in `etc/docker/` in v3), git remote |
@@ -89,6 +90,8 @@ In an ABP project (layout v3) every generator is followed by the tool's own fixe
 ```json
 { "mcpServers": { "dotnet-arch": { "command": "dotnet-arch", "args": ["mcp", "serve"] } } }
 ```
+- **Generated CLI host** (`--cli` / `add cli`): `src/<App>.Cli`, a console app whose commands (`product list|get|create|update|delete`, `product archive`, typed use cases with `--option=value`) send the same MediatR requests as the controllers and the MCP tools; exit codes 0 / 1 refused / 2 usage; a parity test keeps CLI commands and MCP tools the same set.
+- **Typed use cases**: `dotnet-arch new action --entity=Product --action=Activate --method=POST --input="Code:string,DeviceName:string?" --output="Token:string" [--anonymous]` gives a request its own properties and result (the handler is a stub for the business logic). `new solution --in-place` generates into an existing repository folder.
 - **Generated MCP host** (`--mcp` / `add mcp`): `src/<App>.Mcp`, streamable HTTP at `/mcp`, bearer token `MCP_AUTH_TOKEN`, tools per entity (`product_list|get|create|update|delete`, one per action) that send the same MediatR requests as the controllers.
 
 ## Tests

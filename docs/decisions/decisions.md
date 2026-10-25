@@ -146,3 +146,12 @@ Versions are published, so users who need the previous behaviour keep the previo
 
 ## D-35 A profile can move root folders to their standard place (Owner, found in the Gateway migration)
 Deploy-time data that sits in a root folder (for example route fragments) belongs under `etc/`. A profile lists such moves (`folder_moves: [{from, to}]`); `doctor` DA-A12 reports a pending move and `fix --rules=DA-A12` moves the folder unchanged and rewrites the paths that point at it in project files, Dockerfiles, Compose, CI and documentation. Not rewritten: history documents and code, the same word inside another path (`/app/ocelot`), key paths without a file or glob after them, and MSBuild `Link` metadata (an output location). The tool names no folder itself. Compose mentions of another repository (`<repo>:docker-compose.yml`) are left alone by DA-A09.
+
+## D-36 A service can be generated inside an existing repository folder (Owner)
+Repositories are provisioned before code exists (Corevia: `service-repo.provision`), so `new solution --in-place` writes into that folder and never overwrites an existing file.
+
+## D-37 A use case is not always about one aggregate id (Owner)
+`new action` gets typed `--input` and `--output`. The generator creates structure and a stub handler; the business logic stays hand-written (D-21). The use case is recorded in `dotnet-arch.yml` so the MCP host, the CLI host and the typed client regenerate the same operation.
+
+## D-38 CLI and MCP are peers over the Application layer (Owner)
+The CLI host (`add_cli`) calls the Application layer directly with the same MediatR requests as the API controllers and the MCP tools. It does not wrap the HTTP API. A parity test keeps both name sets equal.

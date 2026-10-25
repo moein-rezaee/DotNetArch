@@ -80,6 +80,7 @@ public static class McpV2Generator
         foreach (var useCase in config.UseCases.Values.OrderBy(u => u.Entity, StringComparer.Ordinal).ThenBy(u => u.Action, StringComparer.Ordinal))
             AddTypedActionTool(config, useCase);
 
+        CliV2Generator.EnsureParity(config);
         ToolHost.Success($"MCP host added ({writer.Created.Count} files).", $"run it with: dotnet run --project {host}; clients send 'Authorization: Bearer <MCP_AUTH_TOKEN>' to /mcp");
         return true;
     }

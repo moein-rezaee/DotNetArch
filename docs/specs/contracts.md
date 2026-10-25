@@ -1,13 +1,17 @@
 # Contracts (CLI, config, MCP)
 
 ## CLI
-Commands (all registry operations, D-32; a two-word command is the operation with `_`: `new crud` = `new_crud`): `new solution`, `new crud`, `new action`, `new event`, `new enum`, `new constant`, `new service`, `new kit`, `add kit`, `add mcp`, `add layer`, `add tests`,
+Commands (all registry operations, D-32; a two-word command is the operation with `_`: `new crud` = `new_crud`): `new solution`, `new crud`, `new action`, `new event`, `new enum`, `new constant`, `new service`, `new kit`, `add kit`, `add mcp`, `add cli`, `add layer`, `add tests`,
 `ci add`, `docker add`, `git setup`, `spec list`, `spec add`, `spec check`, `graph`, `list entities`, `describe config`, `exec`, `remove migration`, `doctor`, `adopt`, `fix`, `mcp serve`.
 Every command that changes files plans first and writes only with `--apply`; at a terminal the plan is shown and the user is asked. `--json` prints `{ ok, operation, applied, error?, plan[], data }`, `--out=file` saves the output. `--path` (alias `--output`) names the solution folder; values may be written `--no-migration` or `--no_migration`. Missing required values are prompted for.
 
 `new solution <Name>` options: `--output`, `--database=SQLite|SqlServer|Postgres`, `--style=controller|fast`, `--layout=v3|v2|legacy` (default v3),
-`--mcp`, `--ci=auto|none|github|gitlab|azure|bitbucket|gitea`, `--git-remote`, `--git-provider`, `--git-host`, `--docker-registry`, `--nuget-source`,
+`--mcp`, `--cli`, `--in-place`, `--ci=auto|none|github|gitlab|azure|bitbucket|gitea`, `--git-remote`, `--git-provider`, `--git-host`, `--docker-registry`, `--nuget-source`,
 `--nuget-source-name`, `--no-docker`, `--no-git`, `--no-tests`. The target framework follows the highest installed SDK (8 or 9).
+
+`new action --entity= --method= [--action=] [--input=Name:Type,...] [--output=Name:Type,...|Type|none] [--anonymous] [--description=]`: without `--input`/`--output` the classic id-based action; with them a typed use case (requires `--style=controller`). Types: string, int, long, bool, decimal, double, float, Guid, DateTime, DateTimeOffset, TimeSpan, `T[]`, `List<T>`, `Dictionary<string,T>`, a trailing `?`, or a DTO name. The use case is stored in `dotnet-arch.yml` as `usecase.<Entity>.<Action>: METHOD|anonymous|protected|input|output`.
+
+`add cli` / `new solution --cli`: `src/<App>.Cli` (console, assembly name = kebab-case solution name), commands `<entity> list|get|create|update|delete`, `<entity> <action>` and `<entity> <use-case> --option=value`; exit codes 0 done, 1 refused (validation, not found, domain rule), 2 usage error; results as JSON. `dotnet-arch.yml` records `cli: true`.
 
 `new service`: with business logic (`--logic=true --name= [--entity=] [--lifetime=Scoped|Transient|Singleton]`) generates an Application service registered in
 `AddApplication()`; without (`--logic=false --area= [--providers=A,B] [--with-tests]`) generates a kit and wires it. Interactive when `--logic` is absent.

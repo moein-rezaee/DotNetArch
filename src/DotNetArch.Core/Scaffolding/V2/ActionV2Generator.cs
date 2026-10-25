@@ -64,6 +64,8 @@ internal static class ActionV2Generator
 
         if (config.McpEnabled)
             McpV2Generator.AddActionTool(config, entity, actionName, isQuery);
+        if (config.CliEnabled)
+            CliV2Generator.AddActionCommand(config, entity, actionName, isQuery);
 
         SpecsV2.AddAction(config, entity, actionName, httpMethod);
 

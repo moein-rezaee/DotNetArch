@@ -68,6 +68,8 @@ internal static class CrudV2Generator
 
         if (config.McpEnabled)
             McpV2Generator.AddEntityTools(config, entity);
+        if (config.CliEnabled)
+            CliV2Generator.AddEntityCommands(config, entity);
 
         SpecsV2.AddEntity(config, entity);
 

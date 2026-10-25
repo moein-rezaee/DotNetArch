@@ -108,6 +108,9 @@ public static class SolutionV2Generator
         if (ops.Mcp)
             McpV2Generator.Add(config);
 
+        if (ops.Cli)
+            CliV2Generator.Add(config);
+
         if (gitInstalled && gitInitialized)
         {
             Run("git add .");

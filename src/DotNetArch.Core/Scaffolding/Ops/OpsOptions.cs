@@ -12,4 +12,5 @@ public sealed record OpsOptions(
     bool NoDocker = false,
     bool NoGit = false,
     bool NoTests = false,
-    bool Mcp = false);
+    bool Mcp = false,
+    bool Cli = false);

@@ -44,6 +44,9 @@ public class SolutionConfig
     /// <summary>True when the solution has an MCP host (<c>src/&lt;App&gt;.Mcp</c>); new entities then get MCP tools too.</summary>
     public bool McpEnabled { get; set; }
 
+    /// <summary>True when the solution has a CLI host (<c>src/&lt;App&gt;.Cli</c>), a peer of the MCP host; new entities and actions then get commands too.</summary>
+    public bool CliEnabled { get; set; }
+
     public const string LegacyLayout = "legacy";
     public const string V2Layout = "v2";
 

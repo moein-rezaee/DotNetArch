@@ -12,6 +12,7 @@ internal enum ProjectLayer
     Infrastructure,
     Api,
     Mcp,
+    Cli,
     Contracts,
     DomainShared,
     ApplicationContracts,
@@ -197,6 +198,8 @@ internal sealed class RepoContext
             return ProjectLayer.Api;
         if (core.EndsWith(".Mcp", StringComparison.Ordinal))
             return ProjectLayer.Mcp;
+        if (core.EndsWith(".Cli", StringComparison.Ordinal))
+            return ProjectLayer.Cli;
         if (core.EndsWith(".Contracts", StringComparison.Ordinal))
             return ProjectLayer.Contracts;
         return ProjectLayer.Other;
