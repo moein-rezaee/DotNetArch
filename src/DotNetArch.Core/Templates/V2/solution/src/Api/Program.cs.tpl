@@ -1,12 +1,15 @@
+// <dotnet-arch:kit-usings> (kit namespaces of the profile are added above this line)
 using {{App}}.Api.Configuration;
 using {{App}}.Application;
 using {{App}}.Infrastructure.Configuration;
 using {{App}}.Infrastructure;
 
+// <dotnet-arch:kit-bootstrap> (profile lines that run before the host builder exists)
 var builder = WebApplication.CreateBuilder(args);
 
 // One configuration-load step: appsettings (non-sensitive) + .env file + environment (secrets / run-time values).
 builder.Configuration.AddAppConfiguration(builder.Environment.ContentRootPath, builder.Environment.EnvironmentName, args);
+// <dotnet-arch:kit-builder> (profile registrations that need the builder)
 
 // Each layer registers its own dependencies; the composition root only calls them.
 builder.Services
@@ -16,6 +19,7 @@ builder.Services
     .AddKits(builder.Configuration);
 
 var app = builder.Build();
+// <dotnet-arch:kit-app> (profile middleware, before the Api pipeline)
 
 await app.Services.InitializeInfrastructureAsync();
 app.UseApi();

@@ -11,6 +11,8 @@
 
 `new action --entity= --method= [--action=] [--input=Name:Type,...] [--output=Name:Type,...|Type|none] [--anonymous] [--description=]`: بدون `--input`/`--output` همان action کلاسیکِ مبتنی بر id؛ با آن‌ها use case تایپ‌دار (نیازمند `--style=controller`). نوع‌ها: string، int، long، bool، decimal، double، float، Guid، DateTime، DateTimeOffset، TimeSpan، ‏`T[]`، ‏`List<T>`، ‏`Dictionary<string,T>`، ‏`?` پایانی یا نام DTO. use case در `dotnet-arch.yml` به شکل `usecase.<Entity>.<Action>: METHOD|anonymous|protected|input|output` ذخیره می‌شود.
 
+`new solution --profile=<file>`: ‏`external_kits` پروفایل را wire می‌کند (R-J4). شکل پروفایل: `external_kits: [{ area, packages: [{ id, version, projects: [api|mcp|cli|application|infrastructure] }], hosts: { api|mcp|cli: { usings, bootstrap, builder, app } }, settings: { "Section:Key": value }, secrets: [KEY], test_settings: { KEY: value }, replaces: [swagger|exception-handler] }]`؛ ‏`{{App}}` در یک خط نام solution است. markerهای `Program.cs`: ‏`kit-usings`، `kit-bootstrap`، `kit-builder`، `kit-app`؛ factoryهای تست: `kit-test-settings`.
+
 `add cli` / `new solution --cli`: ‏`src/<App>.Cli` (کنسول؛ نام assembly همان نام kebab-case solution)، دستورهای `<entity> list|get|create|update|delete`، ‏`<entity> <action>` و `<entity> <use-case> --option=value`؛ کد خروج ۰ انجام شد، ۱ رد شد (validation، پیدا نشد، قاعدهٔ دامنه)، ۲ خطای استفاده؛ نتیجه JSON است. ‏`dotnet-arch.yml` مقدار `cli: true` را ثبت می‌کند.
 
 `new service`: با منطق کسب‌وکار (`--logic=true --name=`) یک سرویس Application تولید و در `AddApplication()` ثبت می‌کند؛ بدون منطق (`--logic=false --area= [--providers=]`) یک kit می‌سازد و wire می‌کند.

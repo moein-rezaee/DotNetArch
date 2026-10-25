@@ -13,5 +13,6 @@ public sealed class McpFactory : WebApplicationFactory<Program>
         builder.UseEnvironment("Testing");
         builder.UseSetting("DATABASE_CONNECTION_STRING", {{TestConnectionExpression}});
         builder.UseSetting("MCP_AUTH_TOKEN", Token);
+        // <dotnet-arch:kit-test-settings> (values the profile's kits need to start the host)
     }
 }

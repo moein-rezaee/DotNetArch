@@ -1,5 +1,6 @@
 using DotNetArch.Core.Config;
 using DotNetArch.Core.Hosting;
+using DotNetArch.Core.NetArch;
 using DotNetArch.Core.Scaffolding;
 using DotNetArch.Core.Scaffolding.Entities;
 using DotNetArch.Core.Scaffolding.Kits;
@@ -98,6 +99,7 @@ internal static class ScaffoldOperations
             new OperationParameter("no_docker", "Skip Dockerfile and compose.", ParameterType.Flag),
             new OperationParameter("no_git", "Skip git init.", ParameterType.Flag),
             new OperationParameter("no_tests", "Skip the generated test projects.", ParameterType.Flag),
+            new OperationParameter("profile", "Shared profile file (path). Its external_kits are wired into the hosts and .net-arch/profile.yml references it."),
             new OperationParameter("in_place", "Create the solution directly in the output folder instead of a folder named after it (for a repository folder that already exists, such as corevia-<slug>). Existing files are never overwritten.", ParameterType.Flag),
             new OperationParameter("cli", "Also generate a CLI host (src/<App>.Cli), a peer of the MCP host: commands that send the same requests as the API.", ParameterType.Flag),
             new OperationParameter("mcp", "Also generate an MCP host (src/<App>.Mcp) whose tools mirror every entity.", ParameterType.Flag),
@@ -123,6 +125,8 @@ internal static class ScaffoldOperations
                 var generation = new SolutionRequest(name, work, startup, style, provider, layout == "legacy" ? SolutionConfig.LegacyLayout : SolutionConfig.V2Layout, ops, request.Flag("in_place"));
                 SolutionGenerator.Generate(generation);
                 var solutionDirectory = generation.SolutionDirectory;
+                if (request.Get("profile") is { } profilePath)
+                    ApplyProfile(solutionDirectory, profilePath);
                 if (layout == "v3" && ConfigManager.Load(solutionDirectory) is { } config)
                 {
                     config.Layout = SolutionConfig.V3Layout;
@@ -134,6 +138,24 @@ internal static class ScaffoldOperations
                 }
             }, normalize: false);
         });
+
+    /// <summary>Wires the external kits of a shared profile into a new solution and records the profile reference in <c>.net-arch/profile.yml</c>.</summary>
+    private static void ApplyProfile(string solutionDirectory, string profilePath)
+    {
+        var full = System.IO.Path.GetFullPath(profilePath);
+        var shared = File.Exists(full) ? NetArchStore.LoadProfileFile(full) : null;
+        if (shared is null)
+            throw new ArgumentException($"Profile file not found or empty: {profilePath}");
+
+        var config = ConfigManager.Load(solutionDirectory) ?? throw new InvalidOperationException("The new solution has no dotnet-arch.yml.");
+        config.SolutionPath = solutionDirectory;
+        ExternalKitWiring.Apply(config, shared);
+
+        var reference = new ProfileDefinition { Name = shared.Name, Version = shared.Version, Source = System.IO.Path.GetRelativePath(solutionDirectory, full).Replace('\\', '/') };
+        var target = System.IO.Path.Combine(solutionDirectory, NetArchFiles.Folder, NetArchFiles.Profile);
+        Directory.CreateDirectory(System.IO.Path.GetDirectoryName(target)!);
+        File.WriteAllText(target, NetArchStore.ToYaml(reference), new System.Text.UTF8Encoding(false));
+    }
 
     private static OperationDefinition NewCrud() => Mutating(
         "new_crud",

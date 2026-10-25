@@ -92,6 +92,60 @@ public sealed class ProfileDefinition
 
     /// <summary>Root folders that belong somewhere else in the standard layout (for example a folder of deploy-time data that belongs under <c>etc/</c>). <c>fix --rules=DA-A12</c> moves them and follows every path that points at them.</summary>
     public List<FolderMove> FolderMoves { get; set; } = new();
+
+    /// <summary>
+    /// Published kits (NuGet packages the organisation owns) that a new solution wires into its hosts. The tool names no kit itself: the profile lists the
+    /// packages, the registration lines of each host, the settings and the secrets (D-39).
+    /// </summary>
+    public List<ExternalKit> ExternalKits { get; set; } = new();
+}
+
+/// <summary>One published kit: its packages, what each host (<c>api</c>, <c>mcp</c>, <c>cli</c>) registers, the settings and secrets it reads, and the generated parts it replaces.</summary>
+public sealed class ExternalKit
+{
+    public string Area { get; set; } = string.Empty;
+
+    public List<ExternalKitPackage> Packages { get; set; } = new();
+
+    /// <summary>Per host name (<c>api</c>, <c>mcp</c>, <c>cli</c>): the lines this kit adds to that host. A host that is not listed does not use the kit.</summary>
+    public Dictionary<string, KitHostWiring> Hosts { get; set; } = new();
+
+    /// <summary>Non-sensitive settings (<c>Section:Key</c> to value) added to <c>appsettings.json</c> and its example of every host that uses the kit.</summary>
+    public Dictionary<string, string> Settings { get; set; } = new();
+
+    /// <summary>Secret and run-time keys added to <c>.env.example</c> of every host that uses the kit (and to the configuration contract of the Api).</summary>
+    public List<string> Secrets { get; set; } = new();
+
+    /// <summary>Generated parts the kit supersedes: <c>swagger</c> (Swashbuckle setup) and <c>exception-handler</c> (the generated problem-details handler).</summary>
+    public List<string> Replaces { get; set; } = new();
+
+    /// <summary>Values the in-process test hosts of <c>api</c> and <c>mcp</c> need so the host starts (for example a signing secret); added to the test factories.</summary>
+    public Dictionary<string, string> TestSettings { get; set; } = new();
+}
+
+public sealed class ExternalKitPackage
+{
+    public string Id { get; set; } = string.Empty;
+
+    public string Version { get; set; } = string.Empty;
+
+    /// <summary>Projects that reference the package: <c>api</c>, <c>mcp</c>, <c>cli</c>, <c>application</c>, <c>infrastructure</c>.</summary>
+    public List<string> Projects { get; set; } = new();
+}
+
+/// <summary>Lines a host gets. <c>{{App}}</c> in a line is the solution name.</summary>
+public sealed class KitHostWiring
+{
+    public List<string> Usings { get; set; } = new();
+
+    /// <summary>Before the host builder is created (for example loading a .env file into the process).</summary>
+    public List<string> Bootstrap { get; set; } = new();
+
+    /// <summary>After the application configuration is loaded: service registration that needs <c>builder</c>.</summary>
+    public List<string> Builder { get; set; } = new();
+
+    /// <summary>After the host is built: the middleware of a web host.</summary>
+    public List<string> App { get; set; } = new();
 }
 
 /// <summary>One folder move of a profile: <c>from</c> a repository-root folder <c>to</c> its standard place.</summary>

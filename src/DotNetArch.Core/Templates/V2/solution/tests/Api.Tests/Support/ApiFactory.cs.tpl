@@ -13,6 +13,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
     {
         builder.UseEnvironment("Testing");
         builder.UseSetting("DATABASE_CONNECTION_STRING", {{TestConnectionExpression}});
+        // <dotnet-arch:kit-test-settings> (values the profile's kits need to start the host)
     }
 
     /// <summary>Creates the schema from the model (no migrations needed) for tests that touch the database.</summary>

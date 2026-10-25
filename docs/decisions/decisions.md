@@ -155,3 +155,6 @@ Repositories are provisioned before code exists (Corevia: `service-repo.provisio
 
 ## D-38 CLI and MCP are peers over the Application layer (Owner)
 The CLI host (`add_cli`) calls the Application layer directly with the same MediatR requests as the API controllers and the MCP tools. It does not wrap the HTTP API. A parity test keeps both name sets equal.
+
+## D-39 Published kits are wired from the profile, not known to the tool (Owner)
+The organisation's kits (their packages, registration lines, settings and secrets) are declared in the profile (`external_kits`); the tool only inserts them at markers and removes the generated parts they replace. Without a profile nothing changes (D-22). A kit that lacks a capability a host needs (for example a console host) is extended in the kit repository, not worked around in the generated code.

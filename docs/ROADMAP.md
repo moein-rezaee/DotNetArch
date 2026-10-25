@@ -136,5 +136,5 @@ Environment: dotnet SDK 8 available (net9 targets cannot be built here; verify n
 - [x] 14.1 `new solution --in-place` (AC-33)
 - [x] 14.2 Typed use cases: `new action --input --output --anonymous --description`; recorded in `dotnet-arch.yml`; MCP tool and typed client follow (AC-34)
 - [x] 14.3 `add_cli` / `new solution --cli`: CLI host, peer of the MCP host, per-entity/action/use-case commands, tests and parity test; `ProjectLayer.Cli` in `doctor` (AC-35)
-- [ ] 14.4 Profile-driven external kits: a profile lists packages, host registration lines, settings and secrets of published kits (for example `Corevia.Kit.*`) and `new solution --profile` / `add kit` wire them (replacing the hand-rolled configuration loader, exception handler and Swagger setup)
+- [x] 14.4 Profile-driven external kits (R-J4, AC-36): a profile lists packages, host registration lines, settings and secrets of published kits (for example `Corevia.Kit.*`) and `new solution --profile` / `add kit` wire them (replacing the hand-rolled configuration loader, exception handler and Swagger setup)
 - [ ] 14.5 Doctor: CLI/MCP parity check and a CLI untested warning (DA-S05 for `.Cli`)

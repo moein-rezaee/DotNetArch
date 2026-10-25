@@ -1,12 +1,15 @@
+// <dotnet-arch:kit-usings> (kit namespaces of the profile are added above this line)
 using {{App}}.Application;
 using {{App}}.Infrastructure;
 using {{App}}.Infrastructure.Configuration;
 using {{App}}.Mcp.Configuration;
 
+// <dotnet-arch:kit-bootstrap> (profile lines that run before the host builder exists)
 var builder = WebApplication.CreateBuilder(args);
 
 // Same configuration-load step as the Api: appsettings (non-sensitive) + .env + environment (secrets).
 builder.Configuration.AddAppConfiguration(builder.Environment.ContentRootPath, builder.Environment.EnvironmentName, args);
+// <dotnet-arch:kit-builder> (profile registrations that need the builder)
 
 // Each layer registers its own dependencies; the MCP host adds only what is specific to MCP.
 builder.Services
@@ -15,6 +18,7 @@ builder.Services
     .AddMcpHost(builder.Configuration);
 
 var app = builder.Build();
+// <dotnet-arch:kit-app> (profile middleware, before the MCP pipeline)
 
 await app.Services.InitializeInfrastructureAsync();
 app.UseMcpHost();

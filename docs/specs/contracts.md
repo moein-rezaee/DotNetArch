@@ -11,6 +11,8 @@ Every command that changes files plans first and writes only with `--apply`; at 
 
 `new action --entity= --method= [--action=] [--input=Name:Type,...] [--output=Name:Type,...|Type|none] [--anonymous] [--description=]`: without `--input`/`--output` the classic id-based action; with them a typed use case (requires `--style=controller`). Types: string, int, long, bool, decimal, double, float, Guid, DateTime, DateTimeOffset, TimeSpan, `T[]`, `List<T>`, `Dictionary<string,T>`, a trailing `?`, or a DTO name. The use case is stored in `dotnet-arch.yml` as `usecase.<Entity>.<Action>: METHOD|anonymous|protected|input|output`.
 
+`new solution --profile=<file>`: wires the `external_kits` of the profile (see R-J4). Profile shape: `external_kits: [{ area, packages: [{ id, version, projects: [api|mcp|cli|application|infrastructure] }], hosts: { api|mcp|cli: { usings, bootstrap, builder, app } }, settings: { "Section:Key": value }, secrets: [KEY], test_settings: { KEY: value }, replaces: [swagger|exception-handler] }]`; `{{App}}` in a line is the solution name. `Program.cs` markers: `kit-usings`, `kit-bootstrap`, `kit-builder`, `kit-app`; test factories: `kit-test-settings`.
+
 `add cli` / `new solution --cli`: `src/<App>.Cli` (console, assembly name = kebab-case solution name), commands `<entity> list|get|create|update|delete`, `<entity> <action>` and `<entity> <use-case> --option=value`; exit codes 0 done, 1 refused (validation, not found, domain rule), 2 usage error; results as JSON. `dotnet-arch.yml` records `cli: true`.
 
 `new service`: with business logic (`--logic=true --name= [--entity=] [--lifetime=Scoped|Transient|Singleton]`) generates an Application service registered in
