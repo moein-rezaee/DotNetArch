@@ -16,6 +16,12 @@ public interface IRepository<TEntity>
         Expression<Func<TEntity, bool>>? filter = null,
         CancellationToken cancellationToken = default);
 
+    /// <summary>The first entity that matches, tracked so changes made to it are saved with the unit of work; null when none matches.</summary>
+    Task<TEntity?> FirstOrDefaultAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
+
+    /// <summary>Every entity that matches, tracked. Use it for small sets (the children of one aggregate); page large sets with <see cref="GetPagedAsync"/>.</summary>
+    Task<IReadOnlyList<TEntity>> ListAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
+
     Task<bool> AnyAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
 
     Task AddAsync(TEntity entity, CancellationToken cancellationToken = default);

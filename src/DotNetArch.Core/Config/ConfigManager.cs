@@ -75,7 +75,9 @@ public static class ConfigManager
                 var state = new EntityStatus
                 {
                     HasCrud = value.Equals("crud", StringComparison.OrdinalIgnoreCase) || value.Equals("both", StringComparison.OrdinalIgnoreCase),
-                    HasAction = value.Equals("action", StringComparison.OrdinalIgnoreCase) || value.Equals("both", StringComparison.OrdinalIgnoreCase)
+                    HasAction = value.Equals("action", StringComparison.OrdinalIgnoreCase) || value.Equals("both", StringComparison.OrdinalIgnoreCase),
+                    HasModel = value.Equals("model", StringComparison.OrdinalIgnoreCase),
+                    IsFeature = value.Equals("feature", StringComparison.OrdinalIgnoreCase)
                 };
                 config.Entities[name] = state;
             }
@@ -128,7 +130,7 @@ public static class ConfigManager
             content += $"kit.{kit.Key}: {kit.Value}{nl}";
         foreach (var kv in config.Entities)
         {
-            var status = kv.Value.HasCrud && kv.Value.HasAction ? "both" : kv.Value.HasCrud ? "crud" : "action";
+            var status = kv.Value.IsFeature ? "feature" : kv.Value.HasCrud && kv.Value.HasAction ? "both" : kv.Value.HasCrud ? "crud" : kv.Value.HasAction ? "action" : "model";
             content += $"entity.{kv.Key}: {status}{nl}";
         }
         foreach (var useCase in config.UseCases.OrderBy(entry => entry.Key, StringComparer.Ordinal))

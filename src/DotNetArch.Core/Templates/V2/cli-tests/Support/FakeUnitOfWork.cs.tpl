@@ -40,6 +40,12 @@ internal sealed class FakeRepository<TEntity> : IRepository<TEntity>
         return Task.FromResult(new PagedResult<TEntity>(ordered.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList(), pageNumber, pageSize, ordered.Count));
     }
 
+    public Task<TEntity?> FirstOrDefaultAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default) =>
+        Task.FromResult(_items.AsQueryable().FirstOrDefault(predicate));
+
+    public Task<IReadOnlyList<TEntity>> ListAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<TEntity>>(_items.AsQueryable().Where(predicate).OrderBy(entity => entity.CreatedAtUtc).ThenBy(entity => entity.Id).ToList());
+
     public Task<bool> AnyAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default) =>
         Task.FromResult(_items.AsQueryable().Any(predicate));
 

@@ -138,3 +138,4 @@ Environment: dotnet SDK 8 available (net9 targets cannot be built here; verify n
 - [x] 14.3 `add_cli` / `new solution --cli`: CLI host, peer of the MCP host, per-entity/action/use-case commands, tests and parity test; `ProjectLayer.Cli` in `doctor` (AC-35)
 - [x] 14.4 Profile-driven external kits (R-J4, AC-36): a profile lists packages, host registration lines, settings and secrets of published kits (for example `Corevia.Kit.*`) and `new solution --profile` / `add kit` wire them (replacing the hand-rolled configuration loader, exception handler and Swagger setup)
 - [ ] 14.5 Doctor: CLI/MCP parity check and a CLI untested warning (DA-S05 for `.Cli`)
+- [x] 14.6 `new entity` (typed properties and persistence), `new feature`, `new enum --members`, repository `FirstOrDefaultAsync`/`ListAsync` (AC-37, AC-38)

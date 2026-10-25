@@ -17,10 +17,10 @@ public static class EnumScaffolder
         return Directory.Exists(featureDir);
     }
 
-    public static bool Generate(SolutionConfig config, string? entity, string enumName)
+    public static bool Generate(SolutionConfig config, string? entity, string enumName, IReadOnlyList<string>? members = null)
     {
         if (config.IsV2)
-            return V2.EntityGeneration.GenerateEnum(config, entity, enumName);
+            return V2.EntityGeneration.GenerateEnum(config, entity, enumName, members);
 
         Identifier.RequireIfPresent(entity, "entity name");
         Identifier.RequireIfPresent(enumName, "enum name");

@@ -89,4 +89,10 @@ public class EntityStatus
 {
     public bool HasCrud { get; set; }
     public bool HasAction { get; set; }
+
+    /// <summary>The entity was generated without CRUD (<c>new entity</c>): a domain model with persistence, used by typed use cases.</summary>
+    public bool HasModel { get; set; }
+
+    /// <summary>A feature without an entity (<c>new feature</c>): a controller and tools that hold typed use cases.</summary>
+    public bool IsFeature { get; set; }
 }

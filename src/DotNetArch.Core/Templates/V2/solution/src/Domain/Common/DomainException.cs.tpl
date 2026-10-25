@@ -14,4 +14,8 @@ public class DomainException(string message) : Exception(message)
 
         return trimmed;
     }
+
+    /// <summary>An optional text: null or blank becomes null; otherwise it is trimmed and limited like <see cref="RequireText"/>.</summary>
+    public static string? OptionalText(string? value, string name, int maxLength) =>
+        string.IsNullOrWhiteSpace(value) ? null : RequireText(value, name, maxLength);
 }

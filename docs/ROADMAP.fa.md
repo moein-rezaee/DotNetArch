@@ -62,3 +62,4 @@
 - [x] ۱۴.۳ ‏`add_cli` / `new solution --cli`: میزبان CLI هم‌سطح MCP، دستور برای هر entity/action/use case، تست‌ها و تست برابری؛ ‏`ProjectLayer.Cli` در `doctor` (AC-35)
 - [x] ۱۴.۴ kitهای بیرونی مبتنی بر پروفایل (R-J4، AC-36): پروفایل بسته‌ها، خطوط ثبت میزبان، تنظیمات و secretهای kitهای منتشرشده (مثل `Corevia.Kit.*`) را فهرست می‌کند و `new solution --profile` / `add kit` آن‌ها را wire می‌کنند (جای بارگذار کانفیگ، exception handler و Swagger دستی)
 - [ ] ۱۴.۵ ‏Doctor: بررسی برابری CLI/MCP و هشدار CLI بدون تست (DA-S05 برای `.Cli`)
+- [x] ۱۴.۶ ‏`new entity` (propertyهای تایپ‌دار و persistence)، `new feature`، `new enum --members`، متدهای repository ‏`FirstOrDefaultAsync`/`ListAsync` (AC-37، AC-38)

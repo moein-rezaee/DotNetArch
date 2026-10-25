@@ -5,17 +5,28 @@ namespace DotNetArch.Core.Scaffolding.V2;
 /// <summary>Entity lookups and the small artefacts (enums, constants, events) shared across v2 commands.</summary>
 internal static class EntityGeneration
 {
+    public static bool IsFeature(SolutionConfig config, string name) =>
+        config.Entities.TryGetValue(name, out var state) && state.IsFeature;
+
     public static bool EntityExists(SolutionConfig config, string entity) =>
-        File.Exists(Path.Combine(config.SolutionPath, V2Names.For(config, entity).DomainProject, "Entities", $"{entity}.cs"));
+        IsFeature(config, entity) || File.Exists(Path.Combine(config.SolutionPath, V2Names.For(config, entity).DomainProject, "Entities", $"{entity}.cs"));
 
     // --- enums and constants ---------------------------------------------------------------------------------------
-    public static bool GenerateEnum(SolutionConfig config, string? entity, string name) =>
-        GenerateArtifact(config, entity, name, "Enums", "Enum", fileName: name);
+    public static bool GenerateEnum(SolutionConfig config, string? entity, string name, IReadOnlyList<string>? members = null)
+    {
+        var names = (members ?? Array.Empty<string>()).Select(m => Identifier.RequireIdentifier(m, "enum member")).ToList();
+        var duplicate = names.GroupBy(n => n, StringComparer.OrdinalIgnoreCase).FirstOrDefault(g => g.Count() > 1);
+        if (duplicate is not null || names.Contains("None", StringComparer.OrdinalIgnoreCase))
+            throw new ArgumentException(duplicate is not null ? $"Enum member '{duplicate.Key}' is listed twice." : "'None' is added automatically as the zero value.");
+
+        var lines = new[] { "    None = 0" }.Concat(names.Select((member, index) => $"    {member} = {index + 1}"));
+        return GenerateArtifact(config, entity, name, "Enums", "Enum", fileName: name, new Dictionary<string, string> { ["Members"] = string.Join(",\n", lines) });
+    }
 
     public static bool GenerateConstant(SolutionConfig config, string? entity, string name) =>
         GenerateArtifact(config, entity, name, "Constants", "Constants", fileName: name);
 
-    private static bool GenerateArtifact(SolutionConfig config, string? entity, string name, string folder, string template, string fileName)
+    private static bool GenerateArtifact(SolutionConfig config, string? entity, string name, string folder, string template, string fileName, Dictionary<string, string>? extraTokens = null)
     {
         Identifier.RequireIdentifier(name, $"{folder.TrimEnd('s').ToLowerInvariant()} name");
         Identifier.RequireIfPresent(entity, "entity name");
@@ -41,7 +52,9 @@ internal static class EntityGeneration
             @namespace = $"{config.SolutionName}.Domain.{folder}.{plural}";
         }
 
-        var tokens = new Dictionary<string, string> { ["Namespace"] = @namespace, ["Name"] = name };
+        var tokens = new Dictionary<string, string> { ["Namespace"] = @namespace, ["Name"] = name, ["Members"] = "    None = 0" };
+        foreach (var (key, value) in extraTokens ?? new Dictionary<string, string>())
+            tokens[key] = value;
         var writer = new FileWriter(config.SolutionPath);
         if (!writer.Write($"{relativeFolder}/{fileName}.cs", TemplateRenderer.RenderTemplate($"V2/artifacts/{template}.cs.tpl", tokens)))
         {

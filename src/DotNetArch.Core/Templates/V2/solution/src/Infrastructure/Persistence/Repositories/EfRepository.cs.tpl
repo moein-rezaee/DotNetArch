@@ -35,6 +35,12 @@ internal sealed class EfRepository<TEntity>(AppDbContext context) : IRepository<
         return new PagedResult<TEntity>(items, pageNumber, pageSize, total);
     }
 
+    public Task<TEntity?> FirstOrDefaultAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default) =>
+        _set.FirstOrDefaultAsync(predicate, cancellationToken);
+
+    public async Task<IReadOnlyList<TEntity>> ListAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default) =>
+        await _set.Where(predicate).OrderBy(entity => entity.CreatedAtUtc).ThenBy(entity => entity.Id).ToListAsync(cancellationToken);
+
     public Task<bool> AnyAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default) =>
         _set.AnyAsync(predicate, cancellationToken);
 

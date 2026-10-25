@@ -2,7 +2,7 @@
 
 ## CLI
 دستورها (همه عملیات رجیستری‌اند، D-32؛ دستور دوکلمه‌ای همان عملیات با `_` است: ‏`new crud` = `new_crud`): ‏`new solution`، `new crud`، `new action`، `new event`، `new enum`، `new constant`، `new service`، `new kit`، `add kit`، `add mcp`، `add cli`، `add layer`، `add tests`،
-‏`ci add`، `docker add`، `git setup`، `spec list`، `spec add`، `spec check`، `graph`، `list entities`، `describe config`، `exec`، `remove migration`، `doctor`، `adopt`، `fix`، `mcp serve`.
+‏`new entity`، `new feature`، `ci add`، `docker add`، `git setup`، `spec list`، `spec add`، `spec check`، `graph`، `list entities`، `describe config`، `exec`، `remove migration`، `doctor`، `adopt`، `fix`، `mcp serve`.
 هر دستوری که فایل تغییر می‌دهد اول طرح می‌دهد و فقط با `--apply` می‌نویسد؛ در ترمینال طرح نشان داده می‌شود و از کاربر پرسیده می‌شود. ‏`--json` خروجی `{ ok, operation, applied, error?, plan[], data }` را چاپ می‌کند و `--out=file` آن را ذخیره می‌کند. ‏`--path` (معادل `--output`) پوشهٔ solution است؛ مقدارها را می‌توان `--no-migration` یا `--no_migration` نوشت. مقدار الزامیِ نداده‌شده پرسیده می‌شود.
 
 گزینه‌های `new solution <Name>`: `--output`، `--database=SQLite|SqlServer|Postgres`، `--style=controller|fast`، `--layout=v2|legacy` (پیش‌فرض v2)، `--mcp`، `--cli`، `--in-place`،
@@ -12,6 +12,8 @@
 `new action --entity= --method= [--action=] [--input=Name:Type,...] [--output=Name:Type,...|Type|none] [--anonymous] [--description=]`: بدون `--input`/`--output` همان action کلاسیکِ مبتنی بر id؛ با آن‌ها use case تایپ‌دار (نیازمند `--style=controller`). نوع‌ها: string، int، long، bool، decimal، double، float، Guid، DateTime، DateTimeOffset، TimeSpan، ‏`T[]`، ‏`List<T>`، ‏`Dictionary<string,T>`، ‏`?` پایانی یا نام DTO. use case در `dotnet-arch.yml` به شکل `usecase.<Entity>.<Action>: METHOD|anonymous|protected|input|output` ذخیره می‌شود.
 
 `new solution --profile=<file>`: ‏`external_kits` پروفایل را wire می‌کند (R-J4). شکل پروفایل: `external_kits: [{ area, packages: [{ id, version, projects: [api|mcp|cli|application|infrastructure] }], hosts: { api|mcp|cli: { usings, bootstrap, builder, app } }, settings: { "Section:Key": value }, secrets: [KEY], test_settings: { KEY: value }, replaces: [swagger|exception-handler] }]`؛ ‏`{{App}}` در یک خط نام solution است. markerهای `Program.cs`: ‏`kit-usings`، `kit-bootstrap`، `kit-builder`، `kit-app`؛ factoryهای تست: `kit-test-settings`.
+
+`new entity --entity= --properties=Name:Type[(max)][?][!|#],...`: نوع propertyها string (طول با `(n)`، پیش‌فرض ۲۵۶)، int، long، bool، decimal، double، float، Guid، DateTime، DateTimeOffset، TimeSpan یا نام یک enum (به‌صورت string ذخیره می‌شود)؛ ‏`?` اختیاری، ‏`!` ایندکس یکتا، ‏`#` ایندکس؛ ‏`Id` و `CreatedAtUtc` و `UpdatedAtUtc` از کلاس پایه می‌آیند. ‏`dotnet-arch.yml` مقدار `entity.<Name>: model` را ثبت می‌کند. ‏`new feature --feature=<Name> [--description=]` مقدار `entity.<Name>: feature` را ثبت می‌کند. ‏`new enum --members=A,B`.
 
 `add cli` / `new solution --cli`: ‏`src/<App>.Cli` (کنسول؛ نام assembly همان نام kebab-case solution)، دستورهای `<entity> list|get|create|update|delete`، ‏`<entity> <action>` و `<entity> <use-case> --option=value`؛ کد خروج ۰ انجام شد، ۱ رد شد (validation، پیدا نشد، قاعدهٔ دامنه)، ۲ خطای استفاده؛ نتیجه JSON است. ‏`dotnet-arch.yml` مقدار `cli: true` را ثبت می‌کند.
 

@@ -23,6 +23,9 @@ internal static class TypedActionV2Generator
             return false;
         }
 
+        if (EntityGeneration.IsFeature(config, entity) && spec.Output.Kind == UseCaseOutputKind.EntityDto)
+            throw new ArgumentException($"'{entity}' is a feature without an entity DTO: give the use case an explicit --output.");
+
         var names = V2Names.For(config, entity);
         var tokens = Tokens(config, entity, actionName, httpMethod, spec, anonymous, description);
         var kind = tokens["RequestKind"];

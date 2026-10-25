@@ -38,6 +38,8 @@ internal static class ScaffoldOperations
     {
         NewSolution(),
         NewCrud(),
+        NewEntity(),
+        NewFeature(),
         NewAction(),
         NewEvent(),
         NewEnum(),
@@ -163,6 +165,40 @@ internal static class ScaffoldOperations
         new[] { PathParam(), new OperationParameter("entity", "Entity name, singular PascalCase.", Required: true), NoMigration() },
         request => InSolution(request, "new_crud", config => CrudScaffolder.Generate(config, Identifier.RequireIdentifier(request.Get("entity")!, "entity name"))));
 
+    private static OperationDefinition NewEntity() => Mutating(
+        "new_entity",
+        "Generate a domain entity with typed properties and its persistence (EF mapping, DTO, mapping, domain and persistence tests) without CRUD use cases; typed use cases (new_action --input --output) give it behaviour. Plan first; writes only with apply.",
+        new[]
+        {
+            PathParam(),
+            new OperationParameter("entity", "Entity name, singular PascalCase.", Required: true),
+            new OperationParameter("properties", "Properties as Name:Type[(max)][?][!|#], comma separated: string(200), int, bool, decimal, Guid, DateTime, an enum name; ? optional, ! unique index, # index. For example CodeHash:string(128)!,Status:ActivationStatus,ExpiresAtUtc:DateTime?.", Required: true),
+            new OperationParameter("description", "One sentence for the entity summary."),
+            NoMigration(),
+        },
+        request => InSolution(request, "new_entity", config =>
+        {
+            if (!config.IsV2)
+                throw new InvalidOperationException("new_entity needs a layout v2 or v3 solution.");
+            EntityV2Generator.Generate(config, Identifier.RequireIdentifier(request.Get("entity")!, "entity name"), EntityProperty.ParseList(request.Get("properties")), request.Get("description"));
+        }));
+
+    private static OperationDefinition NewFeature() => Mutating(
+        "new_feature",
+        "Generate a use-case group without an entity (for example Setting, Secret, Bundle): the controller and the MCP tools class that typed use cases (new_action --entity=<Feature> --input --output) extend. Plan first; writes only with apply.",
+        new[]
+        {
+            PathParam(),
+            new OperationParameter("feature", "Feature name, singular PascalCase.", Required: true),
+            new OperationParameter("description", "One sentence for the controller summary."),
+        },
+        request => InSolution(request, "new_feature", config =>
+        {
+            if (!config.IsV2)
+                throw new InvalidOperationException("new_feature needs a layout v2 or v3 solution.");
+            FeatureV2Generator.Generate(config, Identifier.RequireIdentifier(request.Get("feature")!, "feature name"), request.Get("description"));
+        }));
+
     private static OperationDefinition NewAction() => Mutating(
         "new_action",
         "Add a custom use case to an existing entity: domain method stub, command/query, handler, validator and endpoint. Plan first; writes only with apply.",
@@ -220,13 +256,13 @@ internal static class ScaffoldOperations
     private static OperationDefinition NewEnum() => Mutating(
         "new_enum",
         "Create an enum, scoped to an entity or common to the domain when the entity is omitted. Plan first; writes only with apply.",
-        new[] { PathParam(), new OperationParameter("enum", "Enum name.", Required: true), new OperationParameter("entity", "Entity that owns the enum (empty: common)."), NoMigration() },
+        new[] { PathParam(), new OperationParameter("enum", "Enum name.", Required: true), new OperationParameter("entity", "Entity that owns the enum (empty: common)."), new OperationParameter("members", "Comma-separated members after the generated None = 0, for example Active,Revoked."), NoMigration() },
         request => InSolution(request, "new_enum", config =>
         {
             var entity = request.Get("entity") is { } e ? Identifier.Sanitize(e) : null;
             if (entity != null && !EnumScaffolder.EntityExists(config, entity))
                 throw new ArgumentException($"Entity '{entity}' does not exist.");
-            EnumScaffolder.Generate(config, entity, Identifier.Sanitize(request.Get("enum")!));
+            EnumScaffolder.Generate(config, entity, Identifier.Sanitize(request.Get("enum")!), List(request.Get("members")));
         }));
 
     private static OperationDefinition NewConstant() => Mutating(

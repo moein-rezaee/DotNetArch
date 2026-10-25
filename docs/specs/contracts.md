@@ -2,7 +2,7 @@
 
 ## CLI
 Commands (all registry operations, D-32; a two-word command is the operation with `_`: `new crud` = `new_crud`): `new solution`, `new crud`, `new action`, `new event`, `new enum`, `new constant`, `new service`, `new kit`, `add kit`, `add mcp`, `add cli`, `add layer`, `add tests`,
-`ci add`, `docker add`, `git setup`, `spec list`, `spec add`, `spec check`, `graph`, `list entities`, `describe config`, `exec`, `remove migration`, `doctor`, `adopt`, `fix`, `mcp serve`.
+`new entity`, `new feature`, `ci add`, `docker add`, `git setup`, `spec list`, `spec add`, `spec check`, `graph`, `list entities`, `describe config`, `exec`, `remove migration`, `doctor`, `adopt`, `fix`, `mcp serve`.
 Every command that changes files plans first and writes only with `--apply`; at a terminal the plan is shown and the user is asked. `--json` prints `{ ok, operation, applied, error?, plan[], data }`, `--out=file` saves the output. `--path` (alias `--output`) names the solution folder; values may be written `--no-migration` or `--no_migration`. Missing required values are prompted for.
 
 `new solution <Name>` options: `--output`, `--database=SQLite|SqlServer|Postgres`, `--style=controller|fast`, `--layout=v3|v2|legacy` (default v3),
@@ -12,6 +12,8 @@ Every command that changes files plans first and writes only with `--apply`; at 
 `new action --entity= --method= [--action=] [--input=Name:Type,...] [--output=Name:Type,...|Type|none] [--anonymous] [--description=]`: without `--input`/`--output` the classic id-based action; with them a typed use case (requires `--style=controller`). Types: string, int, long, bool, decimal, double, float, Guid, DateTime, DateTimeOffset, TimeSpan, `T[]`, `List<T>`, `Dictionary<string,T>`, a trailing `?`, or a DTO name. The use case is stored in `dotnet-arch.yml` as `usecase.<Entity>.<Action>: METHOD|anonymous|protected|input|output`.
 
 `new solution --profile=<file>`: wires the `external_kits` of the profile (see R-J4). Profile shape: `external_kits: [{ area, packages: [{ id, version, projects: [api|mcp|cli|application|infrastructure] }], hosts: { api|mcp|cli: { usings, bootstrap, builder, app } }, settings: { "Section:Key": value }, secrets: [KEY], test_settings: { KEY: value }, replaces: [swagger|exception-handler] }]`; `{{App}}` in a line is the solution name. `Program.cs` markers: `kit-usings`, `kit-bootstrap`, `kit-builder`, `kit-app`; test factories: `kit-test-settings`.
+
+`new entity --entity= --properties=Name:Type[(max)][?][!|#],...`: property types string (length with `(n)`, default 256), int, long, bool, decimal, double, float, Guid, DateTime, DateTimeOffset, TimeSpan or the name of an enum (stored as string); `?` optional, `!` unique index, `#` index; `Id`, `CreatedAtUtc`, `UpdatedAtUtc` come from the base class. `dotnet-arch.yml` records `entity.<Name>: model`. `new feature --feature=<Name> [--description=]` records `entity.<Name>: feature`. `new enum --members=A,B`.
 
 `add cli` / `new solution --cli`: `src/<App>.Cli` (console, assembly name = kebab-case solution name), commands `<entity> list|get|create|update|delete`, `<entity> <action>` and `<entity> <use-case> --option=value`; exit codes 0 done, 1 refused (validation, not found, domain rule), 2 usage error; results as JSON. `dotnet-arch.yml` records `cli: true`.
 

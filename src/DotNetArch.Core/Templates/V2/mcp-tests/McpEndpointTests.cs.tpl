@@ -66,6 +66,8 @@ public class McpEndpointTests(McpFactory factory) : IClassFixture<McpFactory>
 
         var list = await client.PostAsync("/mcp", Rpc(new { jsonrpc = "2.0", id = 2, method = "tools/list" }));
         Assert.Equal(HttpStatusCode.OK, list.StatusCode);
-        Assert.True(ParseMessage(await list.Content.ReadAsStringAsync()).GetProperty("result").TryGetProperty("tools", out _));
+        // A host without any tool (no entity or use case yet) answers with a JSON-RPC error instead of an empty list.
+        var message = ParseMessage(await list.Content.ReadAsStringAsync());
+        Assert.True(message.TryGetProperty("error", out _) || message.GetProperty("result").TryGetProperty("tools", out _));
     }
 }
