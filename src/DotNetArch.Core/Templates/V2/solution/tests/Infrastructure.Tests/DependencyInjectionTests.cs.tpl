@@ -16,7 +16,9 @@ public class DependencyInjectionTests
         services.AddLogging();
         services.AddApplication();
         services.AddInfrastructure(configuration);
-        return services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
+        // Kit and host services (caller context, config/secret stores) are registered by the Api host, so
+        // the full graph is validated by the Api tests; this suite resolves the infrastructure services.
+        return services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = false });
     }
 
     [Fact]

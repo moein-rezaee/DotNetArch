@@ -29,7 +29,7 @@ internal sealed partial record EntityProperty(string Name, string Type, bool IsO
     /// <summary>A literal that is valid for the property, used by the generated tests.</summary>
     public string Sample(int seed = 1) => Type switch
     {
-        "string" => $"\"{Name.ToLowerInvariant()}-{seed}\"",
+        "string" => $"\"{SampleText(seed)}\"",
         "int" => seed.ToString(System.Globalization.CultureInfo.InvariantCulture),
         "long" => $"{seed}L",
         "bool" => "true",
@@ -42,6 +42,12 @@ internal sealed partial record EntityProperty(string Name, string Type, bool IsO
         "TimeSpan" => "TimeSpan.FromMinutes(5)",
         _ => $"default({Type})",
     };
+
+    private string SampleText(int seed)
+    {
+        var text = $"{Name.ToLowerInvariant()}-{seed}";
+        return text.Length <= StringLength ? text : text[^StringLength..];
+    }
 
     public static EntityProperty Parse(string text)
     {

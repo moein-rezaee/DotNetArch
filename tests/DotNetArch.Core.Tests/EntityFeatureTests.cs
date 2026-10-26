@@ -124,4 +124,31 @@ public sealed class EntityFeatureTests : IDisposable
         Assert.True(ConfigManager.Load(P(""))!.Entities["Setting"].IsFeature);
         Assert.Contains("entity.Setting: feature", File.ReadAllText(P("dotnet-arch.yml")));
     }
+
+    [Fact]
+    public void A_controller_that_already_lives_in_the_HttpApi_layer_is_not_declared_again_in_the_Api_project()
+    {
+        var config = Solution();
+        Directory.CreateDirectory(P("src/Acme.HttpApi/Controllers/Settings"));
+        File.WriteAllText(P("src/Acme.HttpApi/Controllers/Settings/SettingsController.cs"), "// moved here by the layer migration");
+
+        using (Host())
+            FeatureV2Generator.EnsureSkeleton(config, "Setting");
+
+        Assert.False(File.Exists(P("src/Acme.Api/Controllers/Settings/SettingsController.cs")));
+    }
+
+    [Fact]
+    public void A_typed_input_can_set_the_length_its_string_is_validated_against()
+    {
+        var spec = UseCaseSpec.Parse("Code:string,Document:string(8000),Note:string(200)?", "none");
+
+        Assert.Equal(new int?[] { null, 8000, 200 }, spec.Input.Select(p => p.MaxLength));
+        Assert.Equal("string?", spec.Input[2].Type);
+        var rules = spec.ValidatorRules();
+        Assert.Contains("command.Code).NotEmpty().MaximumLength(512)", rules);
+        Assert.Contains("command.Document).NotEmpty().MaximumLength(8000)", rules);
+        Assert.DoesNotContain("Note", rules);
+        Assert.Throws<ArgumentException>(() => UseCaseSpec.Parse("Code:string(0)", "none"));
+    }
 }

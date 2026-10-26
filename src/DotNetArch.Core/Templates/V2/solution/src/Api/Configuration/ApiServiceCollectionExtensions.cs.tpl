@@ -45,7 +45,7 @@ public static class ApiServiceCollectionExtensions
         app.UseAuthorization();
         app.MapControllers();
         app.MapEndpoints();
-        app.MapHealthChecks("/health");
+        app.MapHealthChecks("/health").AllowAnonymous();
         return app;
     }
 }

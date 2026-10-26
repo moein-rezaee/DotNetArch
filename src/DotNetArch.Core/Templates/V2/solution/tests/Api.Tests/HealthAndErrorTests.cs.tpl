@@ -15,6 +15,11 @@ public class HealthAndErrorTests(ApiFactory factory) : IClassFixture<ApiFactory>
     }
 
     [Fact]
-    public async Task Unknown_routes_return_404() =>
-        Assert.Equal(HttpStatusCode.NotFound, (await factory.CreateClient().GetAsync("/api/does-not-exist")).StatusCode);
+    public async Task Unknown_routes_are_not_served()
+    {
+        // 404 when the host has no fallback authorization, 401 when it is secure by default.
+        var status = (await factory.CreateClient().GetAsync("/api/does-not-exist")).StatusCode;
+
+        Assert.Contains(status, new[] { HttpStatusCode.NotFound, HttpStatusCode.Unauthorized });
+    }
 }

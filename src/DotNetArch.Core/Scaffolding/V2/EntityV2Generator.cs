@@ -77,13 +77,16 @@ internal static class EntityV2Generator
         tokens["DtoArguments"] = string.Join(", ", new[] { "entity.Id" }.Concat(exposed.Select(p => $"entity.{p.Name}")).Concat(new[] { "entity.CreatedAtUtc", "entity.UpdatedAtUtc" }));
         tokens["DtoEnumUsing"] = exposed.Any(p => p.IsEnum) ? enumUsing : string.Empty;
         tokens["SampleArguments"] = SampleArguments(ordered, entity);
-        tokens["StateAssertions"] = string.Join("\n", properties.Select(p => $"        Assert.Equal({p.Sample()}, entity.{p.Name});"));
-        tokens["LoadedAssertions"] = string.Join("\n", properties.Select(p => $"        Assert.Equal({p.Sample()}, loaded.{p.Name});"));
+        tokens["StateAssertions"] = string.Join("\n", properties.Select(p => Assertion(p, "entity")));
+        tokens["LoadedAssertions"] = string.Join("\n", properties.Select(p => Assertion(p, "loaded")));
         tokens["RequiredTextTests"] = RequiredTextTests(entity, required, optional);
         tokens["UniqueTests"] = UniqueTests(entity, properties, required, optional);
         tokens["EfUsing"] = properties.Any(p => p.IsUnique) ? "using Microsoft.EntityFrameworkCore;\n" : string.Empty;
         return tokens;
     }
+
+    private static string Assertion(EntityProperty p, string target) =>
+        p.Type == "bool" && !p.IsOptional ? $"        Assert.True({target}.{p.Name});" : $"        Assert.Equal({p.Sample()}, {target}.{p.Name});";
 
     private static string Assignment(EntityProperty p) => p.IsString
         ? p.IsOptional

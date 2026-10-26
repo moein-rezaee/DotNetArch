@@ -32,12 +32,26 @@ internal static class TypedActionV2Generator
         var folder = $"{names.FeatureFolder}/Actions/{actionName}{entity}";
         var controller = $"{names.ApiProject}/Controllers/{names.Plural}/{names.Plural}Controller.{actionName}.cs";
         var writer = new FileWriter(config.SolutionPath);
+        var key = $"{entity}.{actionName}";
+        if (config.UseCases.TryGetValue(key, out var recorded))
+        {
+            // The use case exists (its files may have moved to other projects): repeat only the parts that follow it, without overwriting anything.
+            FeatureV2Generator.EnsureSkeleton(config, entity);
+            if (config.McpEnabled)
+                McpV2Generator.AddTypedActionTool(config, recorded);
+            if (config.CliEnabled)
+                CliV2Generator.AddTypedActionCommand(config, recorded);
+            ToolHost.Info($"Use case {actionName} for {entity} already exists; its tool and command were checked.");
+            return true;
+        }
+
         if (writer.Exists(controller))
         {
             ToolHost.Error("Action with the same name already exists for this entity.");
             return false;
         }
 
+        FeatureV2Generator.EnsureSkeleton(config, entity);
         writer.Write($"{folder}/{actionName}{entity}{kind}.cs", TemplateRenderer.RenderTemplate("V2/action-typed/Command.cs.tpl", tokens));
         if (spec.Output.Kind == UseCaseOutputKind.Generated)
             writer.Write($"{folder}/{actionName}{entity}Result.cs", TemplateRenderer.RenderTemplate("V2/action-typed/Result.cs.tpl", tokens));

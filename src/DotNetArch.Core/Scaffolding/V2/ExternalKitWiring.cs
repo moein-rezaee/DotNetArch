@@ -76,14 +76,22 @@ public static class ExternalKitWiring
             if (File.Exists(props))
             {
                 var text = File.ReadAllText(props);
-                if (!text.Contains($"Include=\"{package.Id}\"", StringComparison.Ordinal))
+                var existing = Regex.Match(text, $"<PackageVersion Include=\"{Regex.Escape(package.Id)}\" Version=\"([^\"]*)\" />", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
+                var line = $"    <PackageVersion Include=\"{package.Id}\" Version=\"{package.Version}\" />\n";
+                if (existing.Success)
                 {
-                    var line = $"    <PackageVersion Include=\"{package.Id}\" Version=\"{package.Version}\" />\n";
+                    // The profile is the source of truth for kit versions: a newer profile upgrades the pin.
+                    if (existing.Groups[1].Value != package.Version)
+                        text = text.Replace(existing.Value, line.Trim(), StringComparison.Ordinal);
+                }
+                else
+                {
                     text = text.Contains("<ItemGroup Label=\"Kits\">", StringComparison.Ordinal)
                         ? text.Replace("<ItemGroup Label=\"Kits\">\n", "<ItemGroup Label=\"Kits\">\n" + line, StringComparison.Ordinal)
                         : text.Replace("</Project>", $"  <ItemGroup Label=\"Kits\">\n{line}  </ItemGroup>\n\n</Project>", StringComparison.Ordinal);
-                    File.WriteAllText(props, text, new UTF8Encoding(false));
                 }
+
+                File.WriteAllText(props, text, new UTF8Encoding(false));
             }
 
             foreach (var project in package.Projects)

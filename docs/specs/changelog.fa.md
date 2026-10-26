@@ -1,6 +1,8 @@
 # تغییرات
 
 ## 2.0.0 (منتشرنشده)
+- ورودی‌های typed طول اعتبارسنجی می‌گیرند (‏`Name:string(8000)`) و controller featureی که از قبل در لایهٔ HttpApi است دوباره در پروژهٔ Api اعلام نمی‌شود (R-J8، AC-39). سرویس لایسنس (`corevia-licensing`) با نمونهٔ `Dm.LicenseGenerator` اولین سرویسی بود که به هر دو نیاز داشت.
+- ‏`apply_profile` (wire یا ارتقای kitهای خارجی پروفایل در solution موجود، R-J7)؛ ۳۰ عملیات. مقدار نمونهٔ رشته‌ها طول اعلام‌شده را رعایت می‌کند. تست‌های تولیدشده: تست Api برای مسیر ناشناخته 404 یا 401 را می‌پذیرد (hostی با سیاست fallback پاسخ 401 می‌دهد) و تست DI در Infrastructure دیگر کل گراف را هنگام build اعتبارسنجی نمی‌کند (سرویس‌های kit و host را Api ثبت می‌کند).
 - پرچم `~` روی propertyهای `new entity` آن را از DTO بیرون نگه می‌دارد؛ use caseهای تایپ‌دار که نام یک enum را می‌آورند namespace ‏enum را می‌گیرند.
 - ‏Dockerfile تولیدشده دیگر با خط `# syntax=` شروع نمی‌شود (frontend پیش‌فرض BuildKit برای `RUN --mount` کافی است؛ آن خط به image ‏frontend نیاز دارد که registry آفلاین یا خصوصی ممکن است نداشته باشد).
 - ‏`new entity` (propertyهای تایپ‌دار و persistence بدون CRUD)، `new feature` (گروه use case بدون entity)، `new enum --members`، متدهای repository ‏`FirstOrDefaultAsync` / `ListAsync`، ‏`DomainException.OptionalText` (R-J5، R-J6)؛ ۲۹ عملیات.

@@ -118,6 +118,7 @@ public static class McpV2Generator
         var spec = TypedActionV2Generator.SpecOf(useCase);
         var tokens = TypedActionV2Generator.Tokens(config, useCase.Entity, useCase.Action, useCase.Method, spec, useCase.Anonymous, null);
         var plural = tokens["Plural"];
+        FeatureV2Generator.EnsureTools(config, useCase.Entity);
         new FileWriter(config.SolutionPath).Write(
             $"src/{config.SolutionName}.Mcp/Tools/{plural}/{plural}Tools.{useCase.Action}.cs",
             TemplateRenderer.RenderTemplate("V2/action-typed/mcp-tool.cs.tpl", tokens));

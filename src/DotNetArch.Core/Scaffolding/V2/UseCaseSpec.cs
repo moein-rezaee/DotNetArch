@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 namespace DotNetArch.Core.Scaffolding.V2;
 
 /// <summary>One property of a typed use case: <c>Name:Type</c>, where a trailing <c>?</c> on the type makes it optional.</summary>
-internal sealed record UseCaseProperty(string Name, string Type)
+internal sealed record UseCaseProperty(string Name, string Type, int? MaxLength = null)
 {
     public bool IsOptional => Type.EndsWith('?');
 
@@ -27,6 +27,11 @@ internal sealed record UseCaseSpec(IReadOnlyList<UseCaseProperty> Input, UseCase
     {
         "string", "int", "long", "bool", "decimal", "double", "float", "Guid", "DateTime", "DateTimeOffset", "TimeSpan",
     };
+
+    /// <summary>The length a string input is validated against when the property gives none (<c>Name:string(200)</c>).</summary>
+    public const int DefaultStringLength = 512;
+
+    private static readonly Regex LengthSuffix = new(@"^string\((\d{1,5})\)(\?)?$", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
 
     private static readonly Regex Identifier = new("^[A-Za-z_][A-Za-z0-9_]*$", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
 
@@ -59,7 +64,7 @@ internal sealed record UseCaseSpec(IReadOnlyList<UseCaseProperty> Input, UseCase
         {
             var rule = property.Type switch
             {
-                "string" => "NotEmpty().MaximumLength(512)",
+                "string" => $"NotEmpty().MaximumLength({property.MaxLength ?? DefaultStringLength})",
                 "Guid" => "NotEmpty()",
                 _ when property.Type.EndsWith("[]", StringComparison.Ordinal) || property.Type.StartsWith("List<", StringComparison.Ordinal) || property.Type.StartsWith("Dictionary<", StringComparison.Ordinal) => "NotNull()",
                 _ => null,
@@ -78,9 +83,19 @@ internal sealed record UseCaseSpec(IReadOnlyList<UseCaseProperty> Input, UseCase
             throw new ArgumentException($"'{text}' is not 'Name:Type'.");
         if (!Identifier.IsMatch(parts[0]) || !char.IsUpper(parts[0][0]))
             throw new ArgumentException($"Property name '{parts[0]}' must be PascalCase letters, digits and underscores.");
+        int? maxLength = null;
+        var lengthMatch = LengthSuffix.Match(parts[1].Replace(" ", string.Empty));
+        if (lengthMatch.Success)
+        {
+            maxLength = int.Parse(lengthMatch.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture);
+            if (maxLength is < 1)
+                throw new ArgumentException($"The length in '{text}' must be at least 1.");
+            parts[1] = "string" + lengthMatch.Groups[2].Value;
+        }
+
         if (!IsAllowedType(parts[1]))
             throw new ArgumentException($"Type '{parts[1]}' is not supported. Use string, int, long, bool, decimal, double, float, Guid, DateTime, DateTimeOffset, TimeSpan, T[], List<T> or Dictionary<string, T> of those (a trailing ? makes a type optional), or a DTO name.");
-        return new UseCaseProperty(parts[0], parts[1].Replace(" ", string.Empty));
+        return new UseCaseProperty(parts[0], parts[1].Replace(" ", string.Empty), maxLength);
     }
 
     internal static bool IsAllowedType(string type)

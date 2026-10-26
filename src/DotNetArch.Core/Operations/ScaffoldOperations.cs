@@ -48,6 +48,7 @@ internal static class ScaffoldOperations
         NewKit(),
         AddKit(),
         AddMcp(),
+        ApplyProfileOperation(),
         AddCli(),
         CiAdd(),
         DockerAdd(),
@@ -208,7 +209,7 @@ internal static class ScaffoldOperations
             new OperationParameter("entity", "Existing entity.", Required: true),
             new OperationParameter("action", "Action name, for example Archive (empty: inferred from the method)."),
             new OperationParameter("method", "HTTP method.", Required: true, Choices: Methods),
-            new OperationParameter("input", "Typed use case: request properties as Name:Type,Name:Type (a trailing ? makes one optional), for example Code:string,DeviceName:string?. Without it the action takes the entity id."),
+            new OperationParameter("input", "Typed use case: request properties as Name:Type,Name:Type (a trailing ? makes one optional; string(200) sets the validated length, default 512), for example Code:string,DeviceName:string?,Document:string(8000). Without it the action takes the entity id."),
             new OperationParameter("output", "Typed use case: result as Name:Type,... (a generated result record), a type, or none. Empty: the entity DTO."),
             new OperationParameter("anonymous", "The endpoint needs no authentication ([AllowAnonymous]); for public use cases such as activation.", ParameterType.Flag),
             new OperationParameter("description", "One sentence for the endpoint summary and the MCP tool description."),
@@ -354,6 +355,12 @@ internal static class ScaffoldOperations
         "Add an MCP host (src/<App>.Mcp) to a layout v2/v3 solution; existing and future entities and actions get tools that run the same use cases as the API. Plan first; writes only with apply.",
         new[] { PathParam() },
         request => InSolution(request, "add_mcp", config => McpV2Generator.Add(config)));
+
+    private static OperationDefinition ApplyProfileOperation() => Mutating(
+        "apply_profile",
+        "Wire (or upgrade) the external kits of a shared profile in an existing solution: kit package versions, host registration lines, settings, secrets. Safe to repeat. Plan first; writes only with apply.",
+        new[] { PathParam(), new OperationParameter("profile", "Shared profile file (path).", Required: true) },
+        request => InSolution(request, "apply_profile", config => ApplyProfile(config.SolutionPath, request.Get("profile")!), normalize: false));
 
     private static OperationDefinition AddCli() => Mutating(
         "add_cli",

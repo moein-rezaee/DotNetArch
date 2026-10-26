@@ -1,6 +1,8 @@
 # Changelog
 
 ## 2.0.0 (unreleased)
+- Typed inputs take a validated length (`Name:string(8000)`), and a feature controller already in the HttpApi layer is not declared again in the Api project (R-J8, AC-39). The sample `Dm.LicenseGenerator` licence service (`corevia-licensing`) was the first service to need both.
+- `apply_profile` (wire or upgrade a profile's external kits in an existing solution, R-J7); 30 operations. String samples respect the declared length. Generated tests: the Api test accepts 404 or 401 for an unknown route (a host with a fallback authorization policy answers 401) and the Infrastructure DI test no longer validates the whole graph on build (kit and host services are registered by the Api).
 - `new entity` property flag `~` keeps a property out of the DTO; typed use cases that name an enum get the enum namespace.
 - The generated Dockerfile no longer starts with a `# syntax=` line (the default BuildKit frontend covers `RUN --mount`; the line needs the frontend image, which an offline or private registry may not have).
 - `new entity` (typed properties and persistence without CRUD), `new feature` (use-case groups without an entity), `new enum --members`, repository `FirstOrDefaultAsync` / `ListAsync`, `DomainException.OptionalText` (R-J5, R-J6); 29 operations.
