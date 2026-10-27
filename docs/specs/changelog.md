@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2.0.0 (unreleased)
+- The generated repository port pages newest first and counts (`newestFirst`, `CountAsync`; R-J10, AC-41).
 - `apply_blueprint` (generate what a service blueprint describes, in one plan and repeatable, R-J9, AC-40); 31 operations. The length of a typed string input is recorded in `dotnet-arch.yml`, and a use case may return the DTO of another entity.
 - Typed inputs take a validated length (`Name:string(8000)`), and a feature controller already in the HttpApi layer is not declared again in the Api project (R-J8, AC-39). The sample `Dm.LicenseGenerator` licence service (`corevia-licensing`) was the first service to need both.
 - `apply_profile` (wire or upgrade a profile's external kits in an existing solution, R-J7); 30 operations before it. String samples respect the declared length. Generated tests: the Api test accepts 404 or 401 for an unknown route (a host with a fallback authorization policy answers 401) and the Infrastructure DI test no longer validates the whole graph on build (kit and host services are registered by the Api).

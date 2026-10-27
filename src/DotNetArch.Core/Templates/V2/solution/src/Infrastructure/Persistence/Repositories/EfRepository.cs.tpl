@@ -18,16 +18,15 @@ internal sealed class EfRepository<TEntity>(AppDbContext context) : IRepository<
         int pageNumber,
         int pageSize,
         Expression<Func<TEntity, bool>>? filter = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool newestFirst = false)
     {
         var query = _set.AsNoTracking();
         if (filter is not null)
             query = query.Where(filter);
 
         var total = await query.CountAsync(cancellationToken);
-        var items = await query
-            .OrderBy(entity => entity.CreatedAtUtc)
-            .ThenBy(entity => entity.Id)
+        var items = await (newestFirst ? query.OrderByDescending(entity => entity.CreatedAtUtc).ThenByDescending(entity => entity.Id) : query.OrderBy(entity => entity.CreatedAtUtc).ThenBy(entity => entity.Id))
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(cancellationToken);
@@ -40,6 +39,9 @@ internal sealed class EfRepository<TEntity>(AppDbContext context) : IRepository<
 
     public async Task<IReadOnlyList<TEntity>> ListAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default) =>
         await _set.Where(predicate).OrderBy(entity => entity.CreatedAtUtc).ThenBy(entity => entity.Id).ToListAsync(cancellationToken);
+
+    public Task<int> CountAsync(Expression<Func<TEntity, bool>>? predicate = null, CancellationToken cancellationToken = default) =>
+        predicate is null ? _set.CountAsync(cancellationToken) : _set.CountAsync(predicate, cancellationToken);
 
     public Task<bool> AnyAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default) =>
         _set.AnyAsync(predicate, cancellationToken);

@@ -185,6 +185,17 @@ public sealed class EntityFeatureTests : IDisposable
     }
 
     [Fact]
+    public void The_repository_port_pages_newest_first_and_counts()
+    {
+        Solution();
+
+        var port = File.ReadAllText(P("src/Acme.Application/Abstractions/Persistence/IRepository.cs"));
+        Assert.Contains("bool newestFirst = false", port);
+        Assert.Contains("Task<int> CountAsync(", port);
+        Assert.Contains("OrderByDescending(entity => entity.CreatedAtUtc)", File.ReadAllText(P("src/Acme.Infrastructure/Persistence/Repositories/EfRepository.cs")));
+    }
+
+    [Fact]
     public void A_blueprint_generates_what_it_describes_in_one_plan_and_skips_what_exists()
     {
         Solution();

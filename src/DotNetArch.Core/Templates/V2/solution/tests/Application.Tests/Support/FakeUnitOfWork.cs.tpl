@@ -40,13 +40,13 @@ internal sealed class FakeRepository<TEntity> : IRepository<TEntity>
     public Task<TEntity?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         Task.FromResult(Items.FirstOrDefault(entity => entity.Id == id));
 
-    public Task<PagedResult<TEntity>> GetPagedAsync(int pageNumber, int pageSize, Expression<Func<TEntity, bool>>? filter = null, CancellationToken cancellationToken = default)
+    public Task<PagedResult<TEntity>> GetPagedAsync(int pageNumber, int pageSize, Expression<Func<TEntity, bool>>? filter = null, CancellationToken cancellationToken = default, bool newestFirst = false)
     {
         var query = Items.AsQueryable();
         if (filter is not null)
             query = query.Where(filter);
 
-        var ordered = query.OrderBy(entity => entity.CreatedAtUtc).ThenBy(entity => entity.Id).ToList();
+        var ordered = (newestFirst ? query.OrderByDescending(entity => entity.CreatedAtUtc).ThenByDescending(entity => entity.Id) : query.OrderBy(entity => entity.CreatedAtUtc).ThenBy(entity => entity.Id)).ToList();
         var page = ordered.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
         return Task.FromResult(new PagedResult<TEntity>(page, pageNumber, pageSize, ordered.Count));
     }
@@ -56,6 +56,9 @@ internal sealed class FakeRepository<TEntity> : IRepository<TEntity>
 
     public Task<IReadOnlyList<TEntity>> ListAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<TEntity>>(Items.AsQueryable().Where(predicate).OrderBy(entity => entity.CreatedAtUtc).ThenBy(entity => entity.Id).ToList());
+
+    public Task<int> CountAsync(Expression<Func<TEntity, bool>>? predicate = null, CancellationToken cancellationToken = default) =>
+        Task.FromResult(predicate is null ? Items.Count : Items.AsQueryable().Count(predicate));
 
     public Task<bool> AnyAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default) =>
         Task.FromResult(Items.AsQueryable().Any(predicate));
