@@ -14,8 +14,8 @@ public interface IRepository<TEntity>
         int pageNumber,
         int pageSize,
         Expression<Func<TEntity, bool>>? filter = null,
-        CancellationToken cancellationToken = default,
-        bool newestFirst = false);
+        bool newestFirst = false,
+        CancellationToken cancellationToken = default);
 
     /// <summary>How many entities match (all of them without a predicate).</summary>
     Task<int> CountAsync(Expression<Func<TEntity, bool>>? predicate = null, CancellationToken cancellationToken = default);

@@ -18,8 +18,8 @@ internal sealed class EfRepository<TEntity>(AppDbContext context) : IRepository<
         int pageNumber,
         int pageSize,
         Expression<Func<TEntity, bool>>? filter = null,
-        CancellationToken cancellationToken = default,
-        bool newestFirst = false)
+        bool newestFirst = false,
+        CancellationToken cancellationToken = default)
     {
         var query = _set.AsNoTracking();
         if (filter is not null)

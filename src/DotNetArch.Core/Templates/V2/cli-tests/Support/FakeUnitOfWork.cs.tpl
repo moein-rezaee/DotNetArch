@@ -30,7 +30,7 @@ internal sealed class FakeRepository<TEntity> : IRepository<TEntity>
     public Task<TEntity?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         Task.FromResult(_items.FirstOrDefault(entity => entity.Id == id));
 
-    public Task<PagedResult<TEntity>> GetPagedAsync(int pageNumber, int pageSize, Expression<Func<TEntity, bool>>? filter = null, CancellationToken cancellationToken = default, bool newestFirst = false)
+    public Task<PagedResult<TEntity>> GetPagedAsync(int pageNumber, int pageSize, Expression<Func<TEntity, bool>>? filter = null, bool newestFirst = false, CancellationToken cancellationToken = default)
     {
         var query = _items.AsQueryable();
         if (filter is not null)
