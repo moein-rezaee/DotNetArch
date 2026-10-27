@@ -40,6 +40,8 @@ internal static class FixOperation
         {
             if (only != null && !only.Contains(finding.Id))
                 continue;
+            if (finding.Id is "DA-BP03" or "DA-BP05")
+                continue;
             if (StructuralFixers.RuleIds.Contains(finding.Id))
             {
                 if (only == null)
@@ -72,11 +74,37 @@ internal static class FixOperation
         if (request.Apply)
             PlanApplier.Apply(root, plan);
 
-        var lines = plan.Select(p => $"  {p.Change.Action,-7} {p.Change.Path}  [{p.Change.RuleId}] {p.Change.Reason}").ToList();
-        var text = $"fix: {(request.Apply ? "applied" : "plan (dry run, add --apply to write)")} - {plan.Count} change(s), {manual.Count} manual finding(s)\n"
+        var changes = plan.Select(p => p.Change).ToList();
+        changes.AddRange(BlueprintFix(root, report, only, request, manual));
+        var lines = changes.Select(c => $"  {c.Action,-7} {c.Path}  [{c.RuleId}] {c.Reason}").ToList();
+        var text = $"fix: {(request.Apply ? "applied" : "plan (dry run, add --apply to write)")} - {changes.Count} change(s), {manual.Count} manual finding(s)\n"
                    + string.Join("\n", lines)
                    + (manual.Count == 0 ? string.Empty : "\nmanual (not mechanical, or opt-in):\n" + string.Join("\n", manual.Select(m => "  " + m)));
-        return new OperationResult(true, text, new { manual }, plan.Select(p => p.Change).ToList(), request.Apply);
+        return new OperationResult(true, text, new { manual }, changes, request.Apply);
+    }
+
+    /// <summary>
+    /// DA-BP03 (described but not generated) and DA-BP05 (blueprint not applied at its version) are fixed by applying the blueprint with the same
+    /// generators; the blueprint itself is never edited, and a change under an unchanged version is refused and listed as manual.
+    /// </summary>
+    private static IReadOnlyList<PlannedChange> BlueprintFix(string root, DoctorReport report, HashSet<string>? only, OperationRequest request, List<string> manual)
+    {
+        var wanted = report.Findings.Where(f => f.Id is "DA-BP03" or "DA-BP05" && (only == null || only.Contains(f.Id))).ToList();
+        if (wanted.Count == 0)
+            return Array.Empty<PlannedChange>();
+
+        var file = BlueprintFile.FindFile(root);
+        if (file is null)
+            return Array.Empty<PlannedChange>();
+
+        var result = OperationRegistry.Execute(OperationRegistry.Find("apply_blueprint")!, new Dictionary<string, string> { ["path"] = root, ["blueprint"] = file }, request.Apply);
+        if (!result.Ok)
+        {
+            manual.Add($"{wanted[0].Id}  {result.Error}");
+            return Array.Empty<PlannedChange>();
+        }
+
+        return (result.Plan ?? Array.Empty<PlannedChange>()).Select(c => c with { RuleId = wanted[0].Id }).ToList();
     }
 
     /// <summary>The single layer an <c>add_layer</c> call may create empty (internal value, not a declared parameter).</summary>

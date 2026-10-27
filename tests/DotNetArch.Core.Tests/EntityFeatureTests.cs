@@ -201,6 +201,8 @@ public sealed class EntityFeatureTests : IDisposable
         Solution();
         var file = Path.Combine(_root, "blueprint.yaml");
         File.WriteAllText(file, """
+            schema: 1
+            version: 1.0.0
             enums:
               - name: Level
                 members: [Low, High]
@@ -256,12 +258,100 @@ public sealed class EntityFeatureTests : IDisposable
     {
         Solution();
         var file = Path.Combine(_root, "blueprint.yaml");
-        File.WriteAllText(file, "entities:\n  - description: nameless\n");
+        File.WriteAllText(file, "schema: 1\nversion: 1.0.0\nentities:\n  - description: nameless\n");
 
         using var _ = Host();
         var result = OperationRegistry.Execute(OperationRegistry.Find("apply_blueprint")!, new Dictionary<string, string> { ["path"] = P(""), ["blueprint"] = file }, apply: true);
 
         Assert.False(result.Ok);
         Assert.Contains("entity name", result.Error);
+    }
+
+    private OperationResult ApplyBlueprint(string file, bool apply = true) =>
+        OperationRegistry.Execute(OperationRegistry.Find("apply_blueprint")!, new Dictionary<string, string> { ["path"] = P(""), ["blueprint"] = file }, apply);
+
+    private string WriteBlueprint(string body, string version = "1.0.0", string schema = "1")
+    {
+        var file = Path.Combine(P("docs"), "specs", "blueprint.yaml");
+        Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+        File.WriteAllText(file, (schema.Length == 0 ? string.Empty : $"schema: {schema}\n") + (version.Length == 0 ? string.Empty : $"version: {version}\n") + body);
+        return file;
+    }
+
+    private const string BadgeBody = "enums:\n  - { name: Level, members: [Low, High] }\nentities:\n  - { name: Badge, properties: \"Code:string(64)!,Level:Level\" }\n";
+
+    [Theory]
+    [InlineData("1.0.0", "", "needs 'schema: 1'")]
+    [InlineData("", "1", "needs 'version")]
+    [InlineData("1.0", "1", "needs 'version")]
+    [InlineData("1.0.0", "2", "Upgrade the tool")]
+    public void A_blueprint_without_a_known_schema_and_a_semver_version_is_refused(string version, string schema, string expected)
+    {
+        Solution();
+        var file = WriteBlueprint(BadgeBody, version, schema);
+
+        using var _ = Host();
+        var result = ApplyBlueprint(file);
+
+        Assert.False(result.Ok);
+        Assert.Contains(expected, result.Error);
+        Assert.False(File.Exists(P("src/Acme.Domain/Entities/Badge.cs")));
+    }
+
+    [Fact]
+    public void A_blueprint_only_moves_forward_and_every_change_of_the_model_needs_a_new_version()
+    {
+        Solution();
+        using var _ = Host();
+        var file = WriteBlueprint(BadgeBody);
+        Assert.True(ApplyBlueprint(file).Ok);
+        Assert.Contains("version: 1.0.0", File.ReadAllText(P(".net-arch/service-blueprint.lock")));
+
+        WriteBlueprint(BadgeBody + "features:\n  - { name: MyBadge }\n");
+        var unchanged = ApplyBlueprint(file);
+        Assert.False(unchanged.Ok);
+        Assert.Contains("raise 'version'", unchanged.Error);
+
+        WriteBlueprint(BadgeBody + "features:\n  - { name: MyBadge }\n", "0.9.0");
+        Assert.Contains("lower than the applied", ApplyBlueprint(file).Error);
+
+        WriteBlueprint(BadgeBody + "features:\n  - { name: MyBadge }\n", "1.1.0");
+        Assert.True(ApplyBlueprint(file).Ok);
+        Assert.Contains("version: 1.1.0", File.ReadAllText(P(".net-arch/service-blueprint.lock")));
+        Assert.True(ConfigManager.Load(P(""))!.Entities["MyBadge"].IsFeature);
+    }
+
+    [Fact]
+    public void The_doctor_checks_the_blueprint_and_fix_applies_it()
+    {
+        Solution();
+        using var _ = Host();
+        var ids = () => DotNetArch.Core.Doctor.DoctorRunner.Run(P("")).Findings.Where(f => f.Id.StartsWith("DA-BP", StringComparison.Ordinal)).Select(f => f.Id).ToList();
+
+        Assert.Equal(new[] { "DA-BP01" }, ids());
+
+        var file = WriteBlueprint(BadgeBody);
+        Assert.Equal(new[] { "DA-BP03", "DA-BP05" }, ids().OrderBy(id => id, StringComparer.Ordinal));
+
+        Assert.True(ApplyBlueprint(file).Ok);
+        Assert.Empty(ids());
+
+        WriteBlueprint(BadgeBody + "features:\n  - { name: MyBadge }\n");
+        Assert.Equal(new[] { "DA-BP03", "DA-BP05" }, ids().OrderBy(id => id, StringComparer.Ordinal));
+
+        WriteBlueprint(BadgeBody + "features:\n  - { name: MyBadge }\n", "1.1.0");
+        Assert.Equal(new[] { "DA-BP03", "DA-BP05" }, ids().OrderBy(id => id, StringComparer.Ordinal));
+
+        var plan = OperationRegistry.Execute(OperationRegistry.Find("fix")!, new Dictionary<string, string> { ["path"] = P(""), ["rules"] = "DA-BP03,DA-BP05" }, apply: false);
+        Assert.True(plan.Ok);
+        Assert.Contains(plan.Plan!, change => change.RuleId == "DA-BP03");
+        Assert.False(ConfigManager.Load(P(""))!.Entities.ContainsKey("MyBadge"));
+
+        var fixedUp = OperationRegistry.Execute(OperationRegistry.Find("fix")!, new Dictionary<string, string> { ["path"] = P(""), ["rules"] = "DA-BP03,DA-BP05" }, apply: true);
+        Assert.True(fixedUp.Ok);
+        Assert.Empty(ids());
+
+        File.AppendAllText(P("dotnet-arch.yml"), "entity.Stray: model\n");
+        Assert.Equal(new[] { "DA-BP04" }, ids());
     }
 }

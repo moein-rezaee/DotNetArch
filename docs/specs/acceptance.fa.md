@@ -43,3 +43,4 @@
 - AC-39 (R-J8) ورودی رشته‌ای با `(n)` با `n` و ورودی ساده با ۵۱۲ اعتبارسنجی می‌شود؛ `(0)` رد می‌شود؛ featureی که controller آن از قبل در پروژهٔ HttpApi است controller دوم در پروژهٔ Api نمی‌گیرد.
 - AC-40 (R-J9) طرح یک blueprint چیزی نمی‌نویسد؛ اعمال آن enumها، entityها، featureها، use caseها (با DTO entity دیگر) و سرویس‌ها را می‌سازد؛ اعمال دوباره چیزی را تغییر نمی‌دهد؛ entity بدون نام پیش از نوشتن هر فایلی رد می‌شود؛ طول رشته‌های typed در `dotnet-arch.yml` ثبت می‌شود.
 - AC-41 (R-J10) ‏`IRepository` تولیدشده `newestFirst` و `CountAsync` دارد؛ adapter ‏EF در صورت درخواست نزولی مرتب می‌کند.
+- AC-42 (R-J11) ‏blueprint بدون `schema` یا `version` با قالب semver رد می‌شود؛ نسخهٔ پایین‌تر و فایل تغییر‌کرده با همان نسخه رد می‌شوند؛ lock نسخهٔ اعمال‌شده را ثبت می‌کند؛ doctor موارد DA-BP01..05 را گزارش می‌کند و `fix --rules=DA-BP03,DA-BP05` تا پاک‌شدن doctor blueprint را اعمال می‌کند.

@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2.0.0 (unreleased)
+- Blueprints are versioned (`schema`, `version`, `.net-arch/service-blueprint.lock`); the doctor checks them (DA-BP01..05) and `fix` applies them (R-J11, AC-42).
 - The generated repository port pages newest first and counts (`newestFirst`, `CountAsync`; R-J10, AC-41).
 - `apply_blueprint` (generate what a service blueprint describes, in one plan and repeatable, R-J9, AC-40); 31 operations. The length of a typed string input is recorded in `dotnet-arch.yml`, and a use case may return the DTO of another entity.
 - Typed inputs take a validated length (`Name:string(8000)`), and a feature controller already in the HttpApi layer is not declared again in the Api project (R-J8, AC-39). The sample `Dm.LicenseGenerator` licence service (`corevia-licensing`) was the first service to need both.

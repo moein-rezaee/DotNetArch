@@ -23,6 +23,7 @@ public static class DoctorRunner
         TestChecks.Run(ctx);
         CodeChecks.Run(ctx);
         AbpChecks.Run(ctx);
+        BlueprintChecks.Run(ctx);
         ProfileChecks.Run(ctx);
 
         var accepted = new List<AcceptedFinding>();

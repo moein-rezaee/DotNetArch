@@ -68,7 +68,7 @@ One registry feeds the CLI and the MCP server: every command below is also an MC
 | `new service` | Business service (`--logic=true --name= [--entity=] [--lifetime=]`) or a kit for an external capability (`--logic=false --area= [--providers=] [--with-tests]`) |
 | `new kit <Area>` / `add kit <Area>` | Generate an independent kit / wire an existing kit into the solution |
 | `add mcp` | Add the MCP host `src/<App>.Mcp` |
-| `apply blueprint --blueprint=<file>` | Generate what a service blueprint (YAML: profiles, enums, entities, features, use cases, services, layers) describes in one plan; repeatable, skips what exists |
+| `apply blueprint --blueprint=<file>` | Generate what a versioned service blueprint (YAML: schema, version, profiles, enums, entities, features, use cases, services, layers) describes in one plan; repeatable, skips what exists; the doctor checks it (DA-BP*) and `fix` applies it |
 | `add cli` | Add the CLI host `src/<App>.Cli`, a peer of the MCP host (commands per entity, action and use case; same requests as the API) |
 | `add layer <Domain.Shared\|Application.Contracts\|HttpApi\|HttpApi.Client>` | Add an ABP layer project by moving into it what belongs there (nothing belongs: nothing is created; `--empty` is CLI-only) |
 | `add tests <Layer>` | Add the test project of a layer with an architecture test |
