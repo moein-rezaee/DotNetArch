@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2.0.0 (unreleased)
+- `fix --rules=DA-BP01` derives the blueprint of a service that has none (R-J13, AC-44).
 - Doctor and fix: the typed client expresses a GET that binds a query record, an ignored `.env` is not a finding, DA-M09 is fixed by an OpenAPI snapshot test, and a blueprint restores recorded lengths (R-J12, AC-43).
 - Blueprints are versioned (`schema`, `version`, `.net-arch/service-blueprint.lock`); the doctor checks them (DA-BP01..05) and `fix` applies them (R-J11, AC-42).
 - The generated repository port pages newest first and counts (`newestFirst`, `CountAsync`; R-J10, AC-41).

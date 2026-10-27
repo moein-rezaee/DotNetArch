@@ -89,7 +89,7 @@ internal static class FixOperation
     /// </summary>
     private static IReadOnlyList<PlannedChange> BlueprintFix(string root, DoctorReport report, HashSet<string>? only, OperationRequest request, List<string> manual)
     {
-        var wanted = report.Findings.Where(f => f.Id is "DA-BP03" or "DA-BP05" && (only == null || only.Contains(f.Id))).ToList();
+        var wanted = report.Findings.Where(f => f.Id is "DA-BP01" or "DA-BP03" or "DA-BP05" && (only == null || only.Contains(f.Id))).ToList();
         if (wanted.Count == 0)
             return Array.Empty<PlannedChange>();
 
@@ -157,6 +157,13 @@ internal static class FixOperation
                 var existing = current.Split('\n').Select(l => l.Trim()).ToHashSet(StringComparer.Ordinal);
                 var add = new[] { "bin/", "obj/", ".env" }.Where(l => !existing.Contains(l) && !existing.Contains("**/" + l) && !existing.Contains("/" + l) && !existing.Contains(l.TrimEnd('/'))).ToList();
                 return add.Count == 0 ? null : new FixAction(new PlannedChange(".gitignore", "modify", $"append: {string.Join(", ", add)}", finding.Id), current.TrimEnd('\n') + "\n" + string.Join("\n", add) + "\n");
+            case "DA-BP01":
+                // The service was generated before it had a blueprint: derive one from dotnet-arch.yml and the generated code.
+                var solution = Config.ConfigManager.Load(root);
+                if (solution is null || !solution.IsV2 || File.Exists(Path.Combine(root, BlueprintFile.DefaultPath)))
+                    return null;
+                solution.SolutionPath = root;
+                return new FixAction(new PlannedChange(BlueprintFile.DefaultPath, "create", "blueprint derived from the generated service (review it; its version starts at 1.0.0)", finding.Id), BlueprintDeriver.Derive(solution));
             case "DA-M09":
                 // The contract snapshot is written by a test (UPDATE_OPENAPI_SNAPSHOT=1 dotnet test), so the document comes from the running API, not from a guess.
                 var apiTests = Directory.EnumerateDirectories(root, "*.Api.Tests", SearchOption.AllDirectories).FirstOrDefault(d => !d.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal) && !d.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal));

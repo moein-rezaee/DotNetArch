@@ -409,4 +409,31 @@ public sealed class EntityFeatureTests : IDisposable
 
         Assert.Contains("Id:Guid,Text:string(8000)|", File.ReadAllText(path));
     }
+
+    [Fact]
+    public void Fix_derives_a_blueprint_for_a_service_that_has_none_and_applies_it()
+    {
+        Solution();
+        using var _ = Host();
+        const string body = "enums:\n  - { name: Level, members: [Low, High] }\nentities:\n  - { name: Badge, description: \"A badge.\", properties: \"Code:string(64)!,Owner:string(100)#,Level:Level,Note:string(300)?,Hash:string(128)!~,Expires:DateTime?\" }\nfeatures:\n  - { name: MyBadge }\nuse_cases:\n  - { entity: Badge, action: Find, method: GET, input: \"Id:Guid\", output: \"Code:string\" }\n  - { entity: MyBadge, action: Search, method: GET, input: \"Query:string(50)?\", output: \"Items:List<BadgeDto>\" }\nservices:\n  - { name: BadgeNumberService, entity: Badge }\n";
+        var original = WriteBlueprint(body);
+        Assert.True(ApplyBlueprint(original).Ok);
+        File.Delete(original);
+        File.Delete(P(".net-arch/service-blueprint.lock"));
+        Assert.Contains("DA-BP01", DotNetArch.Core.Doctor.DoctorRunner.Run(P("")).Findings.Select(f => f.Id));
+
+        var fixedUp = OperationRegistry.Execute(OperationRegistry.Find("fix")!, new Dictionary<string, string> { ["path"] = P(""), ["rules"] = "DA-BP01" }, apply: true);
+
+        Assert.True(fixedUp.Ok, fixedUp.Error);
+        var derived = File.ReadAllText(original);
+        Assert.Contains("schema: 1", derived);
+        Assert.Contains("version: 1.0.0", derived);
+        Assert.Contains("{ name: Level, members: [Low, High] }", derived);
+        Assert.Contains("description: \"A badge.\"", derived);
+        Assert.Contains("properties: \"Code:string(64)!,Owner:string(100)#,Level:Level,Note:string(300)?,Hash:string(128)!~,Expires:DateTime?\"", derived);
+        Assert.Contains("{ name: MyBadge }", derived);
+        Assert.Contains("{ name: BadgeNumberService, entity: Badge }", derived);
+        Assert.Contains("input: \"Query:string(50)?\"", derived);
+        Assert.DoesNotContain(DotNetArch.Core.Doctor.DoctorRunner.Run(P("")).Findings, f => f.Id.StartsWith("DA-BP", StringComparison.Ordinal));
+    }
 }

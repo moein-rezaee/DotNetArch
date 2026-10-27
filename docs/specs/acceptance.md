@@ -46,3 +46,4 @@ Nothing is claimed verified unless the script ran; when the SDK is unavailable t
 - AC-41 (R-J10) The generated `IRepository` has `newestFirst` and `CountAsync`; the EF adapter orders descending when asked.
 - AC-42 (R-J11) A blueprint without `schema` or a semver `version` is refused; a lower version and a changed file under the same version are refused; the lock records the applied version; the doctor reports DA-BP01..05 and `fix --rules=DA-BP03,DA-BP05` applies the blueprint until the doctor is clean.
 - AC-43 (R-J12) A GET with a `[FromQuery]` record gets a typed client method; an ignored `.env` is not DA-C04; `fix --rules=DA-M09` adds the snapshot test and `UPDATE_OPENAPI_SNAPSHOT=1 dotnet test` writes `docs/api/openapi.json`; applying a blueprint restores the recorded lengths.
+- AC-44 (R-J13) Deleting the blueprint of a generated service and running `fix --rules=DA-BP01 --apply` brings back an equivalent blueprint and leaves no DA-BP finding.

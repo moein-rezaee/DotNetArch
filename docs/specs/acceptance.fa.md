@@ -45,3 +45,4 @@
 - AC-41 (R-J10) ‏`IRepository` تولیدشده `newestFirst` و `CountAsync` دارد؛ adapter ‏EF در صورت درخواست نزولی مرتب می‌کند.
 - AC-42 (R-J11) ‏blueprint بدون `schema` یا `version` با قالب semver رد می‌شود؛ نسخهٔ پایین‌تر و فایل تغییر‌کرده با همان نسخه رد می‌شوند؛ lock نسخهٔ اعمال‌شده را ثبت می‌کند؛ doctor موارد DA-BP01..05 را گزارش می‌کند و `fix --rules=DA-BP03,DA-BP05` تا پاک‌شدن doctor blueprint را اعمال می‌کند.
 - AC-43 (R-J12) ‏GET با رکورد `[FromQuery]` متد کلاینت typed می‌گیرد؛ ‏`.env` نادیده‌گرفته‌شده DA-C04 نیست؛ ‏`fix --rules=DA-M09` تست snapshot را اضافه می‌کند و `UPDATE_OPENAPI_SNAPSHOT=1 dotnet test` فایل `docs/api/openapi.json` را می‌نویسد؛ اعمال blueprint طول‌های ثبت‌شده را برمی‌گرداند.
+- AC-44 (R-J13) حذف blueprint سرویس تولیدشده و اجرای `fix --rules=DA-BP01 --apply` blueprint معادل را برمی‌گرداند و هیچ یافتهٔ DA-BP نمی‌ماند.
