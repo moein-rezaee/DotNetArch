@@ -1,5 +1,6 @@
 using DotNetArch.Core.Config;
 using DotNetArch.Core.Hosting;
+using DotNetArch.Core.Scaffolding.V2;
 using DotNetArch.Core.NetArch;
 
 namespace DotNetArch.Core.Operations;
@@ -66,8 +67,19 @@ internal static partial class ScaffoldOperations
         {
             var entity = Required(item.Entity, "use case entity");
             var action = Required(item.Action, $"action of {entity}");
-            if (config.UseCases.ContainsKey($"{entity}.{action}"))
+            if (config.UseCases.TryGetValue($"{entity}.{action}", out var recorded))
+            {
+                // The record keeps the declared lengths (Name:string(120)); a record made before the lengths were kept is brought in line with the blueprint.
+                var input = string.Join(",", UseCaseSpec.Parse(item.Input, item.Output).Input.Select(p => $"{p.Name}:{p.RecordedType}"));
+                if (!string.Equals(recorded.Input, input, StringComparison.Ordinal))
+                {
+                    recorded.Input = input;
+                    ConfigManager.Save(root, config);
+                }
+
                 continue;
+            }
+
             ActionStep(config, entity, action, Required(item.Method, $"method of {entity}.{action}"), item.Input, item.Output, item.Anonymous, item.Description);
         }
 

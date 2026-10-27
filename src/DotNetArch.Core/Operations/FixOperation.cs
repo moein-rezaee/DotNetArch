@@ -157,6 +157,17 @@ internal static class FixOperation
                 var existing = current.Split('\n').Select(l => l.Trim()).ToHashSet(StringComparer.Ordinal);
                 var add = new[] { "bin/", "obj/", ".env" }.Where(l => !existing.Contains(l) && !existing.Contains("**/" + l) && !existing.Contains("/" + l) && !existing.Contains(l.TrimEnd('/'))).ToList();
                 return add.Count == 0 ? null : new FixAction(new PlannedChange(".gitignore", "modify", $"append: {string.Join(", ", add)}", finding.Id), current.TrimEnd('\n') + "\n" + string.Join("\n", add) + "\n");
+            case "DA-M09":
+                // The contract snapshot is written by a test (UPDATE_OPENAPI_SNAPSHOT=1 dotnet test), so the document comes from the running API, not from a guess.
+                var apiTests = Directory.EnumerateDirectories(root, "*.Api.Tests", SearchOption.AllDirectories).FirstOrDefault(d => !d.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal) && !d.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal));
+                if (apiTests is null)
+                    return null;
+                var testFile = Path.GetRelativePath(root, Path.Combine(apiTests, "OpenApiSnapshotTests.cs")).Replace('\\', '/');
+                if (File.Exists(Path.Combine(root, testFile)))
+                    return null;
+                var app = Path.GetFileName(apiTests)[..^".Api.Tests".Length];
+                return new FixAction(new PlannedChange(testFile, "create", "OpenAPI snapshot test; then run UPDATE_OPENAPI_SNAPSHOT=1 dotnet test to write docs/api/openapi.json", finding.Id),
+                        TemplateRenderer.RenderTemplate("V2/ops/openapi-snapshot-tests.cs.tpl", new Dictionary<string, string> { ["App"] = app }));
             case "DA-D04":
                 return new FixAction(new PlannedChange(".dockerignore", "create", "keep host bin/obj out of the build context", finding.Id), TemplateRenderer.Load("V2/ops/dockerignore.tpl"));
             default:

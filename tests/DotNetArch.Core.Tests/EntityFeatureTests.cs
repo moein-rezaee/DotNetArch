@@ -354,4 +354,59 @@ public sealed class EntityFeatureTests : IDisposable
         File.AppendAllText(P("dotnet-arch.yml"), "entity.Stray: model\n");
         Assert.Equal(new[] { "DA-BP04" }, ids());
     }
+
+    [Fact]
+    public void The_typed_client_expresses_a_GET_that_binds_a_query_record()
+    {
+        Solution();
+        using var _ = Host();
+        var file = WriteBlueprint("""
+            enums:
+              - { name: Level, members: [Low, High] }
+            entities:
+              - { name: Badge, properties: "Code:string(64)!,Level:Level" }
+            use_cases:
+              - { entity: Badge, action: Find, method: GET, input: "Id:Guid,Level:Level?,Names:List<string>", output: "Code:string" }
+            layers: [Domain.Shared, Application.Contracts, HttpApi]
+            """);
+        Assert.True(ApplyBlueprint(file).Ok);
+
+        var plan = OperationRegistry.Execute(OperationRegistry.Find("fix")!, new Dictionary<string, string> { ["path"] = P(""), ["rules"] = "DA-A08" }, apply: true);
+
+        Assert.True(plan.Ok, plan.Error);
+        var data = System.Text.Json.JsonSerializer.Serialize(plan.Data);
+        Assert.DoesNotContain("skipped", data);
+        var client = Directory.EnumerateFiles(P("src"), "BadgesClient.cs", SearchOption.AllDirectories).Single();
+        Assert.Contains("FindAsync(Guid id, List<string> names, Level? level", File.ReadAllText(client));
+        Assert.Contains("(\"id\", id), (\"names\", names), (\"level\", level)", File.ReadAllText(client));
+    }
+
+    [Fact]
+    public void An_env_file_that_gitignore_covers_is_not_a_finding()
+    {
+        Solution();
+        File.WriteAllText(P("src/Acme.Api/.env"), "DATABASE_CONNECTION_STRING=x\n");
+
+        Assert.DoesNotContain(DotNetArch.Core.Doctor.DoctorRunner.Run(P("")).Findings, f => f.Id == "DA-C04");
+
+        File.WriteAllText(P(".gitignore"), "bin/\nobj/\n");
+        Assert.Contains(DotNetArch.Core.Doctor.DoctorRunner.Run(P("")).Findings, f => f.Id == "DA-C04");
+    }
+
+    [Fact]
+    public void Applying_a_blueprint_brings_the_recorded_string_lengths_in_line()
+    {
+        Solution();
+        using var _ = Host();
+        var file = WriteBlueprint("entities:\n  - { name: Badge, properties: \"Code:string(64)!\" }\nuse_cases:\n  - { entity: Badge, action: Find, method: GET, input: \"Id:Guid,Text:string(8000)\", output: \"Code:string\" }\n");
+        Assert.True(ApplyBlueprint(file).Ok);
+        var path = P("dotnet-arch.yml");
+        File.WriteAllText(path, File.ReadAllText(path).Replace("Text:string(8000)", "Text:string"));
+        Assert.Contains("Id:Guid,Text:string|", File.ReadAllText(path));
+
+        WriteBlueprint("entities:\n  - { name: Badge, properties: \"Code:string(64)!\" }\nuse_cases:\n  - { entity: Badge, action: Find, method: GET, input: \"Id:Guid,Text:string(8000)\", output: \"Code:string\" }\n", "1.0.1");
+        Assert.True(ApplyBlueprint(file).Ok);
+
+        Assert.Contains("Id:Guid,Text:string(8000)|", File.ReadAllText(path));
+    }
 }

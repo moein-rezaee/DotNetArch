@@ -24,8 +24,10 @@ internal static partial class ConfigChecks
         ctx.Check("DA-C02", cat, ctx.Has($"{api.Dir}/appsettings.example.json"), DoctorSeverity.Warning, $"{api.Name} has no appsettings.example.json.", hint: "Generated template that tests keep in sync with the real keys.");
         ctx.Check("DA-C03", cat, ctx.Has($"{api.Dir}/.env.example"), DoctorSeverity.Warning, $"{api.Name} has no .env.example.", hint: "List every secret / run-time key (UPPER_CASE) without real values.");
 
-        var envOnDisk = ctx.Files.Where(f => Path.GetFileName(f).Equals(".env", StringComparison.OrdinalIgnoreCase)).ToList();
-        ctx.Check("DA-C04", cat, envOnDisk.Count == 0, DoctorSeverity.Warning, ".env file present in the working tree (make sure it is ignored and never committed).", hint: "Keep only .env.example in git.", details: envOnDisk);
+        // A .env that .gitignore covers is the normal local setup (secrets stay out of git); only an unignored one is a finding.
+        var ignored = ctx.Has(".gitignore") && ctx.Read(".gitignore").Split('\n').Select(l => l.Trim()).Any(l => l is ".env" or "**/.env" or "/.env" or ".env*" or ".env.*");
+        var envOnDisk = ignored ? new List<string>() : ctx.Files.Where(f => Path.GetFileName(f).Equals(".env", StringComparison.OrdinalIgnoreCase)).ToList();
+        ctx.Check("DA-C04", cat, envOnDisk.Count == 0, DoctorSeverity.Warning, ".env file present in the working tree and not covered by .gitignore (secrets must never be committed).", hint: "Keep only .env.example in git.", details: envOnDisk);
 
         var leaks = new List<string>();
         foreach (var file in ctx.Files.Where(f => Regex.IsMatch(Path.GetFileName(f), @"^appsettings(\.[\w-]+)?\.json$", RegexOptions.IgnoreCase) && !f.Contains(".example.", StringComparison.OrdinalIgnoreCase)))

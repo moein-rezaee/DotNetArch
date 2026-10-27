@@ -2,6 +2,7 @@
 
 ## 2.0.0 (منتشرنشده)
 - ورودی‌های typed طول اعتبارسنجی می‌گیرند (‏`Name:string(8000)`) و controller featureی که از قبل در لایهٔ HttpApi است دوباره در پروژهٔ Api اعلام نمی‌شود (R-J8، AC-39). سرویس لایسنس (`corevia-licensing`) با نمونهٔ `Dm.LicenseGenerator` اولین سرویسی بود که به هر دو نیاز داشت.
+- ‏doctor و fix: کلاینت typed، GET با رکورد query را بیان می‌کند، ‏`.env` نادیده‌گرفته‌شده یافته نیست، ‏DA-M09 با تست snapshot قرارداد OpenAPI اصلاح می‌شود و blueprint طول‌های ثبت‌شده را برمی‌گرداند (R-J12 و AC-43).
 - ‏blueprintها نسخه دارند (‏`schema`، ‏`version` و `.net-arch/service-blueprint.lock`)؛ doctor آن‌ها را می‌سنجد (‏DA-BP01..05) و `fix` اعمالشان می‌کند (R-J11 و AC-42).
 - پورت repository تولیدشده تازه‌ترین را اول صفحه‌بندی می‌کند و می‌شمارد (‏`newestFirst` و `CountAsync`؛ R-J10 و AC-41).
 - ‏`apply_blueprint` (تولید آنچه blueprint سرویس توصیف می‌کند، در یک طرح و تکرارپذیر، R-J9 و AC-40)؛ ۳۱ عملیات. طول ورودی رشته‌ای typed در `dotnet-arch.yml` ثبت می‌شود و use case می‌تواند DTO entity دیگری را برگرداند.

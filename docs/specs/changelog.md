@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2.0.0 (unreleased)
+- Doctor and fix: the typed client expresses a GET that binds a query record, an ignored `.env` is not a finding, DA-M09 is fixed by an OpenAPI snapshot test, and a blueprint restores recorded lengths (R-J12, AC-43).
 - Blueprints are versioned (`schema`, `version`, `.net-arch/service-blueprint.lock`); the doctor checks them (DA-BP01..05) and `fix` applies them (R-J11, AC-42).
 - The generated repository port pages newest first and counts (`newestFirst`, `CountAsync`; R-J10, AC-41).
 - `apply_blueprint` (generate what a service blueprint describes, in one plan and repeatable, R-J9, AC-40); 31 operations. The length of a typed string input is recorded in `dotnet-arch.yml`, and a use case may return the DTO of another entity.

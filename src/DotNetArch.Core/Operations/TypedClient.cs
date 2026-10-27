@@ -50,6 +50,7 @@ internal static partial class TypedClient
         }
 
         var known = KnownTypes(ctx);
+        var queryRecords = QueryRecords(ctx);
         var features = LayerTree.Features(ctx);
         var transport = ctx.Profile?.Client is { Transport: "rest-client", Interface.Length: > 0 } client ? client : null;
         var prefix = domain.Name[..^".Domain".Length];
@@ -65,7 +66,7 @@ internal static partial class TypedClient
         {
             var stem = Path.GetFileNameWithoutExtension(file) + ".";
             var partials = ctx.Files.Where(f => Path.GetDirectoryName(f)?.Replace('\\', '/') == Path.GetDirectoryName(file)?.Replace('\\', '/') && f != file && Path.GetFileName(f).StartsWith(stem, StringComparison.Ordinal) && f.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)).Order(StringComparer.Ordinal);
-            var (clientName, methods) = Parse(ctx.Read(file) + "\n" + string.Join("\n", partials.Select(f => ctx.Read(f))), file, known, notes, transport != null);
+            var (clientName, methods) = Parse(ctx.Read(file) + "\n" + string.Join("\n", partials.Select(f => ctx.Read(f))), file, known, queryRecords, notes, transport != null);
             if (methods.Count == 0)
                 continue;
             rendered.Add((clientName, methods));
@@ -171,7 +172,35 @@ internal static partial class TypedClient
         return result;
     }
 
-    private static (string ClientName, List<ClientAction> Actions) Parse(string raw, string file, Dictionary<string, string> known, List<string> notes, bool stringTransport)
+    /// <summary>The MediatR query records of Application.Contracts with their properties as camelCase parameters, so a GET that binds one with [FromQuery] can be expressed.</summary>
+    private static Dictionary<string, List<Parameter>> QueryRecords(RepoContext ctx)
+    {
+        var result = new Dictionary<string, List<Parameter>>(StringComparer.Ordinal);
+        var recordPattern = new Regex(@"record\s+(?<name>\w+Query)\s*\((?<params>[^)]*)\)\s*:\s*IRequest", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(2));
+        foreach (var project in ctx.Projects.Where(p => !p.IsTest && p.Layer == ProjectLayer.ApplicationContracts))
+        {
+            foreach (var file in ctx.Files.Where(f => f.StartsWith(project.Dir + "/", StringComparison.OrdinalIgnoreCase) && f.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)))
+            {
+                foreach (Match record in recordPattern.Matches(ctx.Read(file)))
+                {
+                    var properties = new List<Parameter>();
+                    foreach (var raw in SplitParameters(record.Groups["params"].Value))
+                    {
+                        var cleaned = DefaultValue().Replace(raw, string.Empty).Trim();
+                        var cut = cleaned.LastIndexOf(' ');
+                        if (cut > 0)
+                            properties.Add(new Parameter(cleaned[..cut].Trim(), char.ToLowerInvariant(cleaned[(cut + 1)..].Trim()[0]) + cleaned[(cut + 2)..].Trim(), "query"));
+                    }
+
+                    result[record.Groups["name"].Value] = properties;
+                }
+            }
+        }
+
+        return result;
+    }
+
+    private static (string ClientName, List<ClientAction> Actions) Parse(string raw, string file, Dictionary<string, string> known, Dictionary<string, List<Parameter>> queryRecords, List<string> notes, bool stringTransport)
     {
         var text = LineComment().Replace(BlockComment().Replace(raw, " "), string.Empty);
         var controller = ControllerClass().Match(text);
@@ -221,6 +250,21 @@ internal static partial class TypedClient
                     source = "query";
                 else
                     source = verb.Groups["verb"].Value is "Post" or "Put" or "Patch" && !hasBody ? "body" : "unsupported";
+
+                if (source == "query" && queryRecords.TryGetValue(type, out var recordParameters))
+                {
+                    // A query record (an MVC [FromQuery] object) travels as one query-string value per property.
+                    foreach (var property in recordParameters)
+                    {
+                        if (!IsSimple(property.Type, known) && !IsSimpleCollection(property.Type, known))
+                            problem = $"query property {property.Name} of {type} has the non-simple type {property.Type}";
+                        else if (!TypeAllowed(property.Type, known, out var propertyBlocker))
+                            problem = $"type {propertyBlocker} is not in Application.Contracts or Domain.Shared";
+                        parameters.Add(property);
+                    }
+
+                    continue;
+                }
 
                 if (source == "unsupported")
                     problem = $"parameter {parameterName} comes from a place the client cannot express";
