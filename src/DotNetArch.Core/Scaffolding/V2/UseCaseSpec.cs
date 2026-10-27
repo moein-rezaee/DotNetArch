@@ -12,6 +12,9 @@ internal sealed record UseCaseProperty(string Name, string Type, int? MaxLength 
 
     public string Declaration => $"{Type} {Name}";
 
+    /// <summary>The type as it is recorded in <c>dotnet-arch.yml</c>, with the length of a string (<c>string(120)</c>), so regenerating keeps it.</summary>
+    public string RecordedType => MaxLength is { } length && Type.StartsWith("string", StringComparison.Ordinal) ? $"string({length}){(IsOptional ? "?" : string.Empty)}" : Type;
+
     public string Description => Regex.Replace(Name, "(?<=[a-z0-9])(?=[A-Z])", " ").ToLowerInvariant();
 }
 

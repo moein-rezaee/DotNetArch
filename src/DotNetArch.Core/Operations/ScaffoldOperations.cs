@@ -15,7 +15,7 @@ namespace DotNetArch.Core.Operations;
 /// The generators of the tool (<c>new solution</c>, <c>new crud</c>, <c>add kit</c>, ...) as registry operations. They used to be separate CLI commands and
 /// hand-written MCP tools; now one definition feeds both, every one plans first and writes only with apply (D-32).
 /// </summary>
-internal static class ScaffoldOperations
+internal static partial class ScaffoldOperations
 {
     private static readonly string[] Methods = { "GET", "POST", "PUT", "DELETE", "PATCH" };
 
@@ -49,6 +49,7 @@ internal static class ScaffoldOperations
         AddKit(),
         AddMcp(),
         ApplyProfileOperation(),
+        ApplyBlueprintOperation(),
         AddCli(),
         CiAdd(),
         DockerAdd(),
@@ -177,12 +178,14 @@ internal static class ScaffoldOperations
             new OperationParameter("description", "One sentence for the entity summary."),
             NoMigration(),
         },
-        request => InSolution(request, "new_entity", config =>
-        {
-            if (!config.IsV2)
-                throw new InvalidOperationException("new_entity needs a layout v2 or v3 solution.");
-            EntityV2Generator.Generate(config, Identifier.RequireIdentifier(request.Get("entity")!, "entity name"), EntityProperty.ParseList(request.Get("properties")), request.Get("description"));
-        }));
+        request => InSolution(request, "new_entity", config => EntityStep(config, request.Get("entity")!, request.Get("properties"), request.Get("description"))));
+
+    internal static void EntityStep(SolutionConfig config, string entity, string? properties, string? description)
+    {
+        if (!config.IsV2)
+            throw new InvalidOperationException("new_entity needs a layout v2 or v3 solution.");
+        EntityV2Generator.Generate(config, Identifier.RequireIdentifier(entity, "entity name"), EntityProperty.ParseList(properties), description);
+    }
 
     private static OperationDefinition NewFeature() => Mutating(
         "new_feature",
@@ -193,12 +196,14 @@ internal static class ScaffoldOperations
             new OperationParameter("feature", "Feature name, singular PascalCase.", Required: true),
             new OperationParameter("description", "One sentence for the controller summary."),
         },
-        request => InSolution(request, "new_feature", config =>
-        {
-            if (!config.IsV2)
-                throw new InvalidOperationException("new_feature needs a layout v2 or v3 solution.");
-            FeatureV2Generator.Generate(config, Identifier.RequireIdentifier(request.Get("feature")!, "feature name"), request.Get("description"));
-        }));
+        request => InSolution(request, "new_feature", config => FeatureStep(config, request.Get("feature")!, request.Get("description"))));
+
+    internal static void FeatureStep(SolutionConfig config, string feature, string? description)
+    {
+        if (!config.IsV2)
+            throw new InvalidOperationException("new_feature needs a layout v2 or v3 solution.");
+        FeatureV2Generator.Generate(config, Identifier.RequireIdentifier(feature, "feature name"), description);
+    }
 
     private static OperationDefinition NewAction() => Mutating(
         "new_action",
@@ -215,21 +220,21 @@ internal static class ScaffoldOperations
             new OperationParameter("description", "One sentence for the endpoint summary and the MCP tool description."),
             NoMigration(),
         },
-        request =>
-        {
-            var method = request.Get("method")!.ToUpperInvariant();
-            if (!Methods.Contains(method))
-                throw new ArgumentException($"Invalid HTTP method. Allowed methods: {string.Join(", ", Methods)}.");
-            var action = request.Get("action");
-            var auto = string.IsNullOrWhiteSpace(action);
-            if (auto)
-                action = method switch { "GET" => "GetById", "POST" => "Create", "PUT" => "Update", "DELETE" => "Delete", _ => "Patch" };
-            if (!auto && CrudNames.Contains(action!.ToUpperInvariant()) && ValidForMethod.TryGetValue(method, out var allowed) && !allowed.Contains(action.ToUpperInvariant(), StringComparer.OrdinalIgnoreCase))
-                throw new ArgumentException($"Action name '{action}' conflicts with HTTP method '{method}'. Allowed for {method}: {string.Join(", ", allowed)}.");
-            var entity = Identifier.Sanitize(request.Get("entity")!);
-            var name = Identifier.Sanitize(action!);
-            return InSolution(request, "new_action", config => ActionScaffolder.Generate(config, entity, name, method, auto, request.Get("input"), request.Get("output"), request.Flag("anonymous"), request.Get("description")));
-        });
+        request => InSolution(request, "new_action", config => ActionStep(config, request.Get("entity")!, request.Get("action"), request.Get("method")!, request.Get("input"), request.Get("output"), request.Flag("anonymous"), request.Get("description"))));
+
+    internal static void ActionStep(SolutionConfig config, string entityName, string? actionName, string httpMethod, string? input, string? output, bool anonymous, string? description)
+    {
+        var method = httpMethod.ToUpperInvariant();
+        if (!Methods.Contains(method))
+            throw new ArgumentException($"Invalid HTTP method. Allowed methods: {string.Join(", ", Methods)}.");
+        var auto = string.IsNullOrWhiteSpace(actionName);
+        var action = auto
+            ? method switch { "GET" => "GetById", "POST" => "Create", "PUT" => "Update", "DELETE" => "Delete", _ => "Patch" }
+            : actionName!;
+        if (!auto && CrudNames.Contains(action.ToUpperInvariant()) && ValidForMethod.TryGetValue(method, out var allowed) && !allowed.Contains(action.ToUpperInvariant(), StringComparer.OrdinalIgnoreCase))
+            throw new ArgumentException($"Action name '{action}' conflicts with HTTP method '{method}'. Allowed for {method}: {string.Join(", ", allowed)}.");
+        ActionScaffolder.Generate(config, Identifier.Sanitize(entityName), Identifier.Sanitize(action), method, auto, input, output, anonymous, description);
+    }
 
     private static OperationDefinition NewEvent() => Mutating(
         "new_event",
@@ -258,13 +263,15 @@ internal static class ScaffoldOperations
         "new_enum",
         "Create an enum, scoped to an entity or common to the domain when the entity is omitted. Plan first; writes only with apply.",
         new[] { PathParam(), new OperationParameter("enum", "Enum name.", Required: true), new OperationParameter("entity", "Entity that owns the enum (empty: common)."), new OperationParameter("members", "Comma-separated members after the generated None = 0, for example Active,Revoked."), NoMigration() },
-        request => InSolution(request, "new_enum", config =>
-        {
-            var entity = request.Get("entity") is { } e ? Identifier.Sanitize(e) : null;
-            if (entity != null && !EnumScaffolder.EntityExists(config, entity))
-                throw new ArgumentException($"Entity '{entity}' does not exist.");
-            EnumScaffolder.Generate(config, entity, Identifier.Sanitize(request.Get("enum")!), List(request.Get("members")));
-        }));
+        request => InSolution(request, "new_enum", config => EnumStep(config, request.Get("entity"), request.Get("enum")!, List(request.Get("members")))));
+
+    internal static void EnumStep(SolutionConfig config, string? entityName, string enumName, IReadOnlyList<string> members)
+    {
+        var entity = entityName is { } e ? Identifier.Sanitize(e) : null;
+        if (entity != null && !EnumScaffolder.EntityExists(config, entity))
+            throw new ArgumentException($"Entity '{entity}' does not exist.");
+        EnumScaffolder.Generate(config, entity, Identifier.Sanitize(enumName), members);
+    }
 
     private static OperationDefinition NewConstant() => Mutating(
         "new_constant",
@@ -294,19 +301,24 @@ internal static class ScaffoldOperations
         },
         request => InSolution(request, "new_service", config =>
         {
-            if (!config.IsV2)
-                throw new InvalidOperationException("new_service needs a layout v2 or v3 solution.");
             if (request.Get("logic")!.Equals("true", StringComparison.OrdinalIgnoreCase))
             {
-                var name = request.Get("name") ?? throw new ArgumentException("name is required for a service with business logic.");
-                ServiceV2Generator.GenerateInternal(config, request.Get("entity"), name, request.Get("lifetime") ?? "Scoped");
+                ServiceStep(config, request.Get("name") ?? throw new ArgumentException("name is required for a service with business logic."), request.Get("entity"), request.Get("lifetime"));
+                return;
             }
-            else
-            {
-                var area = request.Get("area") ?? throw new ArgumentException("area is required for an external service (kit).");
-                ServiceV2Generator.GenerateKit(config, area, List(request.Get("providers")), request.Flag("with_tests"));
-            }
+
+            if (!config.IsV2)
+                throw new InvalidOperationException("new_service needs a layout v2 or v3 solution.");
+            var area = request.Get("area") ?? throw new ArgumentException("area is required for an external service (kit).");
+            ServiceV2Generator.GenerateKit(config, area, List(request.Get("providers")), request.Flag("with_tests"));
         }));
+
+    internal static void ServiceStep(SolutionConfig config, string name, string? entity, string? lifetime)
+    {
+        if (!config.IsV2)
+            throw new InvalidOperationException("new_service needs a layout v2 or v3 solution.");
+        ServiceV2Generator.GenerateInternal(config, entity, name, lifetime ?? "Scoped");
+    }
 
     private static OperationDefinition NewKit() => Mutating(
         "new_kit",

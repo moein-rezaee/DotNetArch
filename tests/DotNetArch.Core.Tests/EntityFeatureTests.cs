@@ -1,5 +1,6 @@
 using DotNetArch.Core.Config;
 using DotNetArch.Core.Hosting;
+using DotNetArch.Core.Operations;
 using DotNetArch.Core.Scaffolding.Entities;
 using DotNetArch.Core.Scaffolding.Ops;
 using DotNetArch.Core.Scaffolding.Solution;
@@ -106,6 +107,23 @@ public sealed class EntityFeatureTests : IDisposable
     }
 
     [Fact]
+    public void A_use_case_of_a_feature_can_return_the_DTO_of_another_entity()
+    {
+        var config = Solution();
+
+        using (Host())
+        {
+            EntityV2Generator.Generate(config, "Badge", EntityProperty.ParseList("Code:string(64)!,Status:BadgeStatus"), null);
+            FeatureV2Generator.Generate(config, "MyBadge", null);
+            ActionScaffolder.Generate(config, "MyBadge", "Search", "GET", crudStyle: false, "Query:string?", "Items:List<BadgeDto>", false, null);
+        }
+
+        var query = File.ReadAllText(P("src/Acme.Application/Features/MyBadges/Actions/SearchMyBadge/SearchMyBadgeResult.cs"));
+        Assert.Contains("using Acme.Application.Features.Badges.Dtos;", query);
+        Assert.DoesNotContain("Features.MyBadges.Dtos", query);
+    }
+
+    [Fact]
     public void A_feature_holds_typed_use_cases_that_need_an_explicit_output()
     {
         var config = Solution(mcp: true);
@@ -139,6 +157,20 @@ public sealed class EntityFeatureTests : IDisposable
     }
 
     [Fact]
+    public void The_length_of_a_typed_input_is_recorded_so_that_regenerating_keeps_it()
+    {
+        var config = Solution();
+
+        using (Host())
+        {
+            FeatureV2Generator.Generate(config, "Setting", null);
+            ActionScaffolder.Generate(config, "Setting", "Set", "PUT", crudStyle: false, "Key:string(64),Value:string(8000),Note:string(200)?,Count:int", "none", false, null);
+        }
+
+        Assert.Contains("usecase.Setting.Set: PUT|protected|Key:string(64),Value:string(8000),Note:string(200)?,Count:int|none", File.ReadAllText(P("dotnet-arch.yml")));
+    }
+
+    [Fact]
     public void A_typed_input_can_set_the_length_its_string_is_validated_against()
     {
         var spec = UseCaseSpec.Parse("Code:string,Document:string(8000),Note:string(200)?", "none");
@@ -150,5 +182,75 @@ public sealed class EntityFeatureTests : IDisposable
         Assert.Contains("command.Document).NotEmpty().MaximumLength(8000)", rules);
         Assert.DoesNotContain("Note", rules);
         Assert.Throws<ArgumentException>(() => UseCaseSpec.Parse("Code:string(0)", "none"));
+    }
+
+    [Fact]
+    public void A_blueprint_generates_what_it_describes_in_one_plan_and_skips_what_exists()
+    {
+        Solution();
+        var file = Path.Combine(_root, "blueprint.yaml");
+        File.WriteAllText(file, """
+            enums:
+              - name: Level
+                members: [Low, High]
+            entities:
+              - name: Badge
+                description: A badge.
+                properties: "Code:string(64)!,Level:Level"
+            features:
+              - name: MyBadge
+            use_cases:
+              - entity: Badge
+                action: Find
+                method: GET
+                input: "Id:Guid"
+                output: "Code:string"
+                description: Find a badge
+              - entity: MyBadge
+                action: Search
+                method: GET
+                input: "Query:string?"
+                output: "Items:List<BadgeDto>"
+            services:
+              - name: BadgeNumberService
+                entity: Badge
+            """);
+
+        using var _ = Host();
+        OperationResult Run(bool apply) => OperationRegistry.Execute(OperationRegistry.Find("apply_blueprint")!, new Dictionary<string, string> { ["path"] = P(""), ["blueprint"] = file }, apply);
+
+        var plan = Run(apply: false);
+        Assert.True(plan.Ok, plan.Error);
+        Assert.False(File.Exists(P("src/Acme.Domain/Entities/Badge.cs")));
+        Assert.Contains(plan.Plan!, change => change.Path.EndsWith("Badge.cs", StringComparison.Ordinal));
+
+        var applied = Run(apply: true);
+        Assert.True(applied.Ok, applied.Error);
+        Assert.True(File.Exists(P("src/Acme.Domain/Entities/Badge.cs")));
+        Assert.True(File.Exists(P("src/Acme.Domain/Enums/Level.cs")));
+        Assert.Contains("using Acme.Application.Features.Badges.Dtos;", File.ReadAllText(P("src/Acme.Application/Features/MyBadges/Actions/SearchMyBadge/SearchMyBadgeResult.cs")));
+        Assert.True(File.Exists(P("src/Acme.Application/Features/Badges/Services/BadgeNumberService.cs")));
+        var recorded = File.ReadAllText(P("dotnet-arch.yml"));
+        Assert.Contains("usecase.Badge.Find:", recorded);
+        Assert.Contains("usecase.MyBadge.Search:", recorded);
+
+        var again = Run(apply: true);
+        Assert.True(again.Ok, again.Error);
+        Assert.Empty(again.Plan!);
+        Assert.Equal(recorded, File.ReadAllText(P("dotnet-arch.yml")));
+    }
+
+    [Fact]
+    public void A_blueprint_with_a_missing_name_is_refused_before_anything_is_written()
+    {
+        Solution();
+        var file = Path.Combine(_root, "blueprint.yaml");
+        File.WriteAllText(file, "entities:\n  - description: nameless\n");
+
+        using var _ = Host();
+        var result = OperationRegistry.Execute(OperationRegistry.Find("apply_blueprint")!, new Dictionary<string, string> { ["path"] = P(""), ["blueprint"] = file }, apply: true);
+
+        Assert.False(result.Ok);
+        Assert.Contains("entity name", result.Error);
     }
 }

@@ -68,7 +68,7 @@ internal static class TypedActionV2Generator
             Action = actionName,
             Method = httpMethod.ToUpperInvariant(),
             Anonymous = anonymous,
-            Input = string.Join(",", spec.Input.Select(p => $"{p.Name}:{p.Type}")),
+            Input = string.Join(",", spec.Input.Select(p => $"{p.Name}:{p.RecordedType}")),
             Output = OutputText(spec.Output),
         };
         config.UseCases[$"{entity}.{actionName}"] = useCase;
@@ -120,7 +120,7 @@ internal static class TypedActionV2Generator
         tokens["ResultParameters"] = spec.Output.Kind == UseCaseOutputKind.Generated ? string.Join(", ", spec.Output.Properties.OrderBy(p => p.IsOptional).Select(p => p.Declaration)) : string.Empty;
         tokens["ValidatorRules"] = spec.ValidatorRules();
         var (needsDtos, needsEnums) = ClassifyTypes(config, spec);
-        tokens["DtoUsing"] = (needsDtos ? $"using {config.SolutionName}.Application.Features.{names.Plural}.Dtos;\n" : string.Empty)
+        tokens["DtoUsing"] = DtoNamespaces(config, spec, names.Plural, needsDtos).Aggregate(string.Empty, (text, ns) => text + $"using {ns};\n")
                              + (needsEnums ? $"using {config.SolutionName}.Domain.Enums;\n" : string.Empty);
         tokens["AnonymousAttribute"] = anonymous ? "\n    [AllowAnonymous]" : string.Empty;
         tokens["ControllerBody"] = ControllerBody(actionName, request, resultType, hasResult, spec, isQuery);
@@ -134,6 +134,42 @@ internal static class TypedActionV2Generator
         tokens["McpReturn"] = hasResult ? $"Task<{resultType}>" : "Task<string>";
         tokens["McpSuccess"] = hasResult ? string.Empty : ", \"Done.\"";
         return tokens;
+    }
+
+    /// <summary>
+    /// The namespaces of the DTOs a use case names: the feature that owns each DTO (a use case of <c>MyTicket</c> may return the <c>TicketDto</c> of
+    /// <c>Ticket</c>), or its own feature when the DTO is the one the entity generates or is not found yet.
+    /// </summary>
+    private static IReadOnlyList<string> DtoNamespaces(SolutionConfig config, UseCaseSpec spec, string ownPlural, bool needsDtos)
+    {
+        var own = $"{config.SolutionName}.Application.Features.{ownPlural}.Dtos";
+        if (!needsDtos)
+            return Array.Empty<string>();
+
+        var owners = new Dictionary<string, string>(StringComparer.Ordinal);
+        var src = Path.Combine(config.SolutionPath, "src");
+        if (Directory.Exists(src))
+        {
+            foreach (var file in Directory.EnumerateFiles(src, "*Dto.cs", SearchOption.AllDirectories))
+            {
+                var parts = file.Replace('\\', '/').Split('/');
+                var dtos = Array.LastIndexOf(parts, "Dtos");
+                if (dtos >= 2 && parts[dtos - 2] == "Features")
+                    owners[Path.GetFileNameWithoutExtension(file)] = $"{config.SolutionName}.Application.Features.{parts[dtos - 1]}.Dtos";
+            }
+        }
+
+        var found = spec.Input.Select(p => p.Type)
+            .Concat(spec.Output.Properties.Select(p => p.Type))
+            .Concat(spec.Output.Kind == UseCaseOutputKind.Existing ? new[] { spec.Output.Type } : Array.Empty<string>())
+            .SelectMany(type => Regex.Matches(type, "[A-Za-z_][A-Za-z0-9_]*").Select(m => m.Value))
+            .Where(owners.ContainsKey)
+            .Select(name => owners[name])
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        if (spec.Output.Kind == UseCaseOutputKind.EntityDto || found.Count == 0)
+            found.Add(own);
+        return found.Distinct(StringComparer.Ordinal).OrderBy(ns => ns, StringComparer.Ordinal).ToList();
     }
 
     private static string ControllerBody(string actionName, string request, string resultType, bool hasResult, UseCaseSpec spec, bool isQuery)

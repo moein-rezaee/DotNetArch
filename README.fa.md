@@ -65,6 +65,7 @@ dotnet run --project src/Shop.Api
 | `new service` | سرویس کسب‌وکار یا kit. غیرتعاملی: `--logic=true --name=` یا `--logic=false --area= [--providers=]` |
 | `new kit --area=Cache [--providers=A,B] [--kit-prefix=P] [--with-tests]` | ساخت kit مستقل و وصل کردن آن |
 | `add kit <Area>` / `add mcp` | وصل kit موجود / افزودن host ‏MCP |
+| `apply blueprint --blueprint=<file>` | تولید آنچه blueprint سرویس (‏YAML: پروفایل‌ها، enumها، entityها، featureها، use caseها، سرویس‌ها، لایه‌ها) توصیف می‌کند در یک طرح؛ تکرارپذیر و آنچه هست را رد می‌کند |
 | `add cli` | افزودن host ‏CLI یعنی `src/<App>.Cli` هم‌سطح MCP (دستور برای هر entity، action و use case؛ همان درخواست‌های API) |
 | `ci add` / `docker add` / `git setup` | فایل‌های عملیاتی برای solution موجود |
 | `exec [--docker|--docker-detach|--docker-stop]` | اجرای API محلی یا در Docker (ابتدا migrationها اعمال می‌شود) |
