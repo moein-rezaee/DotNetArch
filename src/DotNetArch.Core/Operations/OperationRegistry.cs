@@ -21,6 +21,7 @@ public static class OperationRegistry
             TenancyRetrofit.Definition,
             PersistenceGraft.Definition,
         }
+        .Concat(KitOperations.All)
         .Concat(ScaffoldOperations.All)
         .Concat(ProjectOperations.All)
         .ToList();
