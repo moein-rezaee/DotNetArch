@@ -1,5 +1,6 @@
 using DotNetArch.Core.Doctor;
 using DotNetArch.Core.Hosting;
+using DotNetArch.Core.Operations;
 using DotNetArch.Core.Scaffolding.Entities;
 using DotNetArch.Core.Scaffolding.Solution;
 using DotNetArch.Core.Tests.Support;
@@ -105,6 +106,34 @@ public sealed class DoctorTests : IDisposable
         Assert.DoesNotContain(report.Findings, f => f.Id == "DA-S06");
         Assert.DoesNotContain(report.Findings, f => f.Id.StartsWith("DA-V", StringComparison.Ordinal));
         Assert.Contains(report.Findings, f => f.Id == "DA-D04");
+    }
+
+    [Fact]
+    public void Fix_puts_a_non_root_user_before_the_entrypoint_of_a_dotnet_runtime_final_stage()
+    {
+        Write("Shop.Api/Shop.Api.csproj", Csproj());
+        Write("Shop.Api/Dockerfile", "FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build\nRUN dotnet publish\n\nFROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final\nWORKDIR /app\nEXPOSE 8080\nENTRYPOINT [\"dotnet\", \"Shop.Api.dll\"]\n");
+        Write("Shop.Api/Other.Dockerfile", "x");
+
+        Assert.Contains(DoctorRunner.Run(_root).Findings, f => f.Id == "DA-D03");
+        var result = OperationRegistry.Execute(OperationRegistry.Find("fix")!, new Dictionary<string, string> { ["path"] = _root, ["rules"] = "DA-D03" }, apply: true);
+
+        Assert.True(result.Ok);
+        var dockerfile = File.ReadAllText(Path.Combine(_root, "Shop.Api", "Dockerfile"));
+        Assert.True(dockerfile.IndexOf("USER $APP_UID", StringComparison.Ordinal) is var user && user > dockerfile.IndexOf("aspnet", StringComparison.Ordinal) && user < dockerfile.IndexOf("ENTRYPOINT", StringComparison.Ordinal));
+        Assert.DoesNotContain(DoctorRunner.Run(_root).Findings, f => f.Id == "DA-D03");
+    }
+
+    [Fact]
+    public void Fix_leaves_a_dockerfile_on_another_base_image_as_a_manual_finding()
+    {
+        Write("Shop.Api/Shop.Api.csproj", Csproj());
+        Write("Shop.Api/Dockerfile", "FROM alpine:3.20 AS build\nRUN true\nFROM alpine:3.20 AS final\nENTRYPOINT [\"sh\"]\n");
+
+        var result = OperationRegistry.Execute(OperationRegistry.Find("fix")!, new Dictionary<string, string> { ["path"] = _root, ["rules"] = "DA-D03" }, apply: true);
+
+        Assert.Contains("final stage is not a .NET runtime image", result.Text, StringComparison.Ordinal);
+        Assert.DoesNotContain("USER", File.ReadAllText(Path.Combine(_root, "Shop.Api", "Dockerfile")), StringComparison.Ordinal);
     }
 
     [Fact]

@@ -58,6 +58,12 @@ internal static class FixOperation
                 continue;
             }
 
+            if (finding.Id == "DA-D03")
+            {
+                plan.AddRange(NonRootFix(root, finding, manual));
+                continue;
+            }
+
             var fix = Fixer(root, finding);
             if (fix == null)
                 manual.Add($"{finding.Id}  {finding.Message}");
@@ -138,6 +144,29 @@ internal static class FixOperation
         var actions = LayerMigration.Plan(root, ctx, allowEmpty, out var left, emptyOnly);
         manual.AddRange(left.Select(m => $"DA-A02  {m}"));
         return actions;
+    }
+
+    /// <summary>
+    /// DA-D03: the final stage of a Dockerfile built on a .NET runtime image runs as the image's non-root <c>app</c> user (<c>$APP_UID</c>, set by the
+    /// image since .NET 8). The line goes before the first ENTRYPOINT or CMD of the last stage; any other base image stays a manual finding.
+    /// </summary>
+    private static IEnumerable<FixAction> NonRootFix(string root, DoctorFinding finding, List<string> manual)
+    {
+        foreach (var relative in finding.Details ?? Array.Empty<string>())
+        {
+            var file = Path.IsPathRooted(relative) ? relative : Path.Combine(root, relative);
+            var lines = File.ReadAllText(file).Replace("\r\n", "\n").Split('\n').ToList();
+            var from = lines.FindLastIndex(l => l.TrimStart().StartsWith("FROM ", StringComparison.OrdinalIgnoreCase));
+            var start = lines.FindIndex(Math.Max(from, 0), l => l.TrimStart().StartsWith("ENTRYPOINT", StringComparison.OrdinalIgnoreCase) || l.TrimStart().StartsWith("CMD", StringComparison.OrdinalIgnoreCase));
+            if (from < 0 || start < 0 || !lines[from].Contains("dotnet/aspnet", StringComparison.OrdinalIgnoreCase) && !lines[from].Contains("dotnet/runtime", StringComparison.OrdinalIgnoreCase))
+            {
+                manual.Add($"{finding.Id}  {relative}: the final stage is not a .NET runtime image, add a non-root USER by hand");
+                continue;
+            }
+
+            lines.Insert(start, "USER $APP_UID");
+            yield return new FixAction(new PlannedChange(Path.GetRelativePath(root, file).Replace('\\', '/'), "modify", "run as the non-root app user of the .NET runtime image", finding.Id), string.Join("\n", lines));
+        }
     }
 
     private static FixAction? Fixer(string root, DoctorFinding finding)

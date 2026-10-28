@@ -1,6 +1,7 @@
 # تغییرات
 
 ## 2.0.0 (منتشرنشده)
+- ‏`fix --rules=DA-D03` مرحلهٔ نهایی Dockerfile مبتنی بر image اجرای .NET را با کاربر غیر root اجرا می‌کند (R-J14 و AC-45).
 - ورودی‌های typed طول اعتبارسنجی می‌گیرند (‏`Name:string(8000)`) و controller featureی که از قبل در لایهٔ HttpApi است دوباره در پروژهٔ Api اعلام نمی‌شود (R-J8، AC-39). سرویس لایسنس (`corevia-licensing`) با نمونهٔ `Dm.LicenseGenerator` اولین سرویسی بود که به هر دو نیاز داشت.
 - ‏`fix --rules=DA-BP01` برای سرویس بدون blueprint آن را استخراج می‌کند (R-J13 و AC-44).
 - ‏doctor و fix: کلاینت typed، GET با رکورد query را بیان می‌کند، ‏`.env` نادیده‌گرفته‌شده یافته نیست، ‏DA-M09 با تست snapshot قرارداد OpenAPI اصلاح می‌شود و blueprint طول‌های ثبت‌شده را برمی‌گرداند (R-J12 و AC-43).
