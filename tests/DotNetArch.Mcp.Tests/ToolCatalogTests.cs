@@ -10,7 +10,7 @@ public class ToolCatalogTests
 {
     private static readonly string[] Documented =
     {
-        "add_cli", "add_kit", "add_layer", "add_mcp", "add_tests", "adopt", "apply_blueprint", "apply_profile", "ci_add", "describe_config", "docker_add", "doctor", "exec", "fix", "git_setup", "graph",
+        "add_cli", "add_kit", "add_layer", "add_mcp", "add_persistence", "add_tenancy", "add_tests", "adopt", "apply_blueprint", "apply_profile", "ci_add", "describe_config", "docker_add", "doctor", "exec", "fix", "git_setup", "graph",
         "list_entities", "new_action", "new_constant", "new_crud", "new_entity", "new_enum", "new_event", "new_feature", "new_kit", "new_service", "new_solution", "remove_migration",
         "spec_add", "spec_check", "spec_list",
     };

@@ -71,7 +71,8 @@ internal static class ScaffoldRunner
     /// <summary>Loads dotnet-arch.yml of a (work copy of a) solution and points its path at that folder.</summary>
     public static SolutionConfig LoadConfig(string work, string original)
     {
-        var config = ConfigManager.Load(work)
+        // A service the tool only adopted has no dotnet-arch.yml: its shape is read from what is on disk (the file is written by the first generator, or by fix DA-G01).
+        var config = ConfigManager.Load(work) ?? ConfigDeriver.Derive(work)
             ?? throw new InvalidOperationException($"Solution configuration (dotnet-arch.yml) not found in '{original}'. Run new_solution first.");
         config.SolutionPath = work;
         return config;

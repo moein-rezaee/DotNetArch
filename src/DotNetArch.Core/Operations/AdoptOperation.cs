@@ -30,7 +30,7 @@ internal static class AdoptOperation
         {
             new OperationParameter("path", "Repository root (default: current folder).", Positional: true),
             new OperationParameter("profile", "Shared profile file to reference from .net-arch/profile.yml (path relative to the repository root or absolute)."),
-            new OperationParameter("standards", "Comma-separated standards to record in project.yml (for example abp).", Choices: new[] { "abp" }),
+            new OperationParameter("standards", "Comma-separated standards to record in project.yml (abp, tenancy).", Choices: new[] { "abp", "tenancy" }),
         },
         Run);
 

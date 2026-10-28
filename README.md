@@ -70,6 +70,8 @@ One registry feeds the CLI and the MCP server: every command below is also an MC
 | `add mcp` | Add the MCP host `src/<App>.Mcp` |
 | `apply blueprint --blueprint=<file>` | Generate what a versioned service blueprint (YAML: schema, version, profiles, enums, entities, features, use cases, services, layers) describes in one plan; repeatable, skips what exists; the doctor checks it (DA-BP*) and `fix` applies it |
 | `add cli` | Add the CLI host `src/<App>.Cli`, a peer of the MCP host (commands per entity, action and use case; same requests as the API) |
+| `add persistence` | Give a service with no database the standard persistence skeleton (domain base types, repository and unit of work, EF adapter and context, design-time factory, MediatR pipeline, test support); never overwrites a file |
+| `add tenancy --profile=<file>` | Make an existing service multi-tenant over a shared profile that lists the Tenancy kit: wire the kit, scope every entity, filter and stamp the tenant in the EF context |
 | `add layer <Domain.Shared\|Application.Contracts\|HttpApi\|HttpApi.Client>` | Add an ABP layer project by moving into it what belongs there (nothing belongs: nothing is created; `--empty` is CLI-only) |
 | `add tests <Layer>` | Add the test project of a layer with an architecture test |
 | `ci add`, `docker add`, `git setup` | CI pipeline, Docker files (compose in `etc/docker/` in v3), git remote |

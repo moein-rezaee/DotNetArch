@@ -18,6 +18,7 @@ internal static class FixOperation
         {
             new OperationParameter("path", "Repository root (default: current folder).", Positional: true),
             new OperationParameter("profile", "Profile file to apply instead of .net-arch/profile.yml."),
+            new OperationParameter("tenancy_profile", "With DA-TN01: the shared profile that lists the tenancy kit; add_tenancy wires it and makes the entities tenant-scoped."),
             new OperationParameter("rules", "Comma-separated rule ids to fix (default: every default-fixable finding; name opt-in rules here)."),
             new OperationParameter("empty", "With DA-A02: also create ABP layer projects that have nothing to receive (default: a layer exists only where files move into it).", ParameterType.Flag),
         },
@@ -35,6 +36,7 @@ internal static class FixOperation
         var ctx = new RepoContext(root, profile, new NetArch.RuleSettings());
         var plan = new List<FixAction>();
         var manual = new List<string>();
+        var tenancyChanges = new List<PlannedChange>();
 
         foreach (var finding in report.Findings.Where(f => f.Severity != DoctorSeverity.Info))
         {
@@ -55,6 +57,28 @@ internal static class FixOperation
                     manual.Add($"{finding.Id}  {finding.Message}");
                 else
                     plan.AddRange(structural);
+                continue;
+            }
+
+            if (finding.Id == "DA-TN01")
+            {
+                if (only == null || request.Get("tenancy_profile") is null)
+                {
+                    manual.Add($"{finding.Id}  {finding.Message}  (opt-in: --rules=DA-TN01 --tenancy_profile=<profile>)");
+                    continue;
+                }
+
+                var retrofit = OperationRegistry.Execute(TenancyRetrofit.Definition, new Dictionary<string, string> { ["path"] = root, ["profile"] = request.Get("tenancy_profile")! }, request.Apply);
+                if (retrofit.Ok)
+                    tenancyChanges.AddRange((retrofit.Plan ?? Array.Empty<PlannedChange>()).Select(c => c with { RuleId = finding.Id }));
+                else
+                    manual.Add($"{finding.Id}  {retrofit.Error}");
+                continue;
+            }
+
+            if (finding.Id == "DA-K04")
+            {
+                plan.AddRange(CorsFix(root, finding, manual));
                 continue;
             }
 
@@ -81,6 +105,7 @@ internal static class FixOperation
             PlanApplier.Apply(root, plan);
 
         var changes = plan.Select(p => p.Change).ToList();
+        changes.AddRange(tenancyChanges);
         changes.AddRange(BlueprintFix(root, report, only, request, manual));
         var lines = changes.Select(c => $"  {c.Action,-7} {c.Path}  [{c.RuleId}] {c.Reason}").ToList();
         var text = $"fix: {(request.Apply ? "applied" : "plan (dry run, add --apply to write)")} - {changes.Count} change(s), {manual.Count} manual finding(s)\n"
@@ -147,6 +172,42 @@ internal static class FixOperation
     }
 
     /// <summary>
+    /// DA-K04: a host that allows any origin allows only the origins listed in <c>Cors:AllowedOrigins</c> (an empty list allows none, like a generated
+    /// service); the key is added to the appsettings of the host. Only a top-level <c>Program.cs</c> that registers CORS on <c>builder.Services</c> is
+    /// changed; any other shape stays a manual finding.
+    /// </summary>
+    private static IEnumerable<FixAction> CorsFix(string root, DoctorFinding finding, List<string> manual)
+    {
+        foreach (var relative in finding.Details ?? Array.Empty<string>())
+        {
+            var file = Path.IsPathRooted(relative) ? relative : Path.Combine(root, relative);
+            var text = File.ReadAllText(file);
+            if (!text.Contains("builder.Services.AddCors", StringComparison.Ordinal) || !System.Text.RegularExpressions.Regex.IsMatch(text, @"\.AllowAnyOrigin\(\)", System.Text.RegularExpressions.RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1)))
+            {
+                manual.Add($"{finding.Id}  {relative}: CORS is not registered on builder.Services in this file, list the origins by hand");
+                continue;
+            }
+
+            var fixedText = text.Replace(".AllowAnyOrigin()", ".WithOrigins(builder.Configuration.GetSection(\"Cors:AllowedOrigins\").Get<string[]>() ?? Array.Empty<string>())", StringComparison.Ordinal);
+            yield return new FixAction(new PlannedChange(Path.GetRelativePath(root, file).Replace('\\', '/'), "modify", "CORS allows the origins of Cors:AllowedOrigins instead of any origin", finding.Id), fixedText);
+
+            foreach (var settings in new[] { "appsettings.json", "appsettings.example.json" })
+            {
+                var path = Path.Combine(Path.GetDirectoryName(file)!, settings);
+                if (!File.Exists(path))
+                    continue;
+                var json = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(path))!.AsObject();
+                if (json["Cors"] is System.Text.Json.Nodes.JsonObject cors && cors["AllowedOrigins"] is not null)
+                    continue;
+                if (json["Cors"] is not System.Text.Json.Nodes.JsonObject section)
+                    json["Cors"] = section = new System.Text.Json.Nodes.JsonObject();
+                section["AllowedOrigins"] = new System.Text.Json.Nodes.JsonArray();
+                yield return new FixAction(new PlannedChange(Path.GetRelativePath(root, path).Replace('\\', '/'), "modify", "Cors:AllowedOrigins (empty: no cross-origin caller until origins are listed)", finding.Id), json.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true }) + "\n");
+            }
+        }
+    }
+
+    /// <summary>
     /// DA-D03: the final stage of a Dockerfile built on a .NET runtime image runs as the image's non-root <c>app</c> user (<c>$APP_UID</c>, set by the
     /// image since .NET 8). The line goes before the first ENTRYPOINT or CMD of the last stage; any other base image stays a manual finding.
     /// </summary>
@@ -167,6 +228,27 @@ internal static class FixOperation
             lines.Insert(start, "USER $APP_UID");
             yield return new FixAction(new PlannedChange(Path.GetRelativePath(root, file).Replace('\\', '/'), "modify", "run as the non-root app user of the .NET runtime image", finding.Id), string.Join("\n", lines));
         }
+    }
+
+    /// <summary>The first controller of the service (in the Api or the HttpApi project): its assembly is what the snapshot host serves.</summary>
+    private static (string Name, string Namespace)? FindController(string root, string app)
+    {
+        foreach (var project in new[] { $"{app}.Api", $"{app}.HttpApi" })
+        {
+            var folder = Path.Combine(root, "src", project);
+            if (!Directory.Exists(folder))
+                continue;
+            foreach (var file in Directory.EnumerateFiles(folder, "*.cs", SearchOption.AllDirectories).Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal) && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal)))
+            {
+                var text = File.ReadAllText(file);
+                var type = System.Text.RegularExpressions.Regex.Match(text, @"public\s+(?:sealed\s+|partial\s+|abstract\s+)*class\s+(?<name>\w+Controller)\s*:\s*ControllerBase", System.Text.RegularExpressions.RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
+                var space = System.Text.RegularExpressions.Regex.Match(text, @"^namespace\s+(?<ns>[\w.]+)\s*[;{]", System.Text.RegularExpressions.RegexOptions.Multiline | System.Text.RegularExpressions.RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
+                if (type.Success && space.Success)
+                    return (type.Groups["name"].Value, space.Groups["ns"].Value);
+            }
+        }
+
+        return null;
     }
 
     private static FixAction? Fixer(string root, DoctorFinding finding)
@@ -202,8 +284,37 @@ internal static class FixOperation
                 if (File.Exists(Path.Combine(root, testFile)))
                     return null;
                 var app = Path.GetFileName(apiTests)[..^".Api.Tests".Length];
-                return new FixAction(new PlannedChange(testFile, "create", "OpenAPI snapshot test; then run UPDATE_OPENAPI_SNAPSHOT=1 dotnet test to write docs/api/openapi.json", finding.Id),
-                        TemplateRenderer.RenderTemplate("V2/ops/openapi-snapshot-tests.cs.tpl", new Dictionary<string, string> { ["App"] = app }));
+                if (File.Exists(Path.Combine(apiTests, "Support", "ApiFactory.cs")))
+                    return new FixAction(new PlannedChange(testFile, "create", "OpenAPI snapshot test; then run UPDATE_OPENAPI_SNAPSHOT=1 dotnet test to write docs/api/openapi.json", finding.Id),
+                            TemplateRenderer.RenderTemplate("V2/ops/openapi-snapshot-tests.cs.tpl", new Dictionary<string, string> { ["App"] = app }));
+
+                // A service whose tests have no in-process host of the whole application: a small host over its controllers makes the document.
+                var controller = FindController(root, app);
+                if (controller is null)
+                    return null;
+                return new FixAction(new PlannedChange(testFile, "create", "OpenAPI snapshot test over a host of the controllers; then run UPDATE_OPENAPI_SNAPSHOT=1 dotnet test to write docs/api/openapi.json", finding.Id),
+                        TemplateRenderer.RenderTemplate("V2/ops/openapi-snapshot-tests.hosted.cs.tpl", new Dictionary<string, string>
+                        {
+                            ["App"] = app,
+                            ["Controller"] = controller.Value.Name,
+                            ["ControllerUsing"] = $"using {controller.Value.Namespace};",
+                        }));
+            case "DA-G01":
+                // The generators read the shape of the service from dotnet-arch.yml; a service that was only adopted gets it from what is on disk.
+                var derived = ConfigDeriver.Derive(root);
+                if (derived is null)
+                    return null;
+                var staging = Path.Combine(Path.GetTempPath(), "dotnet-arch-config-" + Guid.NewGuid().ToString("N"));
+                Directory.CreateDirectory(staging);
+                try
+                {
+                    Config.ConfigManager.Save(staging, derived);
+                    return new FixAction(new PlannedChange("dotnet-arch.yml", "create", "the shape of the service, read from the solution, the Api project, the packages and the Dockerfile", finding.Id), File.ReadAllText(Path.Combine(staging, "dotnet-arch.yml")));
+                }
+                finally
+                {
+                    Directory.Delete(staging, recursive: true);
+                }
             case "DA-D04":
                 return new FixAction(new PlannedChange(".dockerignore", "create", "keep host bin/obj out of the build context", finding.Id), TemplateRenderer.Load("V2/ops/dockerignore.tpl"));
             default:

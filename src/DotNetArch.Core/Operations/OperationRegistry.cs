@@ -18,6 +18,8 @@ public static class OperationRegistry
             DoctorOperation.Definition,
             AdoptOperation.Definition,
             FixOperation.Definition,
+            TenancyRetrofit.Definition,
+            PersistenceGraft.Definition,
         }
         .Concat(ScaffoldOperations.All)
         .Concat(ProjectOperations.All)

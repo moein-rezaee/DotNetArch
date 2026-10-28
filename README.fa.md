@@ -67,6 +67,8 @@ dotnet run --project src/Shop.Api
 | `add kit <Area>` / `add mcp` | وصل kit موجود / افزودن host ‏MCP |
 | `apply blueprint --blueprint=<file>` | تولید آنچه blueprint سرویس (‏YAML: پروفایل‌ها، enumها، entityها، featureها، use caseها، سرویس‌ها، لایه‌ها) توصیف می‌کند در یک طرح؛ تکرارپذیر و آنچه هست را رد می‌کند؛ blueprint نسخه (`schema` و `version`) دارد، doctor آن را می‌سنجد (‏DA-BP*) و `fix` اعمالش می‌کند |
 | `add cli` | افزودن host ‏CLI یعنی `src/<App>.Cli` هم‌سطح MCP (دستور برای هر entity، action و use case؛ همان درخواست‌های API) |
+| `add persistence` | دادن اسکلت استاندارد persistence به سرویس بدون پایگاه داده (نوع‌های پایهٔ دامنه، repository و unit of work، آداپتور و context ‏EF، factory زمان طراحی، pipeline ‏MediatR، پشتیبانی تست)؛ هرگز فایلی را بازنویسی نمی‌کند |
+| `add tenancy --profile=<file>` | چندمستاجری کردن سرویس موجود روی profile مشترک که kit ‏Tenancy را دارد: وصل‌کردن kit، scope کردن هر entity، فیلتر و مهر مستاجر در context ‏EF |
 | `ci add` / `docker add` / `git setup` | فایل‌های عملیاتی برای solution موجود |
 | `exec [--docker|--docker-detach|--docker-stop]` | اجرای API محلی یا در Docker (ابتدا migrationها اعمال می‌شود) |
 | `remove migration` | بازگرداندن و حذف آخرین migration |

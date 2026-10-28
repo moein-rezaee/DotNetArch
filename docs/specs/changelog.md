@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2.0.0 (unreleased)
+- Legacy services (R-J15..R-J18, AC-46..AC-49): `dotnet-arch.yml` derived from disk (DA-G01), `add_persistence` (the standard persistence skeleton for a service with no database), `add_tenancy` (multi-tenant over a shared profile; doctor DA-TN01, opt-in), fixes for DA-K04 and for DA-M09 without an application test host, a hand-written MCP host is left alone, plans compare content; 33 operations. First used on Payment, Notification and Basket.
 - `fix --rules=DA-D03` runs the final stage of a .NET runtime Dockerfile as the non-root app user (R-J14, AC-45).
 - `fix --rules=DA-BP01` derives the blueprint of a service that has none (R-J13, AC-44).
 - Doctor and fix: the typed client expresses a GET that binds a query record, an ignored `.env` is not a finding, DA-M09 is fixed by an OpenAPI snapshot test, and a blueprint restores recorded lengths (R-J12, AC-43).

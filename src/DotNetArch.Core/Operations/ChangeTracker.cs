@@ -48,6 +48,24 @@ internal sealed class ChangeTracker
         }
     }
 
+    private const long MaxHashedBytes = 2 * 1024 * 1024;
+
+    private static long ContentStamp(string file, long fallback)
+    {
+        try
+        {
+            return BitConverter.ToInt64(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(file)), 0);
+        }
+        catch (IOException)
+        {
+            return fallback;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return fallback;
+        }
+    }
+
     private static Dictionary<string, (long, long)> Snapshot(string root)
     {
         var files = new Dictionary<string, (long, long)>(StringComparer.Ordinal);
@@ -67,7 +85,9 @@ internal sealed class ChangeTracker
             foreach (var file in Directory.EnumerateFiles(directory))
             {
                 var info = new FileInfo(file);
-                files[Path.GetRelativePath(root, file).Replace('\\', '/')] = (info.Length, info.LastWriteTimeUtc.Ticks);
+                // A file that is written again with the same bytes is not a change: small files are compared by content, large ones by time.
+                var stamp = info.Length <= MaxHashedBytes ? ContentStamp(file, info.LastWriteTimeUtc.Ticks) : info.LastWriteTimeUtc.Ticks;
+                files[Path.GetRelativePath(root, file).Replace('\\', '/')] = (info.Length, stamp);
             }
         }
 

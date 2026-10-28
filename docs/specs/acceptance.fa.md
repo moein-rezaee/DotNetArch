@@ -47,3 +47,7 @@
 - AC-43 (R-J12) ‏GET با رکورد `[FromQuery]` متد کلاینت typed می‌گیرد؛ ‏`.env` نادیده‌گرفته‌شده DA-C04 نیست؛ ‏`fix --rules=DA-M09` تست snapshot را اضافه می‌کند و `UPDATE_OPENAPI_SNAPSHOT=1 dotnet test` فایل `docs/api/openapi.json` را می‌نویسد؛ اعمال blueprint طول‌های ثبت‌شده را برمی‌گرداند.
 - AC-44 (R-J13) حذف blueprint سرویس تولیدشده و اجرای `fix --rules=DA-BP01 --apply` blueprint معادل را برمی‌گرداند و هیچ یافتهٔ DA-BP نمی‌ماند.
 - AC-45 (R-J14) ‏`fix --rules=DA-D03 --apply` ‏`USER $APP_UID` را پیش از ENTRYPOINT مرحلهٔ نهایی `dotnet/aspnet` می‌گذارد و یافته از بین می‌رود؛ Dockerfile روی image پایهٔ دیگر دستی فهرست می‌شود و تغییر نمی‌کند.
+- AC-46 (R-J15) ‏`fix --rules=DA-G01 --apply` برای سرویس adopt‌شده `dotnet-arch.yml` می‌نویسد و یافته از بین می‌رود؛ میزبان MCP دست‌نویس ثبت نمی‌شود؛ نوشتن فایل با همان بایت‌ها در plan تغییر نیست.
+- AC-47 (R-J16) ‏`add_persistence --apply` اسکلت را می‌سازد، `Program.cs` را وصل می‌کند، pinهای قدیمی‌تر را بالا می‌برد، هرگز فایلی را بازنویسی نمی‌کند، با تکرار چیزی را عوض نمی‌کند و سرویس دارای context ‏EF را رد می‌کند.
+- AC-48 (R-J17) ‏`add_tenancy --apply` kit را وصل می‌کند، هر entity را scope می‌کند، در context فیلتر و مهر می‌زند و با تکرار چیزی را عوض نمی‌کند؛ contextی که patch نمی‌شود دستی فهرست می‌شود؛ profile بدون kit ‏Tenancy رد می‌شود؛ ‏DA-TN01 entityهای بدون scope را نام می‌برد و `fix` آن را پاک می‌کند.
+- AC-49 (R-J18) ‏`fix --rules=DA-K04` مبدأهای پیکربندی را فهرست می‌کند؛ ‏`fix --rules=DA-M09` وقتی تست‌ها میزبان کامل ندارند تست snapshot روی controllerها می‌نویسد.
