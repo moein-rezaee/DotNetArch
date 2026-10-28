@@ -296,6 +296,21 @@ public sealed class AbpTests : IDisposable
         Assert.DoesNotContain("DA-A08", string.Join(',', DoctorRunnerWith(repo).Findings.Select(f => f.Id)));
     }
 
+    [Fact]
+    public void A_controller_hidden_from_the_api_description_is_not_part_of_the_typed_client()
+    {
+        var repo = ApiRepo();
+        Write(repo, "src/Shop.HttpApi/Controllers/HookController.cs", "using Microsoft.AspNetCore.Mvc;\n\nnamespace Shop.Api.Controllers;\n\n[ApiController]\n[ApiExplorerSettings(IgnoreApi = true)]\n[Route(\"api/hooks\")]\npublic sealed class HookController : ControllerBase\n{\n    [HttpPost(\"{secret}\")]\n    public IActionResult Receive(string secret) => Ok();\n}\n");
+        var runner = new FakeProcessRunner();
+
+        using (ToolHost.Use(new HostContext(new NonInteractivePrompter(), new BufferedToolOutput(), runner)))
+            Run("fix", repo, apply: true, ("rules", "DA-A08"));
+
+        Assert.True(File.Exists(Path.Combine(repo, "src", "Shop.HttpApi.Client", "Item", "ItemClient.cs")));
+        Assert.Empty(Directory.EnumerateFiles(Path.Combine(repo, "src", "Shop.HttpApi.Client"), "Hook*", SearchOption.AllDirectories));
+        Assert.DoesNotContain("Hook", File.ReadAllText(Directory.EnumerateFiles(repo, "RouteParityTests.cs", SearchOption.AllDirectories).Single()), StringComparison.Ordinal);
+    }
+
     private static DoctorReport DoctorRunnerWith(string repo)
     {
         Write(repo, ".net-arch/project.yml", "schema: 2\nblueprint: 1.0.0\nlayout: v2\nstandards:\n- abp\n");

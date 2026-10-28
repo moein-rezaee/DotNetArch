@@ -38,7 +38,8 @@ internal static partial class TypedClient
         var controllers = ctx.Projects
             .Where(p => !p.IsTest && p.Layer is ProjectLayer.HttpApi or ProjectLayer.Api)
             .SelectMany(p => ctx.Files.Where(f => f.StartsWith(p.Dir + "/", StringComparison.OrdinalIgnoreCase) && f.EndsWith("Controller.cs", StringComparison.OrdinalIgnoreCase)))
-            .Where(f => ControllerBase().IsMatch(ctx.Read(f)))
+            // A controller hidden from the API description ([ApiExplorerSettings(IgnoreApi = true)]) is not part of the contract services call: a webhook for a platform, for example.
+            .Where(f => ControllerBase().IsMatch(ctx.Read(f)) && !IgnoredFromApi().IsMatch(ctx.Read(f)))
             .OrderBy(f => f, StringComparer.Ordinal)
             .ToList();
         if (controllers.Count == 0)
@@ -547,6 +548,9 @@ internal static partial class TypedClient
 
     [GeneratedRegex(@":\s*(?:Microsoft\.AspNetCore\.Mvc\.)?(?:ControllerBase|Controller)\b|\[ApiController\]", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 2000)]
     private static partial Regex ControllerBase();
+
+    [GeneratedRegex(@"ApiExplorerSettings\s*\(\s*IgnoreApi\s*=\s*true\s*\)")]
+    private static partial Regex IgnoredFromApi();
 
     [GeneratedRegex(@"class\s+(?<name>\w+Controller)\b", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 2000)]
     private static partial Regex ControllerClass();

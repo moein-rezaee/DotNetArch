@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2.0.0 (unreleased)
+- Kit creation (R-J20, AC-51): `scaffold_kit` and `scaffold_provider` create Kit areas and their provider packages with tests, bilingual docs and the package-list entry; `fix --rules=DA-A08` skips controllers hidden from the API description (`IgnoreApi = true`). 35 operations, CLI and MCP from one registry. Used to create the Delivery and Chat Kits.
 - Documentation and version gates (R-J19, AC-50): doctor DA-M10 (language links of a pair) and DA-B10 (the Api `<Version>`) with fixers; the README and docs templates carry the links, the standard README sections and the version.
 - Legacy services (R-J15..R-J18, AC-46..AC-49): `dotnet-arch.yml` derived from disk (DA-G01), `add_persistence` (the standard persistence skeleton for a service with no database), `add_tenancy` (multi-tenant over a shared profile; doctor DA-TN01, opt-in), fixes for DA-K04 and for DA-M09 without an application test host, a hand-written MCP host is left alone, plans compare content; 33 operations. First used on Payment, Notification and Basket.
 - `fix --rules=DA-D03` runs the final stage of a .NET runtime Dockerfile as the non-root app user (R-J14, AC-45).
