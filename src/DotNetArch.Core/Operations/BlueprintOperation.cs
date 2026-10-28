@@ -103,6 +103,9 @@ internal static partial class ScaffoldOperations
             }
         }
 
+        // The OpenSpec lists what the blueprint generated: entities and features with their routes and operations, and the layout.
+        Scaffolding.V2.SpecsV2.SyncOpenSpec(ConfigManager.Load(root) ?? config);
+
         BlueprintFile.SaveLock(root, new BlueprintLock { File = relative, Schema = blueprint.Schema!.Value, Version = version.ToString(), Sha256 = sha256 });
     }
 

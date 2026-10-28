@@ -1,3 +1,5 @@
+[فارسی](./contracts.fa.md)
+
 # {{App}} - contracts
 
 ## HTTP API

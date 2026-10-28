@@ -1,3 +1,5 @@
+[فارسی](./changelog.fa.md)
+
 # Changelog
 
 ## Unreleased

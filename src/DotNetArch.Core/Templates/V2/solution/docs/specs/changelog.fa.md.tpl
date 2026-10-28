@@ -1,3 +1,5 @@
+[English](./changelog.md)
+
 # تغییرات
 
 ## منتشرنشده

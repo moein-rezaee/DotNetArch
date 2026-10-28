@@ -1,3 +1,5 @@
+[فارسی](./roadmap.fa.md)
+
 # Roadmap
 
 Tick items as they are done; keep the "Resume point" accurate so work can continue after any interruption.

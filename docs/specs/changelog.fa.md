@@ -1,6 +1,7 @@
 # تغییرات
 
 ## 2.0.0 (منتشرنشده)
+- دروازه‌های مستندات و نسخه (R-J19 و AC-50): doctor ‏DA-M10 (لینک زبان یک جفت) و DA-B10 (`<Version>` پروژهٔ Api) با fixer؛ قالب‌های README و docs لینک‌ها، بخش‌های استاندارد README و نسخه را دارند.
 - سرویس‌های قدیمی (R-J15 تا R-J18 و AC-46 تا AC-49): ‏`dotnet-arch.yml` از دیسک خوانده می‌شود (DA-G01)، ‏`add_persistence` (اسکلت استاندارد persistence برای سرویس بدون پایگاه داده)، ‏`add_tenancy` (چندمستاجری روی profile مشترک؛ doctor ‏DA-TN01 انتخابی)، fix برای DA-K04 و DA-M09 بدون میزبان تست کامل، میزبان MCP دست‌نویس دست نمی‌خورد، و plan محتوا را مقایسه می‌کند؛ ۳۳ عملیات. اولین استفاده روی Payment، Notification و Basket.
 - ‏`fix --rules=DA-D03` مرحلهٔ نهایی Dockerfile مبتنی بر image اجرای .NET را با کاربر غیر root اجرا می‌کند (R-J14 و AC-45).
 - ورودی‌های typed طول اعتبارسنجی می‌گیرند (‏`Name:string(8000)`) و controller featureی که از قبل در لایهٔ HttpApi است دوباره در پروژهٔ Api اعلام نمی‌شود (R-J8، AC-39). سرویس لایسنس (`corevia-licensing`) با نمونهٔ `Dm.LicenseGenerator` اولین سرویسی بود که به هر دو نیاز داشت.

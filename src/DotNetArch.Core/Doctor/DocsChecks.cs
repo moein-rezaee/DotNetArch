@@ -54,6 +54,27 @@ internal static class DocsChecks
         if (exposesApi)
             ctx.Check("DA-M09", cat, ctx.Has("docs/api/openapi.json") || ctx.Has("docs/api/openapi.yaml"), DoctorSeverity.Warning, "The API exposes Swagger but no OpenAPI snapshot is committed under docs/api/.", hint: "Export openapi.json from the running API and review it with the code.");
 
+        // Both halves of a pair link each other near the top, so a reader (and a tool) can move between the languages.
+        var unlinked = new List<string>();
+        foreach (var doc in ctx.Files.Where(f => f.EndsWith(".md", StringComparison.OrdinalIgnoreCase) && (f.StartsWith("docs/", StringComparison.OrdinalIgnoreCase) || f.Equals("README.md", StringComparison.OrdinalIgnoreCase) || f.Equals("README.fa.md", StringComparison.OrdinalIgnoreCase))))
+        {
+            var counterpart = doc.EndsWith(".fa.md", StringComparison.OrdinalIgnoreCase) ? doc[..^6] + ".md" : doc[..^3] + ".fa.md";
+            if (!ctx.Has(counterpart))
+                continue;
+
+            var head = string.Join('\n', ctx.Read(doc).Split('\n').Take(5));
+            var name = Path.GetFileName(counterpart);
+            if (!head.Contains($"](./{name})", StringComparison.Ordinal) && !head.Contains($"]({name})", StringComparison.Ordinal))
+                unlinked.Add(doc);
+        }
+
+        ctx.Check("DA-M10", cat, unlinked.Count == 0, DoctorSeverity.Warning, "Documents of a pair that do not link their counterpart near the top.", hint: "dotnet-arch fix --rules=DA-M10 --apply adds the link line.", details: unlinked);
+
+        // The version of the service is the <Version> of its Api project; a release raises it.
+        var unversioned = ctx.OfLayer(ProjectLayer.Api).Where(p => !ctx.Read(p.File).Contains("<Version>", StringComparison.Ordinal)).Select(p => p.File.Replace('\\', '/')).ToList();
+        if (ctx.OfLayer(ProjectLayer.Api).Any(p => !p.IsTest))
+            ctx.Check("DA-B10", cat, unversioned.Count == 0, DoctorSeverity.Warning, "The Api project has no <Version>.", hint: "dotnet-arch fix --rules=DA-B10 --apply adds <Version>1.0.0</Version>.", details: unversioned);
+
         ctx.Check("DA-M05", cat, unpaired.Count == 0, DoctorSeverity.Warning, "docs/ files without their English/Persian counterpart.", hint: "Keep .md and .fa.md pairs in sync.", details: unpaired);
     }
 }

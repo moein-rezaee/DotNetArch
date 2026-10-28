@@ -1,3 +1,5 @@
+[English](./contracts.md)
+
 # {{App}} - قراردادها
 
 ## API ‏HTTP

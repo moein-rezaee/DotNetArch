@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <RootNamespace>{{App}}.Api</RootNamespace>
+    <Version>1.0.0</Version>
   </PropertyGroup>
 
   <ItemGroup>

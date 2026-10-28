@@ -1,3 +1,5 @@
+[فارسی](./acceptance.fa.md)
+
 # {{App}} - acceptance
 
 - A1. `dotnet build -c Release` is warning-free and `dotnet test` passes on a clean clone.

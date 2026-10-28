@@ -76,6 +76,12 @@ internal static class FixOperation
                 continue;
             }
 
+            if (finding.Id is "DA-M10" or "DA-B10")
+            {
+                plan.AddRange(finding.Id == "DA-M10" ? LanguageLinkFix(root, finding) : VersionFix(root, finding));
+                continue;
+            }
+
             if (finding.Id == "DA-K04")
             {
                 plan.AddRange(CorsFix(root, finding, manual));
@@ -169,6 +175,37 @@ internal static class FixOperation
         var actions = LayerMigration.Plan(root, ctx, allowEmpty, out var left, emptyOnly);
         manual.AddRange(left.Select(m => $"DA-A02  {m}"));
         return actions;
+    }
+
+    /// <summary>DA-M10: the missing language link goes on the first line.</summary>
+    private static IEnumerable<FixAction> LanguageLinkFix(string root, DoctorFinding finding)
+    {
+        foreach (var relative in finding.Details ?? Array.Empty<string>())
+        {
+            var file = Path.Combine(root, relative);
+            var name = Path.GetFileName(relative);
+            var counterpart = relative.EndsWith(".fa.md", StringComparison.OrdinalIgnoreCase) ? name[..^6] + ".md" : name[..^3] + ".fa.md";
+            var link = relative.EndsWith(".fa.md", StringComparison.OrdinalIgnoreCase) ? $"[English](./{counterpart})" : $"[فارسی](./{counterpart})";
+            var text = File.ReadAllText(file);
+            yield return new FixAction(new PlannedChange(relative, "modify", "link to the other language", finding.Id), link + "\n\n" + text);
+        }
+    }
+
+    /// <summary>DA-B10: the Api project gets <c>&lt;Version&gt;1.0.0&lt;/Version&gt;</c> in its first property group.</summary>
+    private static IEnumerable<FixAction> VersionFix(string root, DoctorFinding finding)
+    {
+        foreach (var relative in finding.Details ?? Array.Empty<string>())
+        {
+            var text = File.ReadAllText(Path.Combine(root, relative));
+            var group = System.Text.RegularExpressions.Regex.Match(text, @"<PropertyGroup>", System.Text.RegularExpressions.RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
+            if (!group.Success)
+                continue;
+
+            var after = group.Index + group.Length;
+            var multiLine = text.AsSpan(after).TrimStart(" \t").StartsWith("\n") || text.AsSpan(after).TrimStart(" \t").StartsWith("\r");
+            var newline = text.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
+            yield return new FixAction(new PlannedChange(relative, "modify", "the service version (a release raises it)", finding.Id), text.Insert(after, multiLine ? newline + "    <Version>1.0.0</Version>" : "<Version>1.0.0</Version>"));
+        }
     }
 
     /// <summary>

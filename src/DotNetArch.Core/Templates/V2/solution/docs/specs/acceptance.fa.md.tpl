@@ -1,3 +1,5 @@
+[English](./acceptance.md)
+
 # {{App}} - پذیرش
 
 - الف۱. `dotnet build -c Release` بدون warning است و `dotnet test` روی clone تمیز موفق است.

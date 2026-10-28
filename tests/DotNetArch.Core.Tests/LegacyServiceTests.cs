@@ -116,6 +116,27 @@ public sealed class LegacyServiceTests : IDisposable
         Assert.Contains("using Xunit;", test, StringComparison.Ordinal);
     }
 
+    // ---- DA-M10 / DA-B10 ----
+
+    [Fact]
+    public void Fix_links_the_two_languages_of_a_document_pair_and_gives_the_api_project_a_version()
+    {
+        Write("docs/specs/overview.md", "# Overview\n");
+        Write("docs/specs/overview.fa.md", "# مرور\n");
+        var report = DoctorRunner.Run(_root);
+        Assert.Contains(report.Findings, f => f.Id == "DA-M10" && f.Details!.Contains("docs/specs/overview.md"));
+        Assert.Contains(report.Findings, f => f.Id == "DA-B10");
+
+        var fix = Run("fix", apply: true, ("rules", "DA-M10,DA-B10"));
+
+        Assert.True(fix.Ok, fix.Text);
+        Assert.StartsWith("[فارسی](./overview.fa.md)", Read("docs/specs/overview.md"), StringComparison.Ordinal);
+        Assert.StartsWith("[English](./overview.md)", Read("docs/specs/overview.fa.md"), StringComparison.Ordinal);
+        Assert.Contains("<Version>1.0.0</Version>", Read("src/Shop.Api/Shop.Api.csproj"), StringComparison.Ordinal);
+        var after = DoctorRunner.Run(_root);
+        Assert.DoesNotContain(after.Findings, f => f.Id is "DA-M10" or "DA-B10");
+    }
+
     // ---- add_tenancy ----
 
     [Fact]

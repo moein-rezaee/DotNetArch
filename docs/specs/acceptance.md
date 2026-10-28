@@ -52,3 +52,4 @@ Nothing is claimed verified unless the script ran; when the SDK is unavailable t
 - AC-47 (R-J16) `add_persistence --apply` creates the skeleton, wires `Program.cs`, raises older pins, never overwrites a file, changes nothing when repeated, and refuses a service with an EF context.
 - AC-48 (R-J17) `add_tenancy --apply` wires the kit, scopes every entity, filters and stamps in the context and changes nothing when repeated; a context it cannot patch is listed as manual; a profile without the Tenancy kit is refused; DA-TN01 names the unscoped entities and `fix` clears it.
 - AC-49 (R-J18) `fix --rules=DA-K04` lists the configured origins; `fix --rules=DA-M09` writes a snapshot test over the controllers when the tests have no application host.
+- AC-50 (R-J19) A generated service has no DA-M10 or DA-B10 finding; `fix --rules=DA-M10,DA-B10 --apply` links the two documents of a pair and adds `<Version>` to the Api project of a service that lacks them.

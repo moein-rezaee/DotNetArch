@@ -1,3 +1,5 @@
+[فارسی](./decisions.fa.md)
+
 # Decision log
 
 | ID | Decision | Reason |

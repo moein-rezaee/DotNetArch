@@ -47,6 +47,41 @@ internal static class SpecsV2
         File.WriteAllText(path, text, new System.Text.UTF8Encoding(false));
     }
 
+    /// <summary>
+    /// Rewrites the <c>entities:</c> list and the <c>layout:</c> line of <c>docs/specs/openspec.yaml</c> from what the service has generated (the entities,
+    /// features and typed use cases of <c>dotnet-arch.yml</c>), so the spec of a service built from a blueprint never says "no entities". Repeating it changes nothing.
+    /// </summary>
+    public static void SyncOpenSpec(SolutionConfig config)
+    {
+        var path = Path.Combine(config.SolutionPath, "docs", "specs", "openspec.yaml");
+        if (!File.Exists(path))
+            return;
+
+        var text = File.ReadAllText(path);
+        var marker = text.IndexOf(OpenSpecMarker, StringComparison.Ordinal);
+        var header = text.IndexOf("entities:", StringComparison.Ordinal);
+        if (marker < 0 || header < 0 || header > marker)
+            return;
+
+        var lines = new System.Text.StringBuilder();
+        foreach (var (name, status) in config.Entities.OrderBy(entry => entry.Key, StringComparer.Ordinal))
+        {
+            var route = "/api/" + Naming.ToKebabCase(Naming.Pluralize(name));
+            var operations = new List<string>();
+            if (status.HasCrud)
+                operations.AddRange(new[] { "list", "get", "create", "update", "delete" });
+            operations.AddRange(config.UseCases.Values.Where(u => u.Entity == name).Select(u => Naming.ToKebabCase(u.Action)).Order(StringComparer.Ordinal));
+            lines.Append($"  - {{name: {name}, route: {route}, operations: [{string.Join(", ", operations)}]}}\n");
+        }
+
+        var start = text.IndexOf('\n', header) + 1;
+        var markerLine = text.LastIndexOf('\n', marker) + 1;
+        text = text[..start] + lines + text[markerLine..];
+        if (config.IsV3)
+            text = System.Text.RegularExpressions.Regex.Replace(text, @"^layout: v2$", "layout: v3", System.Text.RegularExpressions.RegexOptions.Multiline | System.Text.RegularExpressions.RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
+        File.WriteAllText(path, text, new System.Text.UTF8Encoding(false));
+    }
+
     private static void InsertBefore(string path, string marker, string insertion)
     {
         if (!File.Exists(path))
