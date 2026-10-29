@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2.0.0 (unreleased)
+- Migration files follow the editorconfig (R-J22, AC-53): the byte order mark EF writes is removed so the lint job passes on a new service.
 - Tenancy over an external system of record (R-J21, AC-52): `add_tenancy --wire_only` wires only the tenancy kit.
 - Kit creation (R-J20, AC-51): `scaffold_kit` and `scaffold_provider` create Kit areas and their provider packages with tests, bilingual docs and the package-list entry; `fix --rules=DA-A08` skips controllers hidden from the API description (`IgnoreApi = true`). 35 operations, CLI and MCP from one registry. Used to create the Delivery and Chat Kits.
 - Documentation and version gates (R-J19, AC-50): doctor DA-M10 (language links of a pair) and DA-B10 (the Api `<Version>`) with fixers; the README and docs templates carry the links, the standard README sections and the version.

@@ -38,7 +38,10 @@ public static class MigrationService
 
         var migName = $"Auto_{entity}_{DateTime.UtcNow:yyyyMMddHHmmss}";
         if (ToolHost.RunCommand($"dotnet ef migrations add {migName} --project {infraProj} --startup-project {startProj} --output-dir {PathConstants.MigrationsRelativePath}", config.SolutionPath))
+        {
+            MigrationFiles.NormalizeFor(config, infraProj);
             ToolHost.RunCommand($"dotnet ef database update --project {infraProj} --startup-project {startProj}", config.SolutionPath);
+        }
     }
 
     /// <summary>
@@ -70,7 +73,8 @@ public static class MigrationService
 
         var (infraProj, startProj) = EfProjects(config);
         var migName = UniqueMigrationName(config, infraProj, prefix);
-        ToolHost.RunCommand($"dotnet ef migrations add {migName} --project {infraProj} --startup-project {startProj} --output-dir {PathConstants.MigrationsRelativePath} --no-build", config.SolutionPath);
+        if (ToolHost.RunCommand($"dotnet ef migrations add {migName} --project {infraProj} --startup-project {startProj} --output-dir {PathConstants.MigrationsRelativePath} --no-build", config.SolutionPath))
+            MigrationFiles.NormalizeFor(config, infraProj);
     }
 
     /// <summary>EF prepends its own timestamp, so the name only needs to be unique among existing migrations.</summary>
@@ -124,6 +128,9 @@ public static class MigrationService
 
         if (!proceed)
             return;
+
+        if (success)
+            MigrationFiles.NormalizeFor(config, infraProj);
 
         var (dbSuccess, dbOutput) = ToolHost.RunCommandCapture($"dotnet ef database update --project {infraProj} --startup-project {startProj}", basePath);
         if (!dbSuccess)
