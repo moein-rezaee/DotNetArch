@@ -158,3 +158,6 @@ The CLI host (`add_cli`) calls the Application layer directly with the same Medi
 
 ## D-39 Published kits are wired from the profile, not known to the tool (Owner)
 The organisation's kits (their packages, registration lines, settings and secrets) are declared in the profile (`external_kits`); the tool only inserts them at markers and removes the generated parts they replace. Without a profile nothing changes (D-22). A kit that lacks a capability a host needs (for example a console host) is extended in the kit repository, not worked around in the generated code.
+
+## D-40 Ports and adapters are the vocabulary; the tool stays general (Owner)
+"Provider" is retired: a provider was always an adapter of a port. A module is a versioned package of one capability, not a service; a service is the result of a composition. Each adapter is its own package that depends on the contracts only, and each module, port, adapter and kit carries its own settings schema (JSON Schema, no key outside a schema). The tool core knows only module, port, adapter, kit and composition; everything specific to an organisation stays in profiles and templates (D-22, D-39), and the composition format is an open schema. `scaffold provider` and `Providers.*` stay as aliases for one release. Planned work: Phase 15.

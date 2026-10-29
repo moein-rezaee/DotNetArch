@@ -139,3 +139,11 @@ Environment: dotnet SDK 8 available (net9 targets cannot be built here; verify n
 - [x] 14.4 Profile-driven external kits (R-J4, AC-36): a profile lists packages, host registration lines, settings and secrets of published kits (for example `Corevia.Kit.*`) and `new solution --profile` / `add kit` wire them (replacing the hand-rolled configuration loader, exception handler and Swagger setup)
 - [ ] 14.5 Doctor: CLI/MCP parity check and a CLI untested warning (DA-S05 for `.Cli`)
 - [x] 14.6 `new entity` (typed properties and persistence), `new feature`, `new enum --members`, repository `FirstOrDefaultAsync`/`ListAsync` (AC-37, AC-38)
+
+## Phase 15 - Ports, adapters and composition, kept general (D-40)
+Planned. Nothing here is built; each item needs its requirement ID and acceptance line when it starts. Vocabulary and rules: the organisation's Composition Model (the tool does not depend on it; it is the reference for the profile).
+- [ ] 15.1 Measure and list every Corevia-specific coupling in the tool (names, addresses, Kit names); move each into a profile or a template
+- [ ] 15.2 `scaffold adapter` (alias of `scaffold provider`, which stays for one release) and `Adapters.*` project naming for new Kits; `doctor` accepts both names
+- [ ] 15.3 An adapter of a module port is generated as its own package that depends on the contracts package only
+- [ ] 15.4 Every generated module, port, adapter and Kit carries a `settings.schema.json` (JSON Schema 2020-12, `additionalProperties: false`); `doctor` checks that a configuration key has a schema
+- [ ] 15.5 `add_composition`: from an open composition file, generate the composition host (one service per module or one modular monolith), with `Http` and `InProc` adapters for calls between modules (needs the owner's yes for the Kit that carries the in-memory transport)

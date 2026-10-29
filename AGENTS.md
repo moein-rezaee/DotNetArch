@@ -18,6 +18,7 @@ Applies to the whole repository except `samples/` (read-only references; never e
 - CQRS with MediatR 12.x; Unit of Work + Repository; repositories return materialised results through async methods; never expose `IQueryable` from ports.
 - No sync-over-async, no `Console.WriteLine` for diagnostics, no hard-coded secrets, endpoints or CORS-any defaults.
 - Kits: `Providers.* -> Core -> Abstractions`; Core never references a provider; services see Abstractions only (Application) and Core+Providers only in the composition root.
+- Vocabulary (D-40): Port, Adapter, Module, Kit, Composition. "Provider" means adapter (`Providers.*` and `scaffold provider` stay as aliases for one release). One adapter = one package depending on the contracts only. Anything specific to an organisation lives in a profile or a template, never in the tool code.
 
 ## Configuration Rule
 - Secrets/run-time values: environment (UPPER_CASE). Non-sensitive: appsettings (PascalCase, colon). Loaded together in one step before options binding.
