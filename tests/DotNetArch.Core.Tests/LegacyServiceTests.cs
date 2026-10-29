@@ -170,6 +170,22 @@ public sealed class LegacyServiceTests : IDisposable
     }
 
     [Fact]
+    public void Add_tenancy_wire_only_wires_the_kit_and_leaves_the_data_model_alone()
+    {
+        WriteContext();
+        var profile = Path.Combine(_root, "tenancy.profile.yml");
+
+        var applied = Run("add_tenancy", apply: true, ("profile", profile), ("wire_only", "true"));
+
+        Assert.True(applied.Ok, applied.Text);
+        Assert.Contains("builder.Services.AddCoreviaTenancy(builder.Configuration);", Read("src/Shop.Api/Program.cs"), StringComparison.Ordinal);
+        Assert.DoesNotContain("ITenantOwned", Read("src/Shop.Domain/Entities/Order.cs"), StringComparison.Ordinal);
+        Assert.False(File.Exists(Path.Combine(_root, "src/Shop.Domain/Tenancy/ITenantOwned.cs")));
+        Assert.DoesNotContain("ApplyTenancy(", Read("src/Shop.Infrastructure/Context/ShopDbContext.cs"), StringComparison.Ordinal);
+        Assert.Empty(Run("add_tenancy", apply: false, ("profile", profile), ("wire_only", "true")).Plan ?? Array.Empty<PlannedChange>());
+    }
+
+    [Fact]
     public void Add_tenancy_lists_what_it_cannot_patch_by_text_and_refuses_a_profile_without_the_kit()
     {
         WriteContext();

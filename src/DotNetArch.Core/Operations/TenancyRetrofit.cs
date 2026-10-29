@@ -79,6 +79,7 @@ internal static class TenancyRetrofit
             new OperationParameter("path", "Repository root of the service.", Required: true, Positional: true, Alias: "output", Default: "@saved"),
             new OperationParameter("profile", "Shared profile file that lists the tenancy kit (its packages and host lines).", Required: true),
             new OperationParameter("skip", "Comma-separated entity names that stay shared across tenants (for example a catalogue of providers)."),
+            new OperationParameter("wire_only", "Only wire the tenancy kit (packages and host lines). For a service whose data lives in an external system of record (an accounting system): it has no tenant column to add; the tenant picks the connection instead.", Default: "false"),
         },
         Run);
 
@@ -92,6 +93,7 @@ internal static class TenancyRetrofit
         var profile = File.Exists(profilePath) ? NetArchStore.LoadProfileFile(profilePath) : null;
         var tenancy = profile?.ExternalKits.FirstOrDefault(kit => kit.Area.Equals("Tenancy", StringComparison.OrdinalIgnoreCase))
             ?? throw new ArgumentException($"The profile '{request.Get("profile")}' lists no kit with the area 'Tenancy'.");
+        var wireOnly = string.Equals(request.Get("wire_only"), "true", StringComparison.OrdinalIgnoreCase);
         var skip = (request.Get("skip") ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToHashSet(StringComparer.Ordinal);
 
         return ScaffoldRunner.Run(request, "add_tenancy", path, skipMigrations: true, work =>
@@ -100,14 +102,20 @@ internal static class TenancyRetrofit
                 ?? throw new InvalidOperationException("The folder is not a layout v2/v3 solution with an Api project.");
             config.SolutionPath = work;
             var manual = new List<string>();
-            Apply(work, config, tenancy, skip, manual);
+            Apply(work, config, tenancy, skip, wireOnly, manual);
             foreach (var note in manual)
                 DotNetArch.Core.Hosting.ToolHost.Info("manual: " + note);
         }, normalize: false);
     }
 
-    private static void Apply(string work, SolutionConfig config, ExternalKit tenancy, HashSet<string> skip, List<string> manual)
+    private static void Apply(string work, SolutionConfig config, ExternalKit tenancy, HashSet<string> skip, bool wireOnly, List<string> manual)
     {
+        if (wireOnly)
+        {
+            ExternalKitWiring.Apply(config, new ProfileDefinition { Name = "tenancy", ExternalKits = { tenancy } });
+            return;
+        }
+
         var model = TenancyModel.Find(work, out var problem) ?? throw new InvalidOperationException(problem);
         var domain = Path.Combine(work, "src", $"{config.SolutionName}.Domain");
         if (!Directory.Exists(domain))
