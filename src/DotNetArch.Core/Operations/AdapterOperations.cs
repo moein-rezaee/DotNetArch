@@ -36,6 +36,8 @@ internal static partial class AdapterOperations
             new OperationParameter("except", "Comma-separated files or folders to leave out of the moved folders."),
             new OperationParameter("namespace_from", "Namespace prefix that is replaced (default: the source project name)."),
             new OperationParameter("namespace_to", "Namespace prefix that replaces it (default: the target project name)."),
+            new OperationParameter("into", "Folder in the target project that receives the files (default: the same relative path). Needed to move within one project."),
+            new OperationParameter("make_public", "Declare the moved top-level types public (a type that moves to a project others consume cannot stay internal).", ParameterType.Flag),
         },
         RunMoveCode);
 
@@ -100,8 +102,9 @@ internal static partial class AdapterOperations
         var ctx = Context(root);
         var from = Project(ctx, request.Get("from"), "from");
         var to = Project(ctx, request.Get("to"), "to");
-        if (from.Name.Equals(to.Name, StringComparison.OrdinalIgnoreCase))
-            throw new ArgumentException("'from' and 'to' are the same project.");
+        var into = request.Get("into")?.Trim('/');
+        if (from.Name.Equals(to.Name, StringComparison.OrdinalIgnoreCase) && into == null)
+            throw new ArgumentException("'from' and 'to' are the same project: name the receiving folder with 'into'.");
 
         var nsFrom = request.Get("namespace_from") ?? from.Name;
         var nsTo = request.Get("namespace_to") ?? to.Name;
@@ -110,6 +113,7 @@ internal static partial class AdapterOperations
         var inside = (request.Get("files") ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         var except = (request.Get("except") ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         var sourceFiles = new SortedSet<string>(StringComparer.Ordinal);
+        var below = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var entry in inside)
         {
             var path = $"{from.Dir}/{entry.Trim('/')}";
@@ -117,7 +121,10 @@ internal static partial class AdapterOperations
             if (matches.Count == 0)
                 throw new ArgumentException($"Nothing found in {from.Name}: {entry}");
             foreach (var match in matches)
+            {
                 sourceFiles.Add(match);
+                below[match] = match.Equals(path, StringComparison.Ordinal) ? Path.GetFileName(match) : match[(path.Length + 1)..];
+            }
         }
 
         sourceFiles.RemoveWhere(f => except.Any(e =>
@@ -128,7 +135,7 @@ internal static partial class AdapterOperations
         if (sourceFiles.Count == 0)
             throw new ArgumentException("Every file was excluded; nothing to move.");
 
-        var moved = sourceFiles.Select(f => (Old: f, New: $"{to.Dir}/{f[(from.Dir.Length + 1)..]}")).ToList();
+        var moved = sourceFiles.Select(f => (Old: f, New: into == null ? $"{to.Dir}/{f[(from.Dir.Length + 1)..]}" : $"{to.Dir}/{into}/{below[f]}")).ToList();
         foreach (var item in moved)
         {
             if (ctx.Has(item.New))
@@ -139,6 +146,7 @@ internal static partial class AdapterOperations
         var namespaceMap = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
         var movedTypes = new Dictionary<string, List<(string OldNs, string NewNs)>>(StringComparer.Ordinal);
         var pairTokens = new Dictionary<(string OldNs, string NewNs), HashSet<string>>();
+        var movedFromNamespace = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var contents = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var movedUsings = new HashSet<string>(StringComparer.Ordinal);
         foreach (var (oldPath, newPath) in moved)
@@ -160,6 +168,7 @@ internal static partial class AdapterOperations
 
             var oldNs = declared.Groups["ns"].Value;
             var newNs = InNamespace(oldNs, nsFrom) ? nsTo + oldNs[nsFrom.Length..] : oldNs;
+            movedFromNamespace[newPath] = oldNs;
             if (newNs == oldNs && !oldNs.Equals(nsTo, StringComparison.Ordinal))
                 manual.Add($"{oldPath}: namespace {oldNs} is outside {nsFrom}; left unchanged.");
             if (newNs != oldNs)
@@ -184,7 +193,10 @@ internal static partial class AdapterOperations
 
             foreach (Match use in Using().Matches(text))
                 movedUsings.Add(use.Groups["ns"].Value);
-            contents[newPath] = NamespaceDeclaration().Replace(text, m => m.Value.Replace(oldNs, newNs, StringComparison.Ordinal), 1);
+            var rewritten = NamespaceDeclaration().Replace(text, m => m.Value.Replace(oldNs, newNs, StringComparison.Ordinal), 1);
+            if (request.Flag("make_public"))
+                rewritten = InternalType().Replace(rewritten, "${lead}public ");
+            contents[newPath] = rewritten;
         }
 
         // 2. every other .cs file: usings and qualified type names follow the move
@@ -212,7 +224,7 @@ internal static partial class AdapterOperations
             var original = contents.TryGetValue(file, out var c) ? c : ctx.Read(file, maxBytes: 4 * 1024 * 1024);
             if (original.Length == 0)
                 continue;
-            var text = RewriteReferences(original, namespaceMap, movedTypes, pairTokens, declaredAfter);
+            var text = RewriteReferences(original, namespaceMap, movedTypes, pairTokens, declaredAfter, movedFromNamespace.TryGetValue(file, out var was) ? was : null, from.Name.Equals(to.Name, StringComparison.OrdinalIgnoreCase));
             if (text != original)
                 edited[file] = text;
         }
@@ -291,7 +303,9 @@ internal static partial class AdapterOperations
         Dictionary<string, HashSet<string>> namespaceMap,
         Dictionary<string, List<(string OldNs, string NewNs)>> movedTypes,
         Dictionary<(string OldNs, string NewNs), HashSet<string>> pairTokens,
-        Dictionary<string, HashSet<string>> declaredAfter)
+        Dictionary<string, HashSet<string>> declaredAfter,
+        string? movedFromNs,
+        bool sameProject)
     {
         var words = new HashSet<string>(Word().Matches(text).Select(m => m.Value), StringComparer.Ordinal);
         var existing = new HashSet<string>(text.Split('\n').Select(l => l.Trim()), StringComparer.Ordinal);
@@ -322,6 +336,35 @@ internal static partial class AdapterOperations
             }
         }
 
+        // a file that sat in the old namespace (or below it) needed no using for its siblings; after the move it does
+        var fileNamespace = NamespaceDeclaration().Match(text) is { Success: true } fn ? fn.Groups["ns"].Value : null;
+        var needed = new List<string>();
+        foreach (var ((oldNs, newNs), tokens) in pairTokens)
+        {
+            var inOld = (fileNamespace != null && InNamespace(fileNamespace, oldNs)) || (movedFromNs != null && InNamespace(movedFromNs, oldNs));
+            if (inOld && (fileNamespace == null || !InNamespace(fileNamespace, newNs)) && tokens.Overlaps(words) && !existing.Contains($"using {newNs};"))
+                needed.Add(newNs);
+        }
+
+        if (movedFromNs != null && sameProject)
+        {
+            foreach (var (declaredNs, tokens) in declaredAfter)
+            {
+                if (declaredNs != fileNamespace && InNamespace(movedFromNs, declaredNs) && tokens.Overlaps(words) && !existing.Contains($"using {declaredNs};"))
+                    needed.Add(declaredNs);
+            }
+        }
+
+        if (needed.Count > 0)
+        {
+            var lastUsing = output.FindLastIndex(l => UsingLine().IsMatch(l));
+            var insertion = needed.Distinct(StringComparer.Ordinal).OrderBy(n => n, StringComparer.Ordinal).Select(n => $"using {n};").ToList();
+            if (lastUsing >= 0)
+                output.InsertRange(lastUsing + 1, insertion);
+            else
+                output.InsertRange(0, insertion.Append(string.Empty));
+        }
+
         var result = string.Join('\n', output);
         foreach (var (type, places) in movedTypes)
         {
@@ -329,7 +372,7 @@ internal static partial class AdapterOperations
             {
                 // the full name first, then the trailing parts of the namespace (a name relative to an enclosing namespace, for example Common.Configuration.X)
                 var segments = oldNs.Split('.');
-                for (var take = segments.Length; take >= 2; take--)
+                for (var take = segments.Length; take >= 1; take--)
                 {
                     result = Regex.Replace(
                         result,
@@ -578,6 +621,9 @@ internal static partial class AdapterOperations
 
     [GeneratedRegex(@"\b(?:class|record\s+struct|record\s+class|record|struct|interface|enum)\s+(?<name>[A-Za-z_]\w*)", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 2000)]
     private static partial Regex TypeDeclaration();
+
+    [GeneratedRegex(@"(?m)^(?<lead>[ \t]*)internal\s+(?=(?:sealed\s+|static\s+|abstract\s+|partial\s+|readonly\s+)*(?:class|record|struct|interface|enum)\b)", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 2000)]
+    private static partial Regex InternalType();
 
     [GeneratedRegex(@"\bstatic\s+[\w<>\[\],.? ]+?\s+(?<name>\w+)\s*(?:<[^>]*>)?\s*\(\s*this\s", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 2000)]
     private static partial Regex ExtensionMethod();

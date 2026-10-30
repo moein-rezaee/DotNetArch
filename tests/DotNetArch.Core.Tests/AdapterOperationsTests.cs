@@ -158,4 +158,49 @@ public sealed class AdapterOperationsTests : IDisposable
         Assert.Contains("using Shop.Composition;", program, StringComparison.Ordinal);
         Assert.Contains("Shop.Composition.csproj", File.ReadAllText(Path.Combine(repo, "src/Shop.Api/Shop.Api.csproj")), StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Describe_module_lists_ports_adapters_and_what_they_implement_and_read()
+    {
+        var repo = Repo();
+        Write(repo, "src/Shop.Infrastructure.Acme/Prices/AcmePriceSource.cs",
+            "using Microsoft.Extensions.Configuration;\nusing Shop.Domain.Ports;\n\nnamespace Shop.Infrastructure.Acme.Prices;\n\ninternal sealed class AcmePriceSource(IConfiguration configuration) : IPriceSource\n{\n    public decimal Get(int id) => decimal.Parse(configuration[\"Acme:BaseUrl\"]!);\n}\n");
+
+        var plan = Run("describe_module", repo, apply: false);
+        Assert.True(plan.Ok, plan.Error);
+        Assert.False(File.Exists(Path.Combine(repo, "module.yaml")));
+
+        var applied = Run("describe_module", repo, apply: true);
+
+        Assert.True(applied.Ok, applied.Error);
+        var yaml = File.ReadAllText(Path.Combine(repo, "module.yaml"));
+        Assert.Contains("module: Shop", yaml, StringComparison.Ordinal);
+        Assert.Contains("- name: IPriceSource", yaml, StringComparison.Ordinal);
+        Assert.Contains("system: Acme", yaml, StringComparison.Ordinal);
+        Assert.Contains("- AddAcmeAdapter", yaml, StringComparison.Ordinal);
+        Assert.Contains("- IPriceSource", yaml, StringComparison.Ordinal);
+        Assert.Contains("- Acme:BaseUrl", yaml, StringComparison.Ordinal);
+        Assert.Contains("backgroundWorkers: true", yaml, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Describe_settings_writes_a_closed_schema_and_marks_secrets_write_only()
+    {
+        var repo = Repo();
+        Write(repo, "src/Shop.Infrastructure.Acme/Options/AcmeOptions.cs",
+            "namespace Shop.Infrastructure.Acme;\n\npublic sealed class AcmeOptions\n{\n    public const string SectionName = \"Acme\";\n    public string BaseUrl { get; set; } = string.Empty;\n    public int TimeoutSeconds { get; set; } = 30;\n    public string ApiKey { get; set; } = string.Empty;\n    public AcmeRetry Retry { get; set; } = new();\n}\n\npublic sealed class AcmeRetry\n{\n    public int Attempts { get; set; } = 3;\n}\n");
+
+        var applied = Run("describe_settings", repo, apply: true);
+
+        Assert.True(applied.Ok, applied.Error);
+        var json = System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(repo, "src/Shop.Infrastructure.Acme/settings.schema.json"))).RootElement;
+        Assert.False(json.GetProperty("additionalProperties").GetBoolean());
+        var acme = json.GetProperty("properties").GetProperty("Acme");
+        Assert.Equal("integer", acme.GetProperty("properties").GetProperty("TimeoutSeconds").GetProperty("type").GetString());
+        Assert.Equal(30, acme.GetProperty("properties").GetProperty("TimeoutSeconds").GetProperty("default").GetInt32());
+        Assert.True(acme.GetProperty("properties").GetProperty("ApiKey").GetProperty("writeOnly").GetBoolean());
+        Assert.Equal("integer", acme.GetProperty("properties").GetProperty("Retry").GetProperty("properties").GetProperty("Attempts").GetProperty("type").GetString());
+        // nested options classes are part of their owner, not reported as unresolved
+        Assert.DoesNotContain("AcmeRetry", applied.Text, StringComparison.Ordinal);
+    }
 }
