@@ -148,3 +148,9 @@ Planned. The cross-repository steps live in the organisation's Composition Migra
 - [ ] 15.4 Every generated module, port, adapter and Kit carries a `settings.schema.json` (JSON Schema 2020-12, `additionalProperties: false`); `doctor` checks that a configuration key has a schema
 - [ ] 15.5 `add_composition`: from an open composition file, generate the composition host (one service per module or one modular monolith), with `Http` and `InProc` adapters for calls between modules (needs the owner's yes for the Kit that carries the in-memory transport)
 - [ ] 15.6 `migrate`: apply a written migration recipe to an existing service (contracts package, adapter packages, schemas, manifest, registration), with `doctor` reporting what is left; proven first on one pilot module
+
+### Phase 15 update (2026-10-31)
+
+- 15.5 `add_composition` generates the host from a composition: a layer (API, MCP, CLI, ACP, docs) is registered only when its exposure is not `none` and its package is in the lock. UI is a separate part.
+- 15.7 `scaffold adapter` names packages `<Module>.Adapters.<System>` (module name plus external system); the port and its classes keep neutral role names.
+- The schema and the validator live in `corevia-composition` (general, JSON Schema); DotNetArch uses the validator and does not own it.
