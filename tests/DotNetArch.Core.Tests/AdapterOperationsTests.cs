@@ -100,6 +100,19 @@ public sealed class AdapterOperationsTests : IDisposable
     }
 
     [Fact]
+    public void A_flat_key_an_adapter_reads_is_outside_every_schema()
+    {
+        var repo = Repo();
+        Write(repo, "src/Shop.Infrastructure.Acme/Prices/Reader.cs",
+            "using Microsoft.Extensions.Configuration;\n\nnamespace Shop.Infrastructure.Acme.Prices;\n\ninternal sealed class Reader(IConfiguration configuration)\n{\n    public string? Flat() => configuration[\"ACME_BASE_URL\"];\n    public string? Area() => configuration[\"Acme:BaseUrl\"];\n}\n");
+
+        var finding = Assert.Single(DoctorRunner.Run(repo).Findings, f => f.Id == "DA-AD07");
+
+        Assert.Contains("Shop.Infrastructure.Acme: ACME_BASE_URL", finding.Details!);
+        Assert.Contains("Shop.Infrastructure.Acme: Acme:BaseUrl", finding.Details!);
+    }
+
+    [Fact]
     public void Adapter_rules_are_off_unless_the_standard_is_on()
     {
         var repo = Repo(standards: "abp");

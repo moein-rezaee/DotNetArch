@@ -4,9 +4,9 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
-    <PackageId>Corevia.Kit.{{Name}}.Providers.{{Provider}}</PackageId>
-    <RootNamespace>Corevia.Kit.{{Name}}.Providers.{{Provider}}</RootNamespace>
-    <AssemblyName>Corevia.Kit.{{Name}}.Providers.{{Provider}}</AssemblyName>
+    <PackageId>Corevia.Kit.{{Name}}.{{Segment}}.{{Provider}}</PackageId>
+    <RootNamespace>Corevia.Kit.{{Name}}.{{Segment}}.{{Provider}}</RootNamespace>
+    <AssemblyName>Corevia.Kit.{{Name}}.{{Segment}}.{{Provider}}</AssemblyName>
     <Version>1.0.0</Version>
     <PackageVersion>1.0.0</PackageVersion>
     <Authors>Platform Engineering</Authors>

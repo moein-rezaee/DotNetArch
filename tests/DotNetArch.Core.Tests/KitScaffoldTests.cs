@@ -94,6 +94,20 @@ public sealed class KitScaffoldTests : IDisposable
         Assert.False(Run("scaffold_provider", false, ("kit", "Delivery"), ("provider", "Sms.Kavenegar"), ("description", "x")).Ok);
     }
 
+    [Fact]
+    public void An_adapter_is_the_same_as_a_provider_with_the_vocabulary_of_the_composition_model()
+    {
+        Run("scaffold_kit", true, ("name", "Delivery"), ("description", "Deliver a message."));
+
+        var result = Run("scaffold_adapter", true, ("kit", "Delivery"), ("adapter", "Sms.Kavenegar"), ("description", "SMS through Kavenegar."));
+
+        Assert.True(result.Ok, result.Error);
+        Assert.Contains("namespace Corevia.Kit.Delivery.Adapters.Sms.Kavenegar;", Read("packages/Delivery/Corevia.Kit.Delivery.Adapters.Sms.Kavenegar/DependencyInjection.cs"));
+        Assert.Contains("<PackageId>Corevia.Kit.Delivery.Adapters.Sms.Kavenegar</PackageId>", Read("packages/Delivery/Corevia.Kit.Delivery.Adapters.Sms.Kavenegar/Corevia.Kit.Delivery.Adapters.Sms.Kavenegar.csproj"));
+        Assert.Contains("Adapters.Sms.Kavenegar.csproj", Read("Corevia.Kit.packages.proj"));
+        Assert.False(Run("scaffold_adapter", false, ("kit", "Delivery"), ("adapter", "Sms.Kavenegar"), ("description", "x")).Ok);
+    }
+
     [Theory]
     [InlineData("delivery")]
     [InlineData("De-livery")]

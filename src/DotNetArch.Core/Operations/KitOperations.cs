@@ -13,7 +13,7 @@ internal static class KitOperations
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(1);
 
-    public static IReadOnlyList<OperationDefinition> All => new[] { NewKit, AddProvider };
+    public static IReadOnlyList<OperationDefinition> All => new[] { NewKit, AddProvider, AddAdapter };
 
     private static OperationDefinition NewKit { get; } = new(
         "scaffold_kit",
@@ -42,6 +42,20 @@ internal static class KitOperations
             new OperationParameter("description_fa", "The same sentence in Persian (defaults to the English one)."),
         },
         RunAddProvider);
+
+    private static OperationDefinition AddAdapter { get; } = new(
+        "scaffold_adapter",
+        "Add an adapter package to a Kit area (Corevia.Kit.<Kit>.Adapters.<Adapter>): the same as scaffold_provider with the vocabulary of the composition model (the word provider is retired; an adapter implements a port). Project, DI extension, reference from the test project, entry in Corevia.Kit.packages.proj and the lists in the docs. Plan first; writes only with apply.",
+        OperationKind.Mutating,
+        new[]
+        {
+            new OperationParameter("path", "Root of the Kit repository (the folder with packages/).", Required: true, Positional: true, Alias: "output", Default: "@saved"),
+            new OperationParameter("kit", "Name of the existing Kit area.", Required: true),
+            new OperationParameter("adapter", "Adapter name in PascalCase; dots group adapters (Sms.Kavenegar).", Required: true),
+            new OperationParameter("description", "One sentence: what the adapter talks to.", Required: true),
+            new OperationParameter("description_fa", "The same sentence in Persian (defaults to the English one)."),
+        },
+        request => RunAddProvider(request, "scaffold_adapter", "Adapters", "adapter"));
 
     private static OperationResult RunNewKit(OperationRequest request)
     {
@@ -87,25 +101,28 @@ internal static class KitOperations
         }, normalize: false);
     }
 
-    private static OperationResult RunAddProvider(OperationRequest request)
+    private static OperationResult RunAddProvider(OperationRequest request) => RunAddProvider(request, "scaffold_provider", "Providers", "provider");
+
+    private static OperationResult RunAddProvider(OperationRequest request, string operation, string segment, string parameter)
     {
         var path = KitRoot(request);
         var kit = Pascal(request.Get("kit"), "kit");
-        var provider = request.Get("provider") ?? throw new ArgumentException("Missing required value 'provider'.");
+        var provider = request.Get(parameter) ?? throw new ArgumentException($"Missing required value '{parameter}'.");
         if (!Regex.IsMatch(provider, @"^[A-Z][A-Za-z0-9]*(\.[A-Z][A-Za-z0-9]*)*$", RegexOptions.CultureInvariant, Timeout))
-            throw new ArgumentException($"Provider '{provider}' must be PascalCase; dots group providers (Sms.Kavenegar).");
+            throw new ArgumentException($"{(parameter == "adapter" ? "Adapter" : "Provider")} '{provider}' must be PascalCase; dots group them (Sms.Kavenegar).");
 
         var description = request.Get("description")!;
         var tokens = Tokens(kit, description, request.Get("description_fa") ?? description);
         tokens["Provider"] = provider;
+        tokens["Segment"] = segment;
         tokens["ProviderId"] = provider.Replace(".", string.Empty, StringComparison.Ordinal);
-        return ScaffoldRunner.Run(request, "scaffold_provider", path, skipMigrations: true, work =>
+        return ScaffoldRunner.Run(request, operation, path, skipMigrations: true, work =>
         {
             var area = Path.Combine(work, "packages", kit);
             if (!Directory.Exists(area))
                 throw new InvalidOperationException($"The Kit area '{kit}' does not exist; create it with scaffold_kit.");
 
-            var package = $"Corevia.Kit.{kit}.Providers.{provider}";
+            var package = $"Corevia.Kit.{kit}.{segment}.{provider}";
             var folder = Path.Combine(area, package);
             if (Directory.Exists(folder))
                 throw new InvalidOperationException($"The provider '{provider}' already exists in '{kit}'.");

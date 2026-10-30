@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Corevia.Kit.{{Name}}.Providers.{{Provider}};
+namespace Corevia.Kit.{{Name}}.{{Segment}}.{{Provider}};
 
 public static class DependencyInjection
 {
