@@ -141,7 +141,7 @@ Environment: dotnet SDK 8 available (net9 targets cannot be built here; verify n
 - [x] 14.6 `new entity` (typed properties and persistence), `new feature`, `new enum --members`, repository `FirstOrDefaultAsync`/`ListAsync` (AC-37, AC-38)
 
 ## Phase 15 - Ports, adapters and composition, kept general (D-40)
-Planned. Nothing here is built; each item needs its requirement ID and acceptance line when it starts. Vocabulary and rules: the organisation's Composition Model (the tool does not depend on it; it is the reference for the profile).
+Planned. The cross-repository steps live in the organisation's Composition Migration Roadmap (items 15.1 to 15.5 serve its steps CM-1, CM-3, CM-5 and CM-8). Nothing here is built; each item needs its requirement ID and acceptance line when it starts. Vocabulary and rules: the organisation's Composition Model (the tool does not depend on it; it is the reference for the profile).
 - [ ] 15.1 Measure and list every Corevia-specific coupling in the tool (names, addresses, Kit names); move each into a profile or a template
 - [ ] 15.2 `scaffold adapter` (alias of `scaffold provider`, which stays for one release) and `Adapters.*` project naming for new Kits; `doctor` accepts both names
 - [ ] 15.3 An adapter of a module port is generated as its own package that depends on the contracts package only
