@@ -44,6 +44,21 @@ internal static class FixOperation
                 continue;
             if (finding.Id is "DA-BP03" or "DA-BP05")
                 continue;
+            if (AdapterFixers.RuleIds.Contains(finding.Id))
+            {
+                if (only == null)
+                {
+                    manual.Add($"{finding.Id}  {finding.Message}  (opt-in: --rules={finding.Id})");
+                    continue;
+                }
+
+                var adapterFixes = AdapterFixers.Plan(finding.Id, ctx, manual);
+                if (adapterFixes.Count == 0 && !manual.Any(m => m.StartsWith(finding.Id, StringComparison.Ordinal)))
+                    manual.Add($"{finding.Id}  {finding.Message}");
+                plan.AddRange(adapterFixes);
+                continue;
+            }
+
             if (StructuralFixers.RuleIds.Contains(finding.Id))
             {
                 if (only == null)

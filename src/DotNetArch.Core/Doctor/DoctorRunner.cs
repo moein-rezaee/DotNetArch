@@ -23,6 +23,7 @@ public static class DoctorRunner
         TestChecks.Run(ctx);
         CodeChecks.Run(ctx);
         AbpChecks.Run(ctx);
+        AdapterChecks.Run(ctx);
         BlueprintChecks.Run(ctx);
         ToolChecks.Run(ctx);
         ProfileChecks.Run(ctx);

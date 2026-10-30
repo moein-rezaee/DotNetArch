@@ -93,6 +93,9 @@ public sealed class ProfileDefinition
     /// <summary>Root folders that belong somewhere else in the standard layout (for example a folder of deploy-time data that belongs under <c>etc/</c>). <c>fix --rules=DA-A12</c> moves them and follows every path that points at them.</summary>
     public List<FolderMove> FolderMoves { get; set; } = new();
 
+    /// <summary>Package id pattern of an adapter project (tokens <c>{Module}</c> and <c>{System}</c>); the organisation prefix lives here, never in the tool. <c>fix --rules=DA-AD05</c> writes it.</summary>
+    public string? AdapterPackage { get; set; }
+
     /// <summary>
     /// Published kits (NuGet packages the organisation owns) that a new solution wires into its hosts. The tool names no kit itself: the profile lists the
     /// packages, the registration lines of each host, the settings and the secrets (D-39).
