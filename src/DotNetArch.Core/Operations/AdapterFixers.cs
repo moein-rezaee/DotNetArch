@@ -10,14 +10,15 @@ namespace DotNetArch.Core.Operations;
 /// </summary>
 internal static partial class AdapterFixers
 {
-    public static readonly HashSet<string> RuleIds = new(StringComparer.OrdinalIgnoreCase) { "DA-AD01", "DA-AD02", "DA-AD03", "DA-AD05" };
+    public static readonly HashSet<string> RuleIds = new(StringComparer.OrdinalIgnoreCase) { "DA-AD01", "DA-AD02", "DA-AD03", "DA-AD05", "DA-AD06" };
 
     public static IReadOnlyList<FixAction> Plan(string rule, RepoContext ctx, IList<string> manual) => rule.ToUpperInvariant() switch
     {
-        "DA-AD01" => RemoveUnused(ctx, manual, rule, AdapterChecks.Adapters(ctx), (a, t) => AdapterChecks.SystemOf(t) == null && t.Layer is ProjectLayer.Application or ProjectLayer.Infrastructure or ProjectLayer.Api or ProjectLayer.Mcp or ProjectLayer.Cli or ProjectLayer.HttpApi or ProjectLayer.HttpApiClient),
-        "DA-AD02" => RemoveUnused(ctx, manual, rule, AdapterChecks.Host(ctx) is { } host ? new[] { host } : Array.Empty<ProjectInfo>(), (_, t) => AdapterChecks.SystemOf(t) != null),
-        "DA-AD03" => RemoveUnused(ctx, manual, rule, AdapterChecks.Adapters(ctx), (_, t) => AdapterChecks.SystemOf(t) != null),
+        "DA-AD01" => RemoveUnused(ctx, manual, rule, AdapterChecks.Adapters(ctx), (a, t) => AdapterChecks.SystemOf(ctx, t) == null && t.Layer is ProjectLayer.Application or ProjectLayer.Infrastructure or ProjectLayer.Api or ProjectLayer.Mcp or ProjectLayer.Cli or ProjectLayer.HttpApi or ProjectLayer.HttpApiClient),
+        "DA-AD02" => RemoveUnused(ctx, manual, rule, AdapterChecks.Host(ctx) is { } host ? new[] { host } : Array.Empty<ProjectInfo>(), (_, t) => AdapterChecks.SystemOf(ctx, t) != null),
+        "DA-AD03" => RemoveUnused(ctx, manual, rule, AdapterChecks.Adapters(ctx), (_, t) => AdapterChecks.SystemOf(ctx, t) != null),
         "DA-AD05" => Package(ctx, manual),
+        "DA-AD06" => ShipSchema(ctx),
         _ => Array.Empty<FixAction>(),
     };
 
@@ -92,6 +93,24 @@ internal static partial class AdapterFixers
         return actions;
     }
 
+    private static IReadOnlyList<FixAction> ShipSchema(RepoContext ctx)
+    {
+        var actions = new List<FixAction>();
+        foreach (var adapter in AdapterChecks.Adapters(ctx))
+        {
+            var text = ctx.Read(adapter.File);
+            if (!ctx.Has($"{adapter.Dir}/settings.schema.json") || text.Contains("settings.schema.json", StringComparison.Ordinal))
+                continue;
+            var close = text.LastIndexOf("</Project>", StringComparison.Ordinal);
+            if (close < 0)
+                continue;
+            var item = "\n  <ItemGroup>\n    <None Include=\"settings.schema.json\" Pack=\"true\" PackagePath=\"schemas/\" />\n  </ItemGroup>\n";
+            actions.Add(new FixAction(new PlannedChange(adapter.File, "modify", "the package carries settings.schema.json", "DA-AD06"), text.Insert(close, item.TrimStart('\n').Length > 0 ? item : item)));
+        }
+
+        return actions;
+    }
+
     private static IReadOnlyList<FixAction> Package(RepoContext ctx, IList<string> manual)
     {
         var pattern = ctx.Profile?.AdapterPackage;
@@ -109,7 +128,7 @@ internal static partial class AdapterFixers
                 continue;
             var app = adapter.Name[..adapter.Name.IndexOf(".Infrastructure.", StringComparison.Ordinal)];
             var module = app.EndsWith("Service", StringComparison.Ordinal) ? app[..^"Service".Length] : app;
-            var system = AdapterChecks.SystemOf(adapter)!;
+            var system = AdapterChecks.SystemOf(ctx, adapter)!;
             var id = pattern.Replace("{Module}", module, StringComparison.Ordinal).Replace("{System}", system, StringComparison.Ordinal);
             var group = text.IndexOf("</PropertyGroup>", StringComparison.Ordinal);
             if (group < 0)

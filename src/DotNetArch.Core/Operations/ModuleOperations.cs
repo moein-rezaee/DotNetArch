@@ -87,6 +87,10 @@ internal static partial class ModuleOperations
         yaml.Append("apiVersion: module/v1\n");
         yaml.Append($"module: {Quote(module)}\n");
         yaml.Append($"application: {Quote(app)}\n");
+        // one version per repository: the version of the host project (the Api), as the release tags follow it
+        var apiProject = ctx.OfLayer(ProjectLayer.Api).FirstOrDefault();
+        var version = apiProject != null && VersionElement().Match(ctx.Read(apiProject.File)) is { Success: true } vm ? vm.Groups["v"].Value : null;
+        yaml.Append($"version: {(version == null ? "null" : Quote(version))}\n");
 
         yaml.Append("layers:\n");
         foreach (var (name, layer) in new[] { ("api", ProjectLayer.HttpApi), ("client", ProjectLayer.HttpApiClient), ("mcp", ProjectLayer.Mcp), ("cli", ProjectLayer.Cli) })
@@ -125,8 +129,10 @@ internal static partial class ModuleOperations
             foreach (Match m in ConfigurationKey().Matches(source))
                 keys.Add(m.Groups["key"].Value);
 
-            yaml.Append($"  - system: {Quote(AdapterChecks.SystemOf(adapter)!)}\n    project: {Quote(adapter.Name)}\n");
+            yaml.Append($"  - system: {Quote(AdapterChecks.SystemOf(ctx, adapter)!)}\n    project: {Quote(adapter.Name)}\n");
             yaml.Append($"    package: {(package == null ? "null" : Quote(package))}\n");
+            var adapterVersion = VersionElement().Match(csproj) is { Success: true } av ? av.Groups["v"].Value : "1.0.0";
+            yaml.Append($"    version: {Quote(adapterVersion)}\n");
             yaml.Append(registration.Count == 0 ? "    registration: []\n" : "    registration:\n" + string.Concat(registration.Select(r => $"      - {Quote(r)}\n")));
             yaml.Append(implemented.Count == 0 ? "    implements: []\n" : "    implements:\n" + string.Concat(implemented.Select(i => $"      - {Quote(i)}\n")));
             yaml.Append(keys.Count == 0 ? "    reads: []\n" : "    reads:\n" + string.Concat(keys.Select(k => $"      - {Quote(k)}\n")));
@@ -398,6 +404,9 @@ internal static partial class ModuleOperations
 
     [GeneratedRegex(@"public\s+interface\s+(?<name>I[A-Za-z0-9_]+)", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 2000)]
     private static partial Regex PortInterface();
+
+    [GeneratedRegex(@"<Version>(?<v>[^<]+)</Version>", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 2000)]
+    private static partial Regex VersionElement();
 
     [GeneratedRegex(@"<PackageId>(?<id>[^<]+)</PackageId>", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 2000)]
     private static partial Regex PackageIdElement();

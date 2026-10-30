@@ -96,6 +96,9 @@ public sealed class ProfileDefinition
     /// <summary>Package id pattern of an adapter project (tokens <c>{Module}</c> and <c>{System}</c>); the organisation prefix lives here, never in the tool. <c>fix --rules=DA-AD05</c> writes it.</summary>
     public string? AdapterPackage { get; set; }
 
+    /// <summary>Names after <c>.Infrastructure.</c> that are not adapters of an external system (for example <c>Database</c>, the persistence project); the adapters rule set skips them.</summary>
+    public List<string> NonAdapters { get; set; } = new();
+
     /// <summary>
     /// Published kits (NuGet packages the organisation owns) that a new solution wires into its hosts. The tool names no kit itself: the profile lists the
     /// packages, the registration lines of each host, the settings and the secrets (D-39).

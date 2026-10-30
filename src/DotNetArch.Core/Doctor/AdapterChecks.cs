@@ -14,15 +14,19 @@ internal static partial class AdapterChecks
     private const string Marker = ".Infrastructure.";
 
     /// <summary>The name of the external system of an adapter project (<c>SepidarRest</c> in <c>OrderService.Infrastructure.SepidarRest</c>), or null when it is not one.</summary>
-    public static string? SystemOf(ProjectInfo project)
+    public static string? SystemOf(RepoContext ctx, ProjectInfo project)
     {
         if (project.IsTest || project.Layer != ProjectLayer.Infrastructure)
             return null;
         var index = project.Name.IndexOf(Marker, StringComparison.Ordinal);
-        return index < 0 ? null : project.Name[(index + Marker.Length)..];
+        if (index < 0)
+            return null;
+        var system = project.Name[(index + Marker.Length)..];
+        // persistence and other Infrastructure projects that are not adapters of an external system are named in the profile (non_adapters)
+        return ctx.Profile?.NonAdapters.Contains(system, StringComparer.OrdinalIgnoreCase) == true ? null : system;
     }
 
-    public static IEnumerable<ProjectInfo> Adapters(RepoContext ctx) => ctx.Source.Where(p => SystemOf(p) != null);
+    public static IEnumerable<ProjectInfo> Adapters(RepoContext ctx) => ctx.Source.Where(p => SystemOf(ctx, p) != null);
 
     /// <summary>The shared Infrastructure project of the module (<c>&lt;App&gt;.Infrastructure</c>), if there is one.</summary>
     public static ProjectInfo? Host(RepoContext ctx) =>
@@ -69,7 +73,7 @@ internal static partial class AdapterChecks
                 var target = Target(ctx, reference);
                 if (target == null)
                     continue;
-                if (SystemOf(target) != null)
+                if (SystemOf(ctx, target) != null)
                     between.Add($"{adapter.Name} -> {target.Name}");
                 else if (target.Layer is ProjectLayer.Application or ProjectLayer.Infrastructure or ProjectLayer.Api or ProjectLayer.Mcp or ProjectLayer.Cli or ProjectLayer.HttpApi or ProjectLayer.HttpApiClient)
                     forbidden.Add($"{adapter.Name} -> {target.Name}");
@@ -79,7 +83,7 @@ internal static partial class AdapterChecks
         ctx.Check("DA-AD01", cat, forbidden.Count == 0, DoctorSeverity.Warning, "An adapter references more than the module core (it must depend on Domain, Domain.Shared, Contracts and Application.Contracts only).",
             hint: "fix --rules=DA-AD01 removes a reference the adapter does not use; a used one means the type belongs in the core: move_code it there.", details: forbidden);
 
-        var hosted = host == null ? new List<string>() : host.ProjectReferences.Select(r => Target(ctx, r)).Where(t => t != null && SystemOf(t) != null).Select(t => $"{host.Name} -> {t!.Name}").ToList();
+        var hosted = host == null ? new List<string>() : host.ProjectReferences.Select(r => Target(ctx, r)).Where(t => t != null && SystemOf(ctx, t) != null).Select(t => $"{host.Name} -> {t!.Name}").ToList();
         ctx.Check("DA-AD02", cat, hosted.Count == 0, DoctorSeverity.Warning, "The shared Infrastructure project references adapter projects; only a composition project (or a host) may pick adapters.",
             hint: "move_code the adapter-specific code into the adapter, add_composition, then fix --rules=DA-AD02 removes the references.", details: hosted);
 
@@ -90,6 +94,10 @@ internal static partial class AdapterChecks
             hint: "One method registers everything the adapter owns, so a composition can add it.", details: withoutRegistration);
 
         var unpackaged = adapters.Where(a => !ctx.Read(a.File).Contains("<PackageId>", StringComparison.Ordinal)).Select(a => a.Name).ToList();
+        var unshipped = adapters.Where(a => ctx.Has($"{a.Dir}/settings.schema.json") && !ctx.Read(a.File).Contains("settings.schema.json", StringComparison.Ordinal)).Select(a => a.Name).ToList();
+        ctx.Check("DA-AD06", cat, unshipped.Count == 0, DoctorSeverity.Warning, "An adapter has a settings.schema.json that its package does not carry.",
+            hint: "The schema travels with the adapter (the composition validates settings from the package): fix --rules=DA-AD06 packs it under schemas/.", details: unshipped);
+
         ctx.Check("DA-AD05", cat, unpackaged.Count == 0, DoctorSeverity.Warning, "An adapter is not a package of its own (no PackageId).",
             hint: "The profile's adapter_package pattern names it; fix --rules=DA-AD05 writes PackageId, IsPackable and Description.", details: unpackaged);
     }
