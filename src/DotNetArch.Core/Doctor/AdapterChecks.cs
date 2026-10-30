@@ -121,7 +121,11 @@ internal static partial class AdapterChecks
         ctx.Check("DA-AD04", cat, withoutRegistration.Count == 0, DoctorSeverity.Warning, "An adapter has no registration extension method (public static IServiceCollection Add...(this IServiceCollection ...)).",
             hint: "One method registers everything the adapter owns, so a composition can add it.", details: withoutRegistration);
 
-        var unpackaged = adapters.Where(a => !ctx.Read(a.File).Contains("<PackageId>", StringComparison.Ordinal)).Select(a => a.Name).ToList();
+        var unpackaged = adapters.Where(a =>
+        {
+            var text = ctx.Read(a.File);
+            return !text.Contains("<PackageId>", StringComparison.Ordinal) || !text.Contains("AdapterVersion", StringComparison.Ordinal);
+        }).Select(a => a.Name).ToList();
         var unshipped = adapters.Where(a => ctx.Has($"{a.Dir}/settings.schema.json") && !ctx.Read(a.File).Contains("settings.schema.json", StringComparison.Ordinal)).Select(a => a.Name).ToList();
         ctx.Check("DA-AD06", cat, unshipped.Count == 0, DoctorSeverity.Warning, "An adapter has a settings.schema.json that its package does not carry.",
             hint: "The schema travels with the adapter (the composition validates settings from the package): fix --rules=DA-AD06 packs it under schemas/.", details: unshipped);
@@ -163,8 +167,8 @@ internal static partial class AdapterChecks
         ctx.Check("DA-AD08", cat, unshippedCore.Count == 0, DoctorSeverity.Warning, "A module core project an adapter depends on is not a package at the module version (an adapter package would depend on a package that does not exist).",
             hint: "The profile's module_package pattern names it; fix --rules=DA-AD08 writes PackageId, IsPackable and the module version.", details: unshippedCore);
 
-        ctx.Check("DA-AD05", cat, unpackaged.Count == 0, DoctorSeverity.Warning, "An adapter is not a package of its own (no PackageId).",
-            hint: "The profile's adapter_package pattern names it; fix --rules=DA-AD05 writes PackageId, IsPackable and Description.", details: unpackaged);
+        ctx.Check("DA-AD05", cat, unpackaged.Count == 0, DoctorSeverity.Warning, "An adapter is not a package of its own (no PackageId, or its version cannot be set from its tag through AdapterVersion).",
+            hint: "The profile's adapter_package pattern names it; fix --rules=DA-AD05 writes PackageId, IsPackable, Description and a Version that CI sets from the adapter tag (AdapterVersion, so the core packages it references keep the module version).", details: unpackaged);
     }
 
     /// <summary>A key with a colon is covered when the schema has the path (or a dictionary on the way); a flat KEY_LIKE_THIS is never covered; a name without a colon is relative to a section and is skipped.</summary>

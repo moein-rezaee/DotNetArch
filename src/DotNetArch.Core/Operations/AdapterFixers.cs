@@ -132,7 +132,7 @@ internal static partial class AdapterFixers
                 var group = changed.IndexOf("</PropertyGroup>", StringComparison.Ordinal);
                 if (group < 0)
                     continue;
-                changed = changed.Insert(group, $"    <IsPackable>true</IsPackable>\n    <PackageId>{id}</PackageId>\n    <Version>{version}</Version>\n    <Description>The {layer} of the {module} module.</Description>\n  ");
+                changed = changed.Insert(changed.LastIndexOf('\n', group) + 1, $"    <IsPackable>true</IsPackable>\n    <PackageId>{id}</PackageId>\n    <Version>{version}</Version>\n    <Description>The {layer} of the {module} module.</Description>\n  ");
             }
             else if (!changed.Contains($"<Version>{version}</Version>", StringComparison.Ordinal))
             {
@@ -141,7 +141,7 @@ internal static partial class AdapterFixers
                 {
                     var group = changed.IndexOf("</PropertyGroup>", StringComparison.Ordinal);
                     if (group >= 0)
-                        changed = changed.Insert(group, $"    <Version>{version}</Version>\n  ");
+                        changed = changed.Insert(changed.LastIndexOf('\n', group) + 1, $"    <Version>{version}</Version>\n");
                 }
             }
 
@@ -179,21 +179,36 @@ internal static partial class AdapterFixers
             return Array.Empty<FixAction>();
         }
 
+        // an adapter has its own version, taken from its own tag by CI as AdapterVersion; the core projects it references keep the module version
+        const string versionLines = "    <Version>1.0.0</Version>\n    <Version Condition=\"'$(AdapterVersion)' != ''\">$(AdapterVersion)</Version>\n";
         var actions = new List<FixAction>();
         foreach (var adapter in AdapterChecks.Adapters(ctx))
         {
             var text = ctx.Read(adapter.File);
-            if (text.Contains("<PackageId>", StringComparison.Ordinal))
-                continue;
-            var app = adapter.Name[..adapter.Name.IndexOf(".Infrastructure.", StringComparison.Ordinal)];
-            var module = app.EndsWith("Service", StringComparison.Ordinal) ? app[..^"Service".Length] : app;
-            var system = AdapterChecks.SystemOf(ctx, adapter)!;
-            var id = pattern.Replace("{Module}", module, StringComparison.Ordinal).Replace("{System}", system, StringComparison.Ordinal);
             var group = text.IndexOf("</PropertyGroup>", StringComparison.Ordinal);
             if (group < 0)
                 continue;
-            var lines = $"    <IsPackable>true</IsPackable>\n    <PackageId>{id}</PackageId>\n    <Description>The {system} adapter of the {module} module.</Description>\n  ";
-            actions.Add(new FixAction(new PlannedChange(adapter.File, "modify", $"package {id}", "DA-AD05"), text.Insert(group, lines)));
+            var changed = text;
+            var reasons = new List<string>();
+            if (!changed.Contains("<PackageId>", StringComparison.Ordinal))
+            {
+                var app = adapter.Name[..adapter.Name.IndexOf(".Infrastructure.", StringComparison.Ordinal)];
+                var module = app.EndsWith("Service", StringComparison.Ordinal) ? app[..^"Service".Length] : app;
+                var system = AdapterChecks.SystemOf(ctx, adapter)!;
+                var id = pattern.Replace("{Module}", module, StringComparison.Ordinal).Replace("{System}", system, StringComparison.Ordinal);
+                changed = changed.Insert(changed.LastIndexOf('\n', group) + 1, $"    <IsPackable>true</IsPackable>\n    <PackageId>{id}</PackageId>\n    <Description>The {system} adapter of the {module} module.</Description>\n");
+                reasons.Add($"package {id}");
+            }
+
+            if (!changed.Contains("AdapterVersion", StringComparison.Ordinal))
+            {
+                var current = changed.IndexOf("</PropertyGroup>", StringComparison.Ordinal);
+                changed = changed.Insert(changed.LastIndexOf('\n', current) + 1, versionLines);
+                reasons.Add("version from the adapter tag");
+            }
+
+            if (changed != text)
+                actions.Add(new FixAction(new PlannedChange(adapter.File, "modify", string.Join(", ", reasons), "DA-AD05"), changed));
         }
 
         return actions;
