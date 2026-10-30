@@ -96,6 +96,14 @@ internal static partial class ModuleOperations
         foreach (var (name, layer) in new[] { ("api", ProjectLayer.HttpApi), ("client", ProjectLayer.HttpApiClient), ("mcp", ProjectLayer.Mcp), ("cli", ProjectLayer.Cli) })
         {
             var project = ctx.OfLayer(layer).FirstOrDefault();
+            // a service without an HttpApi project serves its controllers from the Api host project
+            if (project == null && layer == ProjectLayer.HttpApi)
+            {
+                var apiHost = ctx.OfLayer(ProjectLayer.Api).FirstOrDefault();
+                if (apiHost != null && ctx.Files.Any(f => f.StartsWith(apiHost.Dir + "/", StringComparison.Ordinal) && f.EndsWith(".cs", StringComparison.OrdinalIgnoreCase) && ctx.Read(f).Contains("[ApiController]", StringComparison.Ordinal)))
+                    project = apiHost;
+            }
+
             yaml.Append(project == null ? $"  {name}: null\n" : $"  {name}: {Quote(project.Name)}\n");
         }
 

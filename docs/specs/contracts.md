@@ -2,7 +2,7 @@
 
 ## CLI
 Commands (all registry operations, D-32; a two-word command is the operation with `_`: `new crud` = `new_crud`): `new solution`, `new crud`, `new action`, `new event`, `new enum`, `new constant`, `new service`, `new kit`, `add kit`, `add mcp`, `add cli`, `add layer`, `add tests`,
-`new entity`, `new feature`, `ci add`, `docker add`, `git setup`, `spec list`, `spec add`, `spec check`, `graph`, `list entities`, `describe config`, `exec`, `remove migration`, `doctor`, `adopt`, `fix`, `mcp serve`.
+`new entity`, `new feature`, `ci add`, `docker add`, `git setup`, `spec list`, `spec add`, `spec check`, `graph`, `list entities`, `describe config`, `describe module`, `describe settings`, `move code`, `add composition`, `exec`, `remove migration`, `doctor`, `adopt`, `fix`, `mcp serve`.
 Every command that changes files plans first and writes only with `--apply`; at a terminal the plan is shown and the user is asked. `--json` prints `{ ok, operation, applied, error?, plan[], data }`, `--out=file` saves the output. `--path` (alias `--output`) names the solution folder; values may be written `--no-migration` or `--no_migration`. Missing required values are prompted for.
 
 `new solution <Name>` options: `--output`, `--database=SQLite|SqlServer|Postgres`, `--style=controller|fast`, `--layout=v3|v2|legacy` (default v3),

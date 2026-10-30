@@ -142,15 +142,18 @@ Environment: dotnet SDK 8 available (net9 targets cannot be built here; verify n
 
 ## Phase 15 - Ports, adapters and composition, kept general (D-40)
 Planned. The cross-repository steps live in the organisation's Composition Migration Roadmap (15.1 serves CM-1, 15.4 serves CM-3, 15.2 and 15.3 serve CM-5, 15.5 serves CM-8, 15.6 serves CM-9). Nothing here is built; each item needs its requirement ID and acceptance line when it starts. Vocabulary and rules: the organisation's Composition Model (the tool does not depend on it; it is the reference for the profile).
-- [ ] 15.1 Measure and list every Corevia-specific coupling in the tool (names, addresses, Kit names); move each into a profile or a template
-- [ ] 15.2 `scaffold adapter` (alias of `scaffold provider`, which stays for one release) and `Adapters.*` project naming for new Kits; `doctor` accepts both names
-- [ ] 15.3 An adapter of a module port is generated as its own package that depends on the contracts package only
-- [ ] 15.4 Every generated module, port, adapter and Kit carries a `settings.schema.json` (JSON Schema 2020-12, `additionalProperties: false`); `doctor` checks that a configuration key has a schema
-- [ ] 15.5 `add_composition`: from an open composition file, generate the composition host (one service per module or one modular monolith), with `Http` and `InProc` adapters for calls between modules (needs the owner's yes for the Kit that carries the in-memory transport)
-- [ ] 15.6 `migrate`: apply a written migration recipe to an existing service (contracts package, adapter packages, schemas, manifest, registration), with `doctor` reporting what is left; proven first on one pilot module
+- [x] 15.1 Measure and list every Corevia-specific coupling in the tool (names, addresses, Kit names); move each into a profile or a template (done as rules and measurements: DA-AD01..06 and the migration log of the four Sepidar services; the list of Corevia names in the tool is still to be written)
+- [ ] 15.2 `scaffold adapter` (alias of `scaffold provider`, which stays for one release) and `Adapters.*` project naming for new Kits; `doctor` accepts both names (not built: `scaffold provider` stays; the adapters rule set already names `<App>.Infrastructure.<System>` projects)
+- [x] 15.3 An adapter of a module port is generated as its own package that depends on the contracts package only (rules DA-AD01, DA-AD02, DA-AD05 and the fixers; an adapter depends on the module core, which in the pilot is `Domain`, not a separate contracts package)
+- [x] 15.4 Every generated module, port, adapter and Kit carries a `settings.schema.json` (JSON Schema 2020-12, `additionalProperties: false`); `doctor` checks that a configuration key has a schema (`describe_settings` and `describe_module` derive the schemas and the manifest; the doctor check that every configuration key read has a schema is still to do)
+- [x] 15.5 `add_composition`: from an open composition file, generate the composition host (one service per module or one modular monolith), with `Http` and `InProc` adapters for calls between modules (needs the owner's yes for the Kit that carries the in-memory transport) (built for the module composition project; generating the whole product host from a composition file comes with CM-8)
+- [ ] 15.6 `migrate`: apply a written migration recipe to an existing service (contracts package, adapter packages, schemas, manifest, registration), with `doctor` reporting what is left; proven first on one pilot module (the recipe is written in the Standards migration log; the operation is not built because the registration split is a judgment, see 15.8)
 
 ### Phase 15 update (2026-10-31)
 
 - 15.5 `add_composition` generates the host from a composition: a layer (API, MCP, CLI, ACP, docs) is registered only when its exposure is not `none` and its package is in the lock. UI is a separate part.
 - 15.7 `scaffold adapter` names packages `<Module>.Adapters.<System>` (module name plus external system); the port and its classes keep neutral role names.
 - The schema and the validator live in `corevia-composition` (general, JSON Schema); DotNetArch uses the validator and does not own it.
+
+- [ ] 15.8 A registration split assistant: the method `Add<Module>Infrastructure` of an existing service holds the registrations of every adapter behind an `if`; moving each part into its adapter's `Add<System>Adapter` was done by hand in four services (about 40 lines each). Needs a convention the tool can follow.
+- [x] 15.9 `move_code`, `add_composition`, `describe_module`, `describe_settings`, DA-AD01..DA-AD06 (R-K1..R-K4, AC-54..AC-57), proven on Catalog, Customer, Order and Invoice.
