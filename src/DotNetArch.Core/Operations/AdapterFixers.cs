@@ -10,7 +10,7 @@ namespace DotNetArch.Core.Operations;
 /// </summary>
 internal static partial class AdapterFixers
 {
-    public static readonly HashSet<string> RuleIds = new(StringComparer.OrdinalIgnoreCase) { "DA-AD01", "DA-AD02", "DA-AD03", "DA-AD05", "DA-AD06" };
+    public static readonly HashSet<string> RuleIds = new(StringComparer.OrdinalIgnoreCase) { "DA-AD01", "DA-AD02", "DA-AD03", "DA-AD05", "DA-AD06", "DA-AD08" };
 
     public static IReadOnlyList<FixAction> Plan(string rule, RepoContext ctx, IList<string> manual) => rule.ToUpperInvariant() switch
     {
@@ -19,6 +19,7 @@ internal static partial class AdapterFixers
         "DA-AD03" => RemoveUnused(ctx, manual, rule, AdapterChecks.Adapters(ctx), (_, t) => AdapterChecks.SystemOf(ctx, t) != null),
         "DA-AD05" => Package(ctx, manual),
         "DA-AD06" => ShipSchema(ctx),
+        "DA-AD08" => PackageCore(ctx, manual),
         _ => Array.Empty<FixAction>(),
     };
 
@@ -90,6 +91,64 @@ internal static partial class AdapterFixers
 
         if (propsEdited)
             actions.Add(new FixAction(new PlannedChange("Directory.Packages.props", "modify", "central versions for the packages now referenced directly", rule), propsText));
+        return actions;
+    }
+
+    private static IReadOnlyList<FixAction> PackageCore(RepoContext ctx, IList<string> manual)
+    {
+        var pattern = ctx.Profile?.ModulePackage;
+        if (string.IsNullOrWhiteSpace(pattern))
+        {
+            manual.Add("DA-AD08  the profile has no module_package pattern (for example \"<Org>.{Module}.{Layer}\"); the tool names no organisation");
+            return Array.Empty<FixAction>();
+        }
+
+        var version = AdapterChecks.ModuleVersion(ctx);
+        if (version == null)
+        {
+            manual.Add("DA-AD08  the Api project has no <Version>, so there is no module version to give the core packages");
+            return Array.Empty<FixAction>();
+        }
+
+        var actions = new List<FixAction>();
+        foreach (var core in AdapterChecks.CoreOfAdapters(ctx))
+        {
+            var text = ctx.Read(core.File);
+            var app = core.Name[..core.Name.LastIndexOf('.')];
+            var layer = core.Layer switch
+            {
+                ProjectLayer.Domain => "Domain",
+                ProjectLayer.DomainShared => "Domain.Shared",
+                ProjectLayer.ApplicationContracts => "Application.Contracts",
+                _ => "Contracts",
+            };
+            // Domain.Shared and Application.Contracts end in two segments
+            app = core.Name.EndsWith("." + layer, StringComparison.Ordinal) ? core.Name[..^(layer.Length + 1)] : app;
+            var module = app.EndsWith("Service", StringComparison.Ordinal) ? app[..^"Service".Length] : app;
+            var id = pattern.Replace("{Module}", module, StringComparison.Ordinal).Replace("{Layer}", layer, StringComparison.Ordinal);
+            var changed = text;
+            if (!changed.Contains("<PackageId>", StringComparison.Ordinal))
+            {
+                var group = changed.IndexOf("</PropertyGroup>", StringComparison.Ordinal);
+                if (group < 0)
+                    continue;
+                changed = changed.Insert(group, $"    <IsPackable>true</IsPackable>\n    <PackageId>{id}</PackageId>\n    <Version>{version}</Version>\n    <Description>The {layer} of the {module} module.</Description>\n  ");
+            }
+            else if (!changed.Contains($"<Version>{version}</Version>", StringComparison.Ordinal))
+            {
+                changed = Regex.Replace(changed, "<Version>[^<]*</Version>", $"<Version>{version}</Version>", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
+                if (!changed.Contains($"<Version>{version}</Version>", StringComparison.Ordinal))
+                {
+                    var group = changed.IndexOf("</PropertyGroup>", StringComparison.Ordinal);
+                    if (group >= 0)
+                        changed = changed.Insert(group, $"    <Version>{version}</Version>\n  ");
+                }
+            }
+
+            if (changed != text)
+                actions.Add(new FixAction(new PlannedChange(core.File, "modify", $"package {id} {version}", "DA-AD08"), changed));
+        }
+
         return actions;
     }
 

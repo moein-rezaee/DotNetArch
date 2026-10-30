@@ -113,6 +113,22 @@ public sealed class AdapterOperationsTests : IDisposable
     }
 
     [Fact]
+    public void The_core_projects_an_adapter_depends_on_become_packages_at_the_module_version()
+    {
+        var repo = Repo(profile: "name: acme\nversion: 1.0.0\nadapter_package: \"Acme.{Module}.Adapters.{System}\"\nmodule_package: \"Acme.{Module}.{Layer}\"\n");
+        Write(repo, "src/Shop.Api/Shop.Api.csproj", "<Project Sdk=\"Microsoft.NET.Sdk.Web\">\n  <PropertyGroup>\n    <Version>2.3.0</Version>\n  </PropertyGroup>\n  <ItemGroup>\n    <ProjectReference Include=\"..\\Shop.Infrastructure\\Shop.Infrastructure.csproj\" />\n  </ItemGroup>\n</Project>\n");
+
+        Assert.Contains(DoctorRunner.Run(repo).Findings, f => f.Id == "DA-AD08" && f.Details!.Contains("Shop.Domain"));
+        var applied = Run("fix", repo, apply: true, ("rules", "DA-AD08"));
+
+        Assert.True(applied.Ok, applied.Error);
+        var csproj = File.ReadAllText(Path.Combine(repo, "src/Shop.Domain/Shop.Domain.csproj"));
+        Assert.Contains("<PackageId>Acme.Shop.Domain</PackageId>", csproj, StringComparison.Ordinal);
+        Assert.Contains("<Version>2.3.0</Version>", csproj, StringComparison.Ordinal);
+        Assert.DoesNotContain(DoctorRunner.Run(repo).Findings, f => f.Id == "DA-AD08");
+    }
+
+    [Fact]
     public void Adapter_rules_are_off_unless_the_standard_is_on()
     {
         var repo = Repo(standards: "abp");

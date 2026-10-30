@@ -56,6 +56,33 @@ internal static partial class AdapterChecks
         return false;
     }
 
+    /// <summary>The module core projects the adapters depend on, with the core projects those reference (Domain.Shared below Domain): they must be packages too.</summary>
+    public static IReadOnlyList<ProjectInfo> CoreOfAdapters(RepoContext ctx)
+    {
+        var result = new List<ProjectInfo>();
+        var queue = new Queue<ProjectInfo>(Adapters(ctx));
+        while (queue.Count > 0)
+        {
+            foreach (var reference in queue.Dequeue().ProjectReferences)
+            {
+                var target = Target(ctx, reference);
+                if (target == null || target.IsTest || result.Contains(target))
+                    continue;
+                if (target.Layer is ProjectLayer.Domain or ProjectLayer.DomainShared or ProjectLayer.Contracts or ProjectLayer.ApplicationContracts)
+                {
+                    result.Add(target);
+                    queue.Enqueue(target);
+                }
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>The module version: the <c>&lt;Version&gt;</c> of the Api project (one version per repository).</summary>
+    public static string? ModuleVersion(RepoContext ctx) =>
+        ctx.OfLayer(ProjectLayer.Api).FirstOrDefault() is { } api && Regex.Match(ctx.Read(api.File), "<Version>(?<v>[^<]+)</Version>", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1)) is { Success: true } m ? m.Groups["v"].Value : null;
+
     public static void Run(RepoContext ctx)
     {
         if (!ctx.Standards.Contains(Standard))
@@ -125,6 +152,16 @@ internal static partial class AdapterChecks
 
         ctx.Check("DA-AD07", cat, outside.Count == 0, DoctorSeverity.Warning, "An adapter reads a configuration key that its settings.schema.json does not define (nothing outside a schema).",
             hint: "A flat key (SEPIDAR_BASE_URL) cannot be in a hierarchical schema: move it to the area key (Tenants:{tenant}:...), keeping the flat key as a fallback for one release (debt TD-06).", details: outside);
+
+        var moduleVersion = ModuleVersion(ctx);
+        var unshippedCore = CoreOfAdapters(ctx).Where(c =>
+        {
+            var text = ctx.Read(c.File);
+            return !text.Contains("<PackageId>", StringComparison.Ordinal)
+                   || (moduleVersion != null && !text.Contains($"<Version>{moduleVersion}</Version>", StringComparison.Ordinal));
+        }).Select(c => c.Name).ToList();
+        ctx.Check("DA-AD08", cat, unshippedCore.Count == 0, DoctorSeverity.Warning, "A module core project an adapter depends on is not a package at the module version (an adapter package would depend on a package that does not exist).",
+            hint: "The profile's module_package pattern names it; fix --rules=DA-AD08 writes PackageId, IsPackable and the module version.", details: unshippedCore);
 
         ctx.Check("DA-AD05", cat, unpackaged.Count == 0, DoctorSeverity.Warning, "An adapter is not a package of its own (no PackageId).",
             hint: "The profile's adapter_package pattern names it; fix --rules=DA-AD05 writes PackageId, IsPackable and Description.", details: unpackaged);

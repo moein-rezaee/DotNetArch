@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2.0.0 (unreleased)
+- DA-AD08: the core projects an adapter depends on are packages at the module version (R-K6, AC-59).
 - `scaffold_adapter` and the adapters rule DA-AD07 (R-K5, AC-58).
 - Composable modules (R-K1..R-K4, AC-54..AC-57): `move_code`, `add_composition`, `describe_module`, `describe_settings` and the adapters rule set DA-AD01..DA-AD06 (profile keys `adapter_package` and `non_adapters`). Proven on four Sepidar services (Catalog, Customer, Order, Invoice): every existing test passes unchanged.
 - Migration files follow the editorconfig (R-J22, AC-53): the byte order mark EF writes is removed so the lint job passes on a new service.
