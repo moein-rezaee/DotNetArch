@@ -3,6 +3,7 @@
 ## 2.0.0 (unreleased)
 - DA-AD09 and `add_adapter` (R-K9, AC-62): outbound HTTP leaves the shared Infrastructure for an adapter project the tool creates.
 - `split_registration` copies only the usings the moved code names (types and extension methods read from the restored assets and the sources) and a local counts only when a statement declares it.
+- `move_code` carries InternalsVisibleTo (project item or assembly attribute) to the target when internal types move.
 - `add_composition --always=X,Y` registers adapters that have no alternative yet; with `--regenerate` it also adds their project references.
 - `split_registration --also=Name,...` moves statements that name a kit extension method too; DA-AD09 ignores comments.
 - `move_code` adds a reference to the target in each project (tests, hosts) that names the moved code; `split_registration` keeps the usings of the adapter namespace, drops them from the shared file, and moves private helpers and packages.

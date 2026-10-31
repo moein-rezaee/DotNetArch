@@ -251,6 +251,20 @@ internal static partial class AdapterOperations
 
         // packages: the namespaces the moved code uses must resolve in the target. They are looked up in the compile assets of the restored projects
         // (the namespace of an assembly need not equal its package id); without restored assets the package id is compared with the namespace instead.
+        // internal types that moved stay visible to the same friends (test projects): the source declares them in its project file or in an assembly attribute
+        if (contents.Values.Any(c => InternalDeclaration().IsMatch(c)))
+        {
+            var friends = Regex.Matches(ctx.Read(from.File), "InternalsVisibleTo\\s+Include=\"(?<n>[^\"]+)\"", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1)).Select(m => m.Groups["n"].Value)
+                .Concat(ctx.Files.Where(f => f.StartsWith(from.Dir + "/", StringComparison.Ordinal) && f.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
+                    .SelectMany(f => Regex.Matches(ctx.Read(f), "\\[assembly:\\s*InternalsVisibleTo\\(\"(?<n>[^\"]+)\"\\)\\]", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1)).Select(m => m.Groups["n"].Value)))
+                .Distinct(StringComparer.Ordinal);
+            foreach (var friend in friends.Where(fr => !targetText.Contains($"InternalsVisibleTo Include=\"{fr}\"", StringComparison.Ordinal)))
+            {
+                targetText = AddItem(targetText, "InternalsVisibleTo", friend);
+                added.Add($"InternalsVisibleTo {friend}");
+            }
+        }
+
         var propsText = ctx.Read("Directory.Packages.props");
         var propsEdited = RequirePackages(ctx, root, from, to, movedUsings, ref targetText, ref propsText, added);
 
@@ -767,6 +781,9 @@ internal static partial class AdapterOperations
 
     [GeneratedRegex(@"\bstatic\s+[\w<>\[\],.? ]+?\s+(?<name>\w+)\s*(?:<[^>]*>)?\s*\(\s*this\s", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 2000)]
     private static partial Regex ExtensionMethod();
+
+    [GeneratedRegex(@"(?m)^\s*(?:\[[^\]]*\]\s*)*internal\b", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 2000)]
+    private static partial Regex InternalDeclaration();
 
     [GeneratedRegex(@"\b[A-Za-z_]\w*\b", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 2000)]
     private static partial Regex Word();
