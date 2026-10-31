@@ -88,7 +88,8 @@ internal static partial class AdapterOperations
 
         // private helper methods of the source class that only the moved statements use (directly or through each other) travel with them
         var helpers = PrivateHelpers(sourceText);
-        var movedHelpers = HelpersThatMove(helpers, moved, kept, manual);
+        var (movedHelpers, copiedHelpers) = HelpersThatMove(helpers, moved, kept, manual);
+        var carriedHelpers = movedHelpers.Concat(copiedHelpers).ToList();
 
         var plan = new List<FixAction>();
 
@@ -98,16 +99,16 @@ internal static partial class AdapterOperations
         var insertAt = returnAt < 0 ? adapterBody.Length : adapterBody.LastIndexOf('\n', returnAt) + 1;
         var newBody = adapterBody[..insertAt] + string.Concat(moved.Select(s => s.TrimEnd() + "\n")).TrimEnd('\n') + "\n\n" + adapterBody[insertAt..];
         var newAdapterText = adapterText[..adapterStart] + newBody + adapterText[adapterEnd..];
-        if (movedHelpers.Count > 0)
+        if (carriedHelpers.Count > 0)
         {
             var classEnd = newAdapterText.LastIndexOf('}');
-            newAdapterText = newAdapterText[..classEnd].TrimEnd() + "\n" + string.Concat(movedHelpers.Select(h => "\n" + h.Text.TrimEnd() + "\n")) + newAdapterText[classEnd..];
+            newAdapterText = newAdapterText[..classEnd].TrimEnd() + "\n" + string.Concat(carriedHelpers.Select(h => "\n" + h.Text.TrimEnd() + "\n")) + newAdapterText[classEnd..];
         }
 
         var present = Using().Matches(newAdapterText).Select(m => m.Groups["ns"].Value).ToHashSet(StringComparer.Ordinal);
         var ownNamespace = NamespaceDeclaration().Match(sourceText).Groups["ns"].Value;
         // only the usings the moved code names: a namespace whose types and extension methods (read from the restored assets and the sources) the code does not mention stays behind
-        var movedCode = string.Join('\n', moved.Concat(movedHelpers.Select(h => h.Text)).Select(StripComments));
+        var movedCode = string.Join('\n', moved.Concat(carriedHelpers.Select(h => h.Text)).Select(StripComments));
         var movedWords = Word().Matches(movedCode).Select(w => w.Value).ToHashSet(StringComparer.Ordinal);
         var known = NamespaceMembers(Path.Combine(root, source.Dir));
         foreach (var (ns, names) in SourceMembers(ctx))
@@ -117,7 +118,7 @@ internal static partial class AdapterOperations
             .Where(ns => !present.Contains(ns) && (!InNamespace(ns, ownNamespace) || InNamespace(ns, adapter.Name)) && Needed(ns)).Distinct().OrderBy(ns => ns, StringComparer.Ordinal).ToList();
         if (addUsings.Count > 0)
             newAdapterText = string.Concat(addUsings.Select(u => $"using {u};\n")) + newAdapterText;
-        plan.Add(new FixAction(new PlannedChange(adapterFile, "modify", $"{moved.Count} registration statement(s) moved in" + (movedHelpers.Count == 0 ? string.Empty : $" with {movedHelpers.Count} helper method(s)"), "split_registration"), newAdapterText));
+        plan.Add(new FixAction(new PlannedChange(adapterFile, "modify", $"{moved.Count} registration statement(s) moved in" + (carriedHelpers.Count == 0 ? string.Empty : $" with {carriedHelpers.Count} helper method(s)"), "split_registration"), newAdapterText));
 
         // source file: the moved statements and their helpers leave
         // the closing brace keeps its indentation: the whitespace that followed the last statement stays
@@ -364,10 +365,10 @@ internal static partial class AdapterOperations
     }
 
     /// <summary>The helpers that only the moved statements need: used by a moved statement or by a helper that moves, and by no kept statement or kept helper.</summary>
-    private static List<Helper> HelpersThatMove(List<Helper> helpers, List<string> moved, List<string> kept, List<string> manual)
+    private static (List<Helper> Move, List<Helper> Copy) HelpersThatMove(List<Helper> helpers, List<string> moved, List<string> kept, List<string> manual)
     {
         if (helpers.Count == 0)
-            return new List<Helper>();
+            return (new List<Helper>(), new List<Helper>());
         var names = helpers.Select(h => h.Name).ToHashSet(StringComparer.Ordinal);
         var wanted = new HashSet<string>(moved.SelectMany(s => Word().Matches(StripComments(s)).Select(w => w.Value)).Where(names.Contains), StringComparer.Ordinal);
         for (var grew = true; grew;)
@@ -379,17 +380,21 @@ internal static partial class AdapterOperations
         }
 
         var result = new List<Helper>();
+        var copies = new List<Helper>();
         foreach (var h in helpers.Where(h => wanted.Contains(h.Name)))
         {
             var usedByKept = kept.Any(s => UsesWord(s, h.Name))
                              || helpers.Any(o => !wanted.Contains(o.Name) && UsesWord(o.Text, h.Name));
             if (usedByKept)
-                manual.Add($"helper '{h.Name}' is used by a moved statement and by code that stays: make it shared or copy it.");
+            {
+                copies.Add(h);
+                manual.Add($"helper '{h.Name}' is used by a moved statement and by code that stays: it was copied; it leaves the source with the last adapter that uses it. Shared code like this belongs in a Kit.");
+            }
             else
                 result.Add(h);
         }
 
-        return result;
+        return (result, copies);
     }
 
     [GeneratedRegex(@"(?m)^[ \t]*private\s+static\s+(?:async\s+)?[^\n(=;{]+?\s(?<name>\w+)\s*(?:<[^>]*>)?\s*\(", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 2000)]

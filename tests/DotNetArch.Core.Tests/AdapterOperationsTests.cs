@@ -137,7 +137,7 @@ public sealed class AdapterOperationsTests : IDisposable
         Assert.Contains("private static string Trim", shared, StringComparison.Ordinal);
         Assert.Contains("private static string BaseUrl", adapter, StringComparison.Ordinal);
         Assert.Contains("Only the acme statement uses this.", adapter, StringComparison.Ordinal);
-        Assert.DoesNotContain("private static string Trim", adapter, StringComparison.Ordinal);
+        Assert.Contains("private static string Trim", adapter, StringComparison.Ordinal); // copied: the kept statement still needs the original
         Assert.Contains("helper 'Trim'", applied.Text, StringComparison.Ordinal);
         Assert.Contains("Acme.Http", File.ReadAllText(Path.Combine(repo, "src/Shop.Infrastructure.Acme/Shop.Infrastructure.Acme.csproj")), StringComparison.Ordinal);
     }
