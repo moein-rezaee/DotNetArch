@@ -265,6 +265,14 @@ internal static partial class AdapterOperations
             }
         }
 
+        // the shared framework the source references and the moved code uses (ASP.NET Core types are not in a package)
+        if (movedUsings.Any(u => InNamespace(u, "Microsoft.AspNetCore")) && ctx.Read(from.File).Contains("FrameworkReference Include=\"Microsoft.AspNetCore.App\"", StringComparison.Ordinal)
+            && !targetText.Contains("FrameworkReference Include=\"Microsoft.AspNetCore.App\"", StringComparison.Ordinal))
+        {
+            targetText = AddItem(targetText, "FrameworkReference", "Microsoft.AspNetCore.App");
+            added.Add("FrameworkReference Microsoft.AspNetCore.App");
+        }
+
         var propsText = ctx.Read("Directory.Packages.props");
         var propsEdited = RequirePackages(ctx, root, from, to, movedUsings, ref targetText, ref propsText, added);
 

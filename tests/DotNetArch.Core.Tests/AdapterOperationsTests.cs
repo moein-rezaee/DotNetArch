@@ -84,6 +84,19 @@ public sealed class AdapterOperationsTests : IDisposable
     }
 
     [Fact]
+    public void Move_code_carries_the_aspnetcore_framework_reference_when_the_moved_code_uses_it()
+    {
+        var repo = Repo();
+        Write(repo, "src/Shop.Infrastructure/Shop.Infrastructure.csproj", Csproj(new[] { "Shop.Domain", "Shop.Application", "Shop.Infrastructure.Acme" }, "  <ItemGroup>\n    <FrameworkReference Include=\"Microsoft.AspNetCore.App\" />\n  </ItemGroup>\n"));
+        Write(repo, "src/Shop.Infrastructure/Prices/AcmePriceSource.cs",
+            "using Microsoft.AspNetCore.Http;\nusing Shop.Domain.Ports;\n\nnamespace Shop.Infrastructure.Prices;\n\ninternal sealed class AcmePriceSource(IHttpContextAccessor accessor) : IPriceSource\n{\n    public decimal Get(int id) => id;\n}\n");
+
+        Assert.True(Run("move_code", repo, apply: true, ("from", "Shop.Infrastructure"), ("to", "Shop.Infrastructure.Acme"), ("files", "Prices")).Ok);
+
+        Assert.Contains("FrameworkReference Include=\"Microsoft.AspNetCore.App\"", File.ReadAllText(Path.Combine(repo, "src/Shop.Infrastructure.Acme/Shop.Infrastructure.Acme.csproj")), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Split_registration_moves_only_the_statements_that_name_an_adapter_type()
     {
         var repo = Repo();
