@@ -251,33 +251,7 @@ internal static partial class AdapterOperations
         // packages: the namespaces the moved code uses must resolve in the target. They are looked up in the compile assets of the restored projects
         // (the namespace of an assembly need not equal its package id); without restored assets the package id is compared with the namespace instead.
         var propsText = ctx.Read("Directory.Packages.props");
-        var propsEdited = false;
-        var centrally = propsText.Contains("ManagePackageVersionsCentrally", StringComparison.OrdinalIgnoreCase) && propsText.Contains(">true<", StringComparison.OrdinalIgnoreCase);
-        var fromIndex = NamespaceIndex(Path.Combine(root, from.Dir));
-        var toIndex = NamespaceIndex(Path.Combine(root, to.Dir));
-        foreach (var ns in movedUsings.OrderBy(u => u, StringComparer.Ordinal))
-        {
-            if (ctx.Projects.Any(p => InNamespace(ns, p.Name)) || InNamespace(ns, "System"))
-                continue;
-            if (toIndex.ContainsKey(ns) || to.Packages.Any(p => InNamespace(ns, p.Name)))
-                continue;
-            (string Id, string Version)? provider = null;
-            if (fromIndex.TryGetValue(ns, out var found))
-                provider = found;
-            else if (from.Packages.FirstOrDefault(p => InNamespace(ns, p.Name)) is { } direct)
-                provider = (direct.Name, string.Empty);
-            if (provider is null)
-                continue;
-            if (to.Packages.Any(p => p.Name.Equals(provider.Value.Id, StringComparison.OrdinalIgnoreCase)) || targetText.Contains($"PackageReference Include=\"{provider.Value.Id}\"", StringComparison.OrdinalIgnoreCase))
-                continue;
-            targetText = AddItem(targetText, "PackageReference", provider.Value.Id);
-            added.Add($"PackageReference {provider.Value.Id}");
-            if (centrally && provider.Value.Version.Length > 0 && !propsText.Contains($"Include=\"{provider.Value.Id}\"", StringComparison.OrdinalIgnoreCase))
-            {
-                propsText = AddItem(propsText, "PackageVersion", provider.Value.Id, $" Version=\"{provider.Value.Version}\"");
-                propsEdited = true;
-            }
-        }
+        var propsEdited = RequirePackages(ctx, root, from, to, movedUsings, ref targetText, ref propsText, added);
 
         var plan = new List<FixAction>();
         foreach (var (oldPath, newPath) in moved)
@@ -601,6 +575,42 @@ internal static partial class AdapterOperations
             .Where(n => n.Length > 0)
             .Distinct(StringComparer.Ordinal)
             .ToList();
+    }
+
+    /// <summary>
+    /// Adds the package references <paramref name="to"/> needs for the namespaces in <paramref name="usings"/> (code that moved from <paramref name="from"/>), with the central version when the
+    /// repository manages versions centrally. Returns true when the props text changed.
+    /// </summary>
+    private static bool RequirePackages(RepoContext ctx, string root, ProjectInfo from, ProjectInfo to, IEnumerable<string> usings, ref string targetText, ref string propsText, List<string> added)
+    {
+        var propsEdited = false;
+        var centrally = propsText.Contains("ManagePackageVersionsCentrally", StringComparison.OrdinalIgnoreCase) && propsText.Contains(">true<", StringComparison.OrdinalIgnoreCase);
+        var fromIndex = NamespaceIndex(Path.Combine(root, from.Dir));
+        var toIndex = NamespaceIndex(Path.Combine(root, to.Dir));
+        foreach (var ns in usings.OrderBy(u => u, StringComparer.Ordinal))
+        {
+            if (ctx.Projects.Any(p => InNamespace(ns, p.Name)) || InNamespace(ns, "System"))
+                continue;
+            if (toIndex.ContainsKey(ns) || to.Packages.Any(p => InNamespace(ns, p.Name)))
+                continue;
+            (string Id, string Version)? provider = null;
+            if (fromIndex.TryGetValue(ns, out var found))
+                provider = found;
+            else if (from.Packages.FirstOrDefault(p => InNamespace(ns, p.Name)) is { } direct)
+                provider = (direct.Name, string.Empty);
+            if (provider is null)
+                continue;
+            if (to.Packages.Any(p => p.Name.Equals(provider.Value.Id, StringComparison.OrdinalIgnoreCase)) || targetText.Contains($"PackageReference Include=\"{provider.Value.Id}\"", StringComparison.OrdinalIgnoreCase))
+                continue;
+            targetText = AddItem(targetText, "PackageReference", provider.Value.Id);
+            added.Add($"PackageReference {provider.Value.Id}");
+            if (centrally && provider.Value.Version.Length > 0 && !propsText.Contains($"Include=\"{provider.Value.Id}\"", StringComparison.OrdinalIgnoreCase))
+            {
+                propsText = AddItem(propsText, "PackageVersion", provider.Value.Id, $" Version=\"{provider.Value.Version}\"");
+                propsEdited = true;
+            }
+        }
+        return propsEdited;
     }
 
     private static void RegisterInSolution(string root, string solution, string project)

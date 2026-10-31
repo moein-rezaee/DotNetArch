@@ -105,6 +105,36 @@ public sealed class AdapterOperationsTests : IDisposable
     }
 
     [Fact]
+    public void Split_registration_takes_the_private_helpers_only_the_moved_statements_use_and_the_packages_their_usings_need()
+    {
+        var repo = Repo();
+        Write(repo, "src/Shop.Infrastructure/Shop.Infrastructure.csproj", Csproj(new[] { "Shop.Domain", "Shop.Application", "Shop.Infrastructure.Acme" }, "  <ItemGroup>\n    <PackageReference Include=\"Acme.Http\" />\n  </ItemGroup>\n"));
+        Write(repo, "src/Shop.Infrastructure.Acme/Prices/AcmePriceSource.cs",
+            "using Shop.Domain.Ports;\n\nnamespace Shop.Infrastructure.Acme.Prices;\n\npublic sealed class AcmePriceSource : IPriceSource\n{\n    public decimal Get(int id) => id;\n}\n");
+        Write(repo, "src/Shop.Infrastructure/DependencyInjection.cs",
+            "using Acme.Http;\nusing Microsoft.Extensions.Configuration;\nusing Microsoft.Extensions.DependencyInjection;\nusing Shop.Infrastructure.Acme.Prices;\n\nnamespace Shop.Infrastructure;\n\npublic static class DependencyInjection\n{\n"
+            + "    public static IServiceCollection AddShopInfrastructure(this IServiceCollection services, IConfiguration configuration)\n    {\n        services.AddSingleton(Shared(configuration));\n        services.AddScoped<AcmePriceSource>(sp => new AcmePriceSource { Url = BaseUrl(configuration) });\n        return services;\n    }\n\n"
+            + "    /// <summary>Only the acme statement uses this.</summary>\n    private static string BaseUrl(IConfiguration configuration) => Trim(configuration[\"Acme:Url\"] ?? \"\");\n\n"
+            + "    private static string Trim(string value)\n    {\n        return value.TrimEnd('/');\n    }\n\n"
+            + "    private static string Shared(IConfiguration configuration) => Trim(configuration[\"Shared\"] ?? \"\");\n}\n");
+
+        var applied = Run("split_registration", repo, apply: true, ("adapter", "Acme"));
+
+        Assert.True(applied.Ok, applied.Error);
+        var shared = File.ReadAllText(Path.Combine(repo, "src/Shop.Infrastructure/DependencyInjection.cs"));
+        var adapter = File.ReadAllText(Path.Combine(repo, "src/Shop.Infrastructure.Acme/DependencyInjection.cs"));
+        Assert.DoesNotContain("BaseUrl", shared, StringComparison.Ordinal);
+        Assert.DoesNotContain("Only the acme statement", shared, StringComparison.Ordinal);
+        Assert.Contains("private static string Shared", shared, StringComparison.Ordinal);
+        Assert.Contains("private static string Trim", shared, StringComparison.Ordinal);
+        Assert.Contains("private static string BaseUrl", adapter, StringComparison.Ordinal);
+        Assert.Contains("Only the acme statement uses this.", adapter, StringComparison.Ordinal);
+        Assert.DoesNotContain("private static string Trim", adapter, StringComparison.Ordinal);
+        Assert.Contains("helper 'Trim'", applied.Text, StringComparison.Ordinal);
+        Assert.Contains("Acme.Http", File.ReadAllText(Path.Combine(repo, "src/Shop.Infrastructure.Acme/Shop.Infrastructure.Acme.csproj")), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Describe_module_lists_the_permissions_of_the_modules_own_catalog()
     {
         var repo = Repo();

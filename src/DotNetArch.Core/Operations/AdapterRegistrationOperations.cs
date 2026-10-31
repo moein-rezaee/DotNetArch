@@ -82,6 +82,10 @@ internal static partial class AdapterOperations
         foreach (var local in keptLocals.Where(l => moved.Any(s => UsesWord(s, l))))
             manual.Add($"local '{local}' is declared by a kept statement and used by a moved one: declare it in {adapterMethod.Groups["name"].Value} too.");
 
+        // private helper methods of the source class that only the moved statements use (directly or through each other) travel with them
+        var helpers = PrivateHelpers(sourceText);
+        var movedHelpers = HelpersThatMove(helpers, moved, kept, manual);
+
         var plan = new List<FixAction>();
 
         // adapter file: moved statements go before its final return; the usings of the source file come along
@@ -90,18 +94,41 @@ internal static partial class AdapterOperations
         var insertAt = returnAt < 0 ? adapterBody.Length : adapterBody.LastIndexOf('\n', returnAt) + 1;
         var newBody = adapterBody[..insertAt] + string.Concat(moved.Select(s => s.TrimEnd() + "\n")).TrimEnd('\n') + "\n\n" + adapterBody[insertAt..];
         var newAdapterText = adapterText[..adapterStart] + newBody + adapterText[adapterEnd..];
+        if (movedHelpers.Count > 0)
+        {
+            var classEnd = newAdapterText.LastIndexOf('}');
+            newAdapterText = newAdapterText[..classEnd].TrimEnd() + "\n" + string.Concat(movedHelpers.Select(h => "\n" + h.Text.TrimEnd() + "\n")) + newAdapterText[classEnd..];
+        }
+
         var present = Using().Matches(newAdapterText).Select(m => m.Groups["ns"].Value).ToHashSet(StringComparer.Ordinal);
         var ownNamespace = NamespaceDeclaration().Match(sourceText).Groups["ns"].Value;
         var addUsings = Using().Matches(sourceText).Select(m => m.Groups["ns"].Value)
             .Where(ns => !present.Contains(ns) && !InNamespace(ns, ownNamespace)).Distinct().OrderBy(ns => ns, StringComparer.Ordinal).ToList();
         if (addUsings.Count > 0)
             newAdapterText = string.Concat(addUsings.Select(u => $"using {u};\n")) + newAdapterText;
-        plan.Add(new FixAction(new PlannedChange(adapterFile, "modify", $"{moved.Count} registration statement(s) moved in", "split_registration"), newAdapterText));
+        plan.Add(new FixAction(new PlannedChange(adapterFile, "modify", $"{moved.Count} registration statement(s) moved in" + (movedHelpers.Count == 0 ? string.Empty : $" with {movedHelpers.Count} helper method(s)"), "split_registration"), newAdapterText));
 
-        // source file: the moved statements leave
-        var newSourceBody = string.Concat(kept);
-        var newSourceText = sourceText[..sourceStart] + newSourceBody + sourceText[sourceEnd..];
+        // source file: the moved statements and their helpers leave
+        var edits = new List<(int Start, int End, string Text)> { (sourceStart, sourceEnd, string.Concat(kept)) };
+        edits.AddRange(movedHelpers.Select(h => (h.Start, h.End, string.Empty)));
+        var newSourceText = sourceText;
+        foreach (var edit in edits.OrderByDescending(e => e.Start))
+            newSourceText = newSourceText[..edit.Start] + edit.Text + newSourceText[edit.End..];
         plan.Add(new FixAction(new PlannedChange(sourceFile, "modify", $"{moved.Count} registration statement(s) moved out to {adapter.Name}", "split_registration"), newSourceText));
+
+        // the packages the copied usings need in the adapter project
+        var adapterProject = Path.Combine(root, adapter.File);
+        if (File.Exists(adapterProject))
+        {
+            var csprojText = ctx.Read(adapter.File);
+            var propsText = ctx.Has("Directory.Packages.props") ? ctx.Read("Directory.Packages.props") : string.Empty;
+            var added = new List<string>();
+            var propsEdited = RequirePackages(ctx, root, source, adapter, addUsings, ref csprojText, ref propsText, added);
+            if (added.Count > 0)
+                plan.Add(new FixAction(new PlannedChange(adapter.File, "modify", string.Join(", ", added), "split_registration"), csprojText));
+            if (propsEdited)
+                plan.Add(new FixAction(new PlannedChange("Directory.Packages.props", "modify", "central versions for the packages the adapter now uses", "split_registration"), propsText));
+        }
 
         manual.Add("build to verify: usings that the adapter project does not reference, and statements that depend on code left behind, show up as compile errors.");
         return Planned("split_registration", root, plan, request.Apply, manual);
@@ -247,6 +274,110 @@ internal static partial class AdapterOperations
 
         return sb.ToString();
     }
+
+    private sealed record Helper(string Name, int Start, int End, string Text);
+
+    /// <summary>The private static methods declared in the class of <paramref name="text"/>, with the comment and attribute lines in front of them and their trailing line break.</summary>
+    private static List<Helper> PrivateHelpers(string text)
+    {
+        var result = new List<Helper>();
+        foreach (Match m in PrivateStaticMethod().Matches(text))
+        {
+            var start = text.LastIndexOf('\n', m.Index) + 1;
+            while (start > 0)
+            {
+                var previousStart = text.LastIndexOf('\n', start - 2) + 1;
+                var line = text[previousStart..(start - 1)].TrimStart();
+                if (!line.StartsWith("///", StringComparison.Ordinal) && !line.StartsWith('['))
+                    break;
+                start = previousStart;
+            }
+
+            var end = EndOfMember(text, m.Index + m.Length);
+            if (end < 0)
+                continue;
+            var nl = text.IndexOf('\n', end);
+            end = nl < 0 ? text.Length : nl + 1;
+            // one blank line in front goes with the method
+            var blank = start;
+            if (start >= 2)
+            {
+                var previousStart = text.LastIndexOf('\n', start - 2) + 1;
+                if (text[previousStart..(start - 1)].Trim().Length == 0)
+                    blank = previousStart;
+            }
+
+            result.Add(new Helper(m.Groups["name"].Value, blank, end, text[start..end]));
+        }
+
+        return result;
+    }
+
+    /// <summary>The end of a method or expression-bodied member whose parameter list opens at <paramref name="from"/> - 1: the closing brace of the block, or the semicolon of the expression.</summary>
+    private static int EndOfMember(string text, int from)
+    {
+        var depth = 1;
+        var i = from;
+        for (; i < text.Length && depth > 0; i++)
+        {
+            i = SkipLiteral(text, i);
+            if (i >= text.Length)
+                return -1;
+            if (text[i] == '(') depth++;
+            else if (text[i] == ')') depth--;
+        }
+
+        var expression = false;
+        for (depth = 0; i < text.Length; i++)
+        {
+            i = SkipLiteral(text, i);
+            if (i >= text.Length)
+                return -1;
+            var c = text[i];
+            if (c == '=' && i + 1 < text.Length && text[i + 1] == '>' && depth == 0)
+                expression = true;
+            else if (c is '(' or '[' or '{') depth++;
+            else if (c is ')' or ']') depth--;
+            else if (c == '}' && --depth == 0 && !expression)
+                return i + 1;
+            else if (c == ';' && depth == 0)
+                return i + 1;
+        }
+
+        return -1;
+    }
+
+    /// <summary>The helpers that only the moved statements need: used by a moved statement or by a helper that moves, and by no kept statement or kept helper.</summary>
+    private static List<Helper> HelpersThatMove(List<Helper> helpers, List<string> moved, List<string> kept, List<string> manual)
+    {
+        if (helpers.Count == 0)
+            return new List<Helper>();
+        var names = helpers.Select(h => h.Name).ToHashSet(StringComparer.Ordinal);
+        var wanted = new HashSet<string>(moved.SelectMany(s => Word().Matches(StripComments(s)).Select(w => w.Value)).Where(names.Contains), StringComparer.Ordinal);
+        for (var grew = true; grew;)
+        {
+            grew = false;
+            foreach (var h in helpers.Where(h => wanted.Contains(h.Name)))
+                foreach (var w in Word().Matches(StripComments(h.Text)).Select(w => w.Value).Where(w => names.Contains(w) && wanted.Add(w)))
+                    grew = true;
+        }
+
+        var result = new List<Helper>();
+        foreach (var h in helpers.Where(h => wanted.Contains(h.Name)))
+        {
+            var usedByKept = kept.Any(s => UsesWord(s, h.Name))
+                             || helpers.Any(o => !wanted.Contains(o.Name) && UsesWord(o.Text, h.Name));
+            if (usedByKept)
+                manual.Add($"helper '{h.Name}' is used by a moved statement and by code that stays: make it shared or copy it.");
+            else
+                result.Add(h);
+        }
+
+        return result;
+    }
+
+    [GeneratedRegex(@"(?m)^[ \t]*private\s+static\s+(?:async\s+)?[^\n(=;{]+?\s(?<name>\w+)\s*(?:<[^>]*>)?\s*\(", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 2000)]
+    private static partial Regex PrivateStaticMethod();
 
     [GeneratedRegex(@"\b(?:var|[A-Z]\w*(?:<[^>]*>)?)\s+(?<name>[a-z_]\w*)\s*=", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 2000)]
     private static partial Regex LocalDeclaration();
