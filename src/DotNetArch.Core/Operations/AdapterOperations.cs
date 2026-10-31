@@ -746,6 +746,11 @@ internal static partial class AdapterOperations
                 continue;
             if (to.Packages.Any(p => p.Name.Equals(provider.Value.Id, StringComparison.OrdinalIgnoreCase)) || targetText.Contains($"PackageReference Include=\"{provider.Value.Id}\"", StringComparison.OrdinalIgnoreCase))
                 continue;
+            // a central version below the one the source resolves can only be reached there through another package, so it would be a downgrade here (NU1605): the target gets it the same way
+            if (centrally && provider.Value.Version.Length > 0
+                && Regex.Match(propsText, $"PackageVersion\\s+Include=\"{Regex.Escape(provider.Value.Id)}\"\\s+Version=\"(?<v>[^\"]+)\"", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1)) is { Success: true } pinned
+                && Version.TryParse(pinned.Groups["v"].Value, out var pinnedVersion) && Version.TryParse(provider.Value.Version, out var resolvedVersion) && pinnedVersion < resolvedVersion)
+                continue;
             targetText = AddItem(targetText, "PackageReference", provider.Value.Id);
             added.Add($"PackageReference {provider.Value.Id}");
             if (centrally && provider.Value.Version.Length > 0 && !propsText.Contains($"Include=\"{provider.Value.Id}\"", StringComparison.OrdinalIgnoreCase))
