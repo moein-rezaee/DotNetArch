@@ -23,6 +23,7 @@ internal static partial class AdapterOperations
         },
         RunAddAdapter);
 
+    private static readonly string[] HostRegistrationPackages = { "Microsoft.Extensions.Hosting.Abstractions", "Microsoft.Extensions.Hosting", "Microsoft.Extensions.Http", "Microsoft.Extensions.Options.ConfigurationExtensions", "Microsoft.Extensions.DependencyInjection" };
     private static readonly string[] DependencyInjectionPackages = { "Microsoft.Extensions.DependencyInjection.Abstractions", "Microsoft.Extensions.DependencyInjection", "Microsoft.Extensions.Http" };
     private static readonly string[] ConfigurationPackages = { "Microsoft.Extensions.Configuration.Abstractions", "Microsoft.Extensions.Configuration", "Microsoft.Extensions.Configuration.Binder" };
 
@@ -62,17 +63,29 @@ internal static partial class AdapterOperations
         var packages = new StringBuilder();
         var central = ctx.Has("Directory.Packages.props") ? ctx.Read("Directory.Packages.props") : null;
         var hostText = ctx.Read(host.File);
-        foreach (var candidates in new[] { DependencyInjectionPackages, ConfigurationPackages })
+        // a package the shared Infrastructure project already references restores with it at a version that agrees with the rest of the graph; one of them brings
+        // IServiceCollection and IConfiguration. Only when the host has none of them are the central versions of the plain packages used.
+        var fromHost = HostRegistrationPackages.FirstOrDefault(c => hostText.Contains($"PackageReference Include=\"{c}\"", StringComparison.OrdinalIgnoreCase));
+        if (fromHost != null)
         {
-            var chosen = candidates.FirstOrDefault(c => central != null
-                ? central.Contains($"PackageVersion Include=\"{c}\"", StringComparison.OrdinalIgnoreCase)
-                : hostText.Contains($"PackageReference Include=\"{c}\"", StringComparison.OrdinalIgnoreCase));
-            if (chosen == null)
-                manual.Add($"add a reference to one of {string.Join(", ", candidates)} (the registration method needs it)");
-            else if (central != null)
-                packages.Append($"    <PackageReference Include=\"{chosen}\" />\n");
-            else
-                packages.Append(Regex.Match(hostText, $"<PackageReference\\s+Include=\"{Regex.Escape(chosen)}\"[^>]*/>", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1)).Value is { Length: > 0 } line ? $"    {line}\n" : string.Empty);
+            packages.Append(central != null
+                ? $"    <PackageReference Include=\"{fromHost}\" />\n"
+                : Regex.Match(hostText, $"<PackageReference\\s+Include=\"{Regex.Escape(fromHost)}\"[^>]*/>", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1)).Value is { Length: > 0 } hostLine ? $"    {hostLine}\n" : string.Empty);
+        }
+        else
+        {
+            foreach (var candidates in new[] { DependencyInjectionPackages, ConfigurationPackages })
+            {
+                var chosen = candidates.FirstOrDefault(c => central != null
+                    ? central.Contains($"PackageVersion Include=\"{c}\"", StringComparison.OrdinalIgnoreCase)
+                    : hostText.Contains($"PackageReference Include=\"{c}\"", StringComparison.OrdinalIgnoreCase));
+                if (chosen == null)
+                    manual.Add($"add a reference to one of {string.Join(", ", candidates)} (the registration method needs it)");
+                else if (central != null)
+                    packages.Append($"    <PackageReference Include=\"{chosen}\" />\n");
+                else
+                    packages.Append(Regex.Match(hostText, $"<PackageReference\\s+Include=\"{Regex.Escape(chosen)}\"[^>]*/>", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1)).Value is { Length: > 0 } line ? $"    {line}\n" : string.Empty);
+            }
         }
 
         var domainRef = Path.GetRelativePath(dir, domain.File).Replace('/', '\\');
