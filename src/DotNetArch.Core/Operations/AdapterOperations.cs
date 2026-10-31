@@ -19,7 +19,7 @@ namespace DotNetArch.Core.Operations;
 /// </summary>
 internal static partial class AdapterOperations
 {
-    public static IReadOnlyList<OperationDefinition> All => new[] { MoveCode, AddComposition };
+    public static IReadOnlyList<OperationDefinition> All => new[] { MoveCode, AddComposition, SplitRegistration };
 
     private static OperationParameter PathParam() => new("path", "Repository root (default: current folder).", Positional: true, Default: "@cwd");
 

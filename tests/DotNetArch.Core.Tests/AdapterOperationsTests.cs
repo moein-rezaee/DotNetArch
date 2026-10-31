@@ -78,6 +78,33 @@ public sealed class AdapterOperationsTests : IDisposable
     }
 
     [Fact]
+    public void Split_registration_moves_only_the_statements_that_name_an_adapter_type()
+    {
+        var repo = Repo();
+        Write(repo, "src/Shop.Infrastructure.Acme/Prices/AcmePriceSource.cs",
+            "using Shop.Domain.Ports;\n\nnamespace Shop.Infrastructure.Acme.Prices;\n\npublic sealed class AcmePriceSource : IPriceSource\n{\n    public decimal Get(int id) => id;\n}\n");
+        Write(repo, "src/Shop.Infrastructure/DependencyInjection.cs",
+            "using Microsoft.Extensions.Configuration;\nusing Microsoft.Extensions.DependencyInjection;\nusing Shop.Infrastructure.Acme.Prices;\n\nnamespace Shop.Infrastructure;\n\npublic static class DependencyInjection\n{\n    public static IServiceCollection AddShopInfrastructure(this IServiceCollection services, IConfiguration configuration)\n    {\n        // shared\n        services.AddSingleton(\"x; {not a statement}\");\n\n        // acme\n        services.AddScoped<IPriceSource, AcmePriceSource>();\n        if (configuration[\"a\"] != null)\n        {\n            services.AddScoped<AcmePriceSource>();\n        }\n\n        return services;\n    }\n}\n");
+
+        var plan = Run("split_registration", repo, apply: false, ("adapter", "Acme"));
+        Assert.True(plan.Ok, plan.Error);
+        Assert.Contains("DependencyInjection.cs", File.ReadAllText(Path.Combine(repo, "src/Shop.Infrastructure/DependencyInjection.cs")) is { } ? "DependencyInjection.cs" : "");
+        Assert.Contains("AddScoped<IPriceSource, AcmePriceSource>", File.ReadAllText(Path.Combine(repo, "src/Shop.Infrastructure/DependencyInjection.cs")), StringComparison.Ordinal);
+
+        var applied = Run("split_registration", repo, apply: true, ("adapter", "Acme"));
+        Assert.True(applied.Ok, applied.Error);
+        Assert.True(applied.Plan!.Count == 2, applied.Text);
+        var shared = File.ReadAllText(Path.Combine(repo, "src/Shop.Infrastructure/DependencyInjection.cs"));
+        var adapter = File.ReadAllText(Path.Combine(repo, "src/Shop.Infrastructure.Acme/DependencyInjection.cs"));
+        Assert.False(shared.Replace("using Shop.Infrastructure.Acme.Prices;", string.Empty).Contains("AcmePriceSource", StringComparison.Ordinal), shared);
+        Assert.Contains("// shared", shared, StringComparison.Ordinal);
+        Assert.Contains("return services;", shared, StringComparison.Ordinal);
+        Assert.Contains("AddScoped<IPriceSource, AcmePriceSource>", adapter, StringComparison.Ordinal);
+        Assert.Contains("services.AddScoped<AcmePriceSource>();", adapter, StringComparison.Ordinal);
+        Assert.True(adapter.IndexOf("AcmePriceSource>();", StringComparison.Ordinal) < adapter.LastIndexOf("return services;", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Move_code_refuses_an_unknown_project_and_a_missing_file()
     {
         var repo = Repo();
