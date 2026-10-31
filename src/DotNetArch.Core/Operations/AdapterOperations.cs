@@ -263,6 +263,17 @@ internal static partial class AdapterOperations
 
         foreach (var (file, text) in edited.Where(e => !movedOld.Values.Contains(e.Key, StringComparer.OrdinalIgnoreCase)))
             plan.Add(new FixAction(new PlannedChange(file, "modify", "usings and qualified names follow the move", "move_code"), text));
+        // a project that referenced the source and names the moved code (a test project, a host) now needs the target too
+        bool Is(string reference, string name) => Path.GetFileNameWithoutExtension(reference).Equals(name, StringComparison.OrdinalIgnoreCase);
+        foreach (var consumer in ctx.Projects.Where(p => !p.Name.Equals(from.Name, StringComparison.OrdinalIgnoreCase) && !p.Name.Equals(to.Name, StringComparison.OrdinalIgnoreCase)
+                                                        && p.ProjectReferences.Any(r => Is(r, from.Name)) && !p.ProjectReferences.Any(r => Is(r, to.Name))
+                                                        && !to.ProjectReferences.Any(r => Is(r, p.Name))
+                                                        && edited.Keys.Any(f => f.StartsWith(p.Dir + "/", StringComparison.Ordinal))))
+        {
+            var include = Path.GetRelativePath(consumer.Dir, to.File).Replace('/', '\\');
+            plan.Add(new FixAction(new PlannedChange(consumer.File, "modify", $"ProjectReference {to.Name}", "move_code"), AddItem(ctx.Read(consumer.File), "ProjectReference", include)));
+        }
+
         if (added.Count > 0)
             plan.Add(new FixAction(new PlannedChange(targetFile, "modify", string.Join(", ", added), "move_code"), targetText));
         if (propsEdited)

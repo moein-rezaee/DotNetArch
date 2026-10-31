@@ -60,6 +60,8 @@ public sealed class AdapterOperationsTests : IDisposable
     public void Move_code_plans_first_then_moves_the_namespace_and_every_using()
     {
         var repo = Repo();
+        Write(repo, "test/Shop.Infrastructure.Tests/Shop.Infrastructure.Tests.csproj", Csproj(new[] { "Shop.Infrastructure" }).Replace("\\..\\", "\\..\\..\\src\\"));
+        Write(repo, "test/Shop.Infrastructure.Tests/PriceTests.cs", "using Shop.Infrastructure.Prices;\n\nnamespace Shop.Infrastructure.Tests;\n\npublic sealed class PriceTests { }\n");
         var plan = Run("move_code", repo, apply: false, ("from", "Shop.Infrastructure"), ("to", "Shop.Infrastructure.Acme"), ("files", "Prices"));
 
         Assert.True(plan.Ok, plan.Error);
@@ -75,6 +77,8 @@ public sealed class AdapterOperationsTests : IDisposable
         // nothing in the old namespace is left, and the file that used it no longer names it
         var di = File.ReadAllText(Path.Combine(repo, "src/Shop.Infrastructure/DependencyInjection.cs"));
         Assert.DoesNotContain("using Shop.Infrastructure.Prices;", di, StringComparison.Ordinal);
+        // the test project that named the moved namespace now references the adapter
+        Assert.Contains("Shop.Infrastructure.Acme.csproj", File.ReadAllText(Path.Combine(repo, "test/Shop.Infrastructure.Tests/Shop.Infrastructure.Tests.csproj")), StringComparison.Ordinal);
     }
 
     [Fact]

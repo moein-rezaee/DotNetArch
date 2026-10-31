@@ -103,7 +103,7 @@ internal static partial class AdapterOperations
         var present = Using().Matches(newAdapterText).Select(m => m.Groups["ns"].Value).ToHashSet(StringComparer.Ordinal);
         var ownNamespace = NamespaceDeclaration().Match(sourceText).Groups["ns"].Value;
         var addUsings = Using().Matches(sourceText).Select(m => m.Groups["ns"].Value)
-            .Where(ns => !present.Contains(ns) && !InNamespace(ns, ownNamespace)).Distinct().OrderBy(ns => ns, StringComparer.Ordinal).ToList();
+            .Where(ns => !present.Contains(ns) && (!InNamespace(ns, ownNamespace) || InNamespace(ns, adapter.Name))).Distinct().OrderBy(ns => ns, StringComparer.Ordinal).ToList();
         if (addUsings.Count > 0)
             newAdapterText = string.Concat(addUsings.Select(u => $"using {u};\n")) + newAdapterText;
         plan.Add(new FixAction(new PlannedChange(adapterFile, "modify", $"{moved.Count} registration statement(s) moved in" + (movedHelpers.Count == 0 ? string.Empty : $" with {movedHelpers.Count} helper method(s)"), "split_registration"), newAdapterText));
