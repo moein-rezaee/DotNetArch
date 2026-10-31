@@ -594,6 +594,105 @@ internal static partial class AdapterOperations
         return index;
     }
 
+    /// <summary>
+    /// The public type names and public static method names (extension methods among them) of each namespace the restored compile assets of the project offer. Empty when the project is not
+    /// restored; a caller then keeps what it cannot decide.
+    /// </summary>
+    internal static Dictionary<string, HashSet<string>> NamespaceMembers(string projectDirectory)
+    {
+        var members = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+        var assets = Path.Combine(projectDirectory, "obj", "project.assets.json");
+        if (!File.Exists(assets))
+            return members;
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(assets));
+            var root = document.RootElement;
+            var folders = root.TryGetProperty("packageFolders", out var f) ? f.EnumerateObject().Select(o => o.Name).ToList() : new List<string>();
+            if (!root.TryGetProperty("targets", out var targets))
+                return members;
+            foreach (var target in targets.EnumerateObject().Take(1))
+            {
+                foreach (var library in target.Value.EnumerateObject())
+                {
+                    var slash = library.Name.IndexOf('/', StringComparison.Ordinal);
+                    if (slash < 0 || !library.Value.TryGetProperty("compile", out var compile))
+                        continue;
+                    var id = library.Name[..slash];
+                    var version = library.Name[(slash + 1)..];
+                    foreach (var dll in compile.EnumerateObject().Select(o => o.Name).Where(n => n.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        foreach (var folder in folders)
+                        {
+                            var path = Path.Combine(folder, id.ToLowerInvariant(), version, dll.Replace('/', Path.DirectorySeparatorChar));
+                            if (!File.Exists(path))
+                                continue;
+                            AddMembers(path, members);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex) when (ex is JsonException or IOException or BadImageFormatException or InvalidOperationException)
+        {
+            return members;
+        }
+
+        return members;
+    }
+
+    private static void AddMembers(string assembly, Dictionary<string, HashSet<string>> members)
+    {
+        using var stream = File.OpenRead(assembly);
+        using var pe = new PEReader(stream);
+        if (!pe.HasMetadata)
+            return;
+        var reader = pe.GetMetadataReader();
+        foreach (var handle in reader.TypeDefinitions)
+        {
+            var type = reader.GetTypeDefinition(handle);
+            var ns = reader.GetString(type.Namespace);
+            if (ns.Length == 0 || (type.Attributes & System.Reflection.TypeAttributes.VisibilityMask) != System.Reflection.TypeAttributes.Public)
+                continue;
+            if (!members.TryGetValue(ns, out var names))
+                members[ns] = names = new HashSet<string>(StringComparer.Ordinal);
+            var name = reader.GetString(type.Name);
+            var tick = name.IndexOf('`', StringComparison.Ordinal);
+            names.Add(tick < 0 ? name : name[..tick]);
+            foreach (var methodHandle in type.GetMethods())
+            {
+                var method = reader.GetMethodDefinition(methodHandle);
+                if ((method.Attributes & System.Reflection.MethodAttributes.Static) != 0 && (method.Attributes & System.Reflection.MethodAttributes.MemberAccessMask) == System.Reflection.MethodAttributes.Public)
+                    names.Add(reader.GetString(method.Name));
+            }
+        }
+    }
+
+    /// <summary>The type and extension-method names the source projects of the repository declare, by namespace.</summary>
+    internal static Dictionary<string, HashSet<string>> SourceMembers(RepoContext ctx)
+    {
+        var members = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+        foreach (var project in ctx.Source)
+        {
+            foreach (var file in ctx.Files.Where(f => f.StartsWith(project.Dir + "/", StringComparison.Ordinal) && f.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)))
+            {
+                var text = ctx.Read(file);
+                var ns = NamespaceDeclaration().Match(text).Groups["ns"].Value;
+                if (ns.Length == 0)
+                    continue;
+                if (!members.TryGetValue(ns, out var names))
+                    members[ns] = names = new HashSet<string>(StringComparer.Ordinal);
+                foreach (Match type in TypeDeclaration().Matches(text))
+                    names.Add(type.Groups["name"].Value);
+                foreach (Match extension in ExtensionMethod().Matches(text))
+                    names.Add(extension.Groups["name"].Value);
+            }
+        }
+
+        return members;
+    }
+
     private static IEnumerable<string> Namespaces(string assembly)
     {
         using var stream = File.OpenRead(assembly);

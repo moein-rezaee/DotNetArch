@@ -77,7 +77,8 @@ internal static partial class AdapterOperations
         if (moved.Count == 0)
             return new OperationResult(true, $"split_registration: nothing in {sourceMethod.Groups["name"].Value} names a type of {adapter.Name}; no change.", new { manual }, Array.Empty<PlannedChange>(), false);
 
-        var declared = (IEnumerable<string> list) => list.SelectMany(s => LocalDeclaration().Matches(s).Select(m => m.Groups["name"].Value)).ToHashSet(StringComparer.Ordinal);
+        // only a declaration that starts the statement is a local of the method; a lambda parameter or a local inside a lambda body is its own
+        var declared = (IEnumerable<string> list) => list.SelectMany(s => LocalDeclaration().Matches(StripComments(s).TrimStart()).Cast<Match>().Where(m => m.Index == 0).Select(m => m.Groups["name"].Value)).ToHashSet(StringComparer.Ordinal);
         var movedLocals = declared(moved);
         var keptLocals = declared(kept);
         foreach (var local in movedLocals.Where(l => kept.Any(s => UsesWord(s, l))))
@@ -105,8 +106,15 @@ internal static partial class AdapterOperations
 
         var present = Using().Matches(newAdapterText).Select(m => m.Groups["ns"].Value).ToHashSet(StringComparer.Ordinal);
         var ownNamespace = NamespaceDeclaration().Match(sourceText).Groups["ns"].Value;
+        // only the usings the moved code names: a namespace whose types and extension methods (read from the restored assets and the sources) the code does not mention stays behind
+        var movedCode = string.Join('\n', moved.Concat(movedHelpers.Select(h => h.Text)).Select(StripComments));
+        var movedWords = Word().Matches(movedCode).Select(w => w.Value).ToHashSet(StringComparer.Ordinal);
+        var known = NamespaceMembers(Path.Combine(root, source.Dir));
+        foreach (var (ns, names) in SourceMembers(ctx))
+            if (known.TryGetValue(ns, out var existingNames)) existingNames.UnionWith(names); else known[ns] = names;
+        bool Needed(string ns) => !known.TryGetValue(ns, out var names) || names.Overlaps(movedWords);
         var addUsings = Using().Matches(sourceText).Select(m => m.Groups["ns"].Value)
-            .Where(ns => !present.Contains(ns) && (!InNamespace(ns, ownNamespace) || InNamespace(ns, adapter.Name))).Distinct().OrderBy(ns => ns, StringComparer.Ordinal).ToList();
+            .Where(ns => !present.Contains(ns) && (!InNamespace(ns, ownNamespace) || InNamespace(ns, adapter.Name)) && Needed(ns)).Distinct().OrderBy(ns => ns, StringComparer.Ordinal).ToList();
         if (addUsings.Count > 0)
             newAdapterText = string.Concat(addUsings.Select(u => $"using {u};\n")) + newAdapterText;
         plan.Add(new FixAction(new PlannedChange(adapterFile, "modify", $"{moved.Count} registration statement(s) moved in" + (movedHelpers.Count == 0 ? string.Empty : $" with {movedHelpers.Count} helper method(s)"), "split_registration"), newAdapterText));

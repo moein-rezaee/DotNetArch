@@ -154,6 +154,24 @@ public sealed class AdapterOperationsTests : IDisposable
     }
 
     [Fact]
+    public void Split_registration_copies_only_the_usings_the_moved_code_names()
+    {
+        var repo = Repo();
+        Write(repo, "src/Shop.Application/Other/OtherThing.cs", "namespace Shop.Application.Other;\npublic sealed class OtherThing { }\n");
+        Write(repo, "src/Shop.Infrastructure.Acme/Prices/AcmePriceSource.cs",
+            "using Shop.Domain.Ports;\n\nnamespace Shop.Infrastructure.Acme.Prices;\n\npublic sealed class AcmePriceSource : IPriceSource\n{\n    public decimal Get(int id) => id;\n}\n");
+        Write(repo, "src/Shop.Infrastructure/DependencyInjection.cs",
+            "using Microsoft.Extensions.Configuration;\nusing Microsoft.Extensions.DependencyInjection;\nusing Shop.Application.Other;\nusing Shop.Domain.Ports;\nusing Shop.Infrastructure.Acme.Prices;\n\nnamespace Shop.Infrastructure;\n\npublic static class DependencyInjection\n{\n    public static IServiceCollection AddShopInfrastructure(this IServiceCollection services, IConfiguration configuration)\n    {\n        services.AddSingleton<OtherThing>();\n        services.AddScoped<IPriceSource, AcmePriceSource>();\n        return services;\n    }\n}\n");
+
+        Assert.True(Run("split_registration", repo, apply: true, ("adapter", "Acme")).Ok);
+
+        var adapter = File.ReadAllText(Path.Combine(repo, "src/Shop.Infrastructure.Acme/DependencyInjection.cs"));
+        Assert.Contains("using Shop.Domain.Ports;", adapter, StringComparison.Ordinal);
+        Assert.Contains("using Shop.Infrastructure.Acme.Prices;", adapter, StringComparison.Ordinal);
+        Assert.DoesNotContain("using Shop.Application.Other;", adapter, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Describe_module_lists_the_permissions_of_the_modules_own_catalog()
     {
         var repo = Repo();
