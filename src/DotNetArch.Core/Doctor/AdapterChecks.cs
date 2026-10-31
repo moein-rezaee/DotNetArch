@@ -115,6 +115,20 @@ internal static partial class AdapterChecks
         ctx.Check("DA-AD02", cat, hosted.Count == 0, DoctorSeverity.Warning, "The shared Infrastructure project references adapter projects; only a composition project (or a host) may pick adapters.",
             hint: "move_code the adapter-specific code into the adapter, add_composition, then fix --rules=DA-AD02 removes the references.", details: hosted);
 
+        // Outbound HTTP is a different system on the other side, whether it is a vendor or a sibling module: it belongs to an adapter that a composition selects.
+        var outbound = new List<string>();
+        if (host != null)
+        {
+            foreach (var file in ctx.Files.Where(f => f.StartsWith(host.Dir + "/", StringComparison.Ordinal) && f.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)))
+            {
+                if (OutboundHttp().IsMatch(ctx.Read(file)))
+                    outbound.Add(file);
+            }
+        }
+
+        ctx.Check("DA-AD09", cat, outbound.Count == 0, DoctorSeverity.Warning, "The shared Infrastructure project talks HTTP to another system (a sibling module or a vendor); it must sit in an adapter project that a composition selects.",
+            hint: "add_adapter creates the adapter project, move_code moves the client, split_registration moves its registration, add_composition selects it. The port stays in Domain.Ports, owned by the caller.", details: outbound);
+
         ctx.Check("DA-AD03", cat, between.Count == 0, DoctorSeverity.Warning, "An adapter references another adapter.", hint: "Shared code belongs in the module core (move_code) or, when several modules need it, in a Kit.", details: between);
 
         var withoutRegistration = adapters.Where(a => !ctx.Files.Any(f => f.StartsWith(a.Dir + "/", StringComparison.Ordinal) && f.EndsWith(".cs", StringComparison.OrdinalIgnoreCase) && Registration().IsMatch(ctx.Read(f)))).Select(a => a.Name).ToList();
@@ -200,4 +214,7 @@ internal static partial class AdapterChecks
 
     [GeneratedRegex(@"public\s+static\s+IServiceCollection\s+Add\w+\s*\(\s*this\s+IServiceCollection", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 2000)]
     private static partial Regex Registration();
+
+    [GeneratedRegex(@"\b(?:AddHttpClient|IHttpClientFactory|HttpClient)\b", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 2000)]
+    private static partial Regex OutboundHttp();
 }

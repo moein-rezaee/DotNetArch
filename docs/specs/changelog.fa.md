@@ -1,6 +1,7 @@
 # تغییرات
 
 ## 2.0.0 (منتشرنشده)
+- ‏DA-AD09 و `add_adapter` (R-K9، ‏AC-62): HTTP خروجی از Infrastructure مشترک به پروژهٔ آداپتری می‌رود که ابزار می‌سازد.
 - فایل‌های migration از editorconfig پیروی می‌کنند (R-J22، ‏AC-53): byte order markی که EF می‌نویسد برداشته می‌شود تا کار lint روی سرویس تازه پاس شود.
 - چندمستاجری روی سیستم مرجع بیرونی (R-J21، ‏AC-52): ‏`add_tenancy --wire_only` فقط kit چندمستاجری را وصل می‌کند.
 - ساخت Kit (R-J20، AC-51): ‏`scaffold_kit` و `scaffold_provider` ناحیه‌های Kit و بسته‌های ارائه‌دهنده را با تست، مستندات دوزبانه و ورودی فهرست بسته‌ها می‌سازند؛ ‏`fix --rules=DA-A08` کنترلرهای پنهان از توصیف API (‏`IgnoreApi = true`) را رد می‌کند. ۳۵ عملیات، CLI و MCP از یک registry. برای ساخت Kitهای Delivery و Chat استفاده شد.

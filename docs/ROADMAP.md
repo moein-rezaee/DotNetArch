@@ -157,3 +157,4 @@ Planned. The cross-repository steps live in the organisation's Composition Migra
 
 - [x] 15.8 `split_registration`: moves the statements of the shared `Add<Module>Infrastructure` that name a type of one adapter into that adapter's `Add<System>Adapter`; a local shared across the line is listed as manual. It was added after the first four services were split by hand (a deviation from tools-first); on them it now reports nothing left to move.
 - [x] 15.9 `move_code`, `add_composition`, `describe_module`, `describe_settings`, DA-AD01..DA-AD06 (R-K1..R-K4, AC-54..AC-57), proven on Catalog, Customer, Order and Invoice.
+- [x] 15.10 DA-AD09 and `add_adapter` (R-K9, AC-62): outbound HTTP in the shared Infrastructure is reported; `add_adapter` creates the empty adapter project so `move_code` and `split_registration` have a destination. Needed to remove the direct service-to-service clients (priority 1 of the composition migration).

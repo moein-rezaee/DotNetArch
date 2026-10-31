@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2.0.0 (unreleased)
+- DA-AD09 and `add_adapter` (R-K9, AC-62): outbound HTTP leaves the shared Infrastructure for an adapter project the tool creates.
 - `describe_module` lists the permissions a module declares in its own permission catalog (R-K8, AC-61).
 - `split_registration` (R-K7, AC-60): the registration method of the shared Infrastructure is split per adapter by the tool.
 - DA-AD08: the core projects an adapter depends on are packages at the module version (R-K6, AC-59).

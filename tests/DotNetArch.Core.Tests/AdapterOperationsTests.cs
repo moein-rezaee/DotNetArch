@@ -121,6 +121,43 @@ public sealed class AdapterOperationsTests : IDisposable
     }
 
     [Fact]
+    public void Outbound_http_in_the_shared_infrastructure_is_reported_and_leaves_with_the_adapter_that_add_adapter_creates()
+    {
+        var repo = Repo(profile: "name: acme\nversion: 1.0.0\nadapter_package: \"Acme.{Module}.Adapters.{System}\"\n");
+        Write(repo, "src/Shop.Domain/Ports/IBillingClient.cs", "namespace Shop.Domain.Ports;\npublic interface IBillingClient { Task<int> Count(); }\n");
+        Write(repo, "src/Shop.Infrastructure/ServiceClients/BillingClient.cs",
+            "using Shop.Domain.Ports;\n\nnamespace Shop.Infrastructure.ServiceClients;\n\ninternal sealed class BillingClient(HttpClient http) : IBillingClient\n{\n    public Task<int> Count() => Task.FromResult(0);\n}\n");
+        Write(repo, "src/Shop.Infrastructure/DependencyInjection.cs",
+            "using Microsoft.Extensions.Configuration;\nusing Microsoft.Extensions.DependencyInjection;\nusing Shop.Domain.Ports;\nusing Shop.Infrastructure.ServiceClients;\n\nnamespace Shop.Infrastructure;\n\npublic static class DependencyInjection\n{\n    public static IServiceCollection AddShopInfrastructure(this IServiceCollection services, IConfiguration configuration)\n    {\n        services.AddHttpClient<IBillingClient, BillingClient>();\n        return services;\n    }\n}\n");
+
+        var report = DoctorRunner.Run(repo);
+        var finding = Assert.Single(report.Findings, f => f.Id == "DA-AD09");
+        Assert.Contains("src/Shop.Infrastructure/ServiceClients/BillingClient.cs", finding.Details!);
+        Assert.Contains("src/Shop.Infrastructure/DependencyInjection.cs", finding.Details!);
+
+        var plan = Run("add_adapter", repo, apply: false, ("system", "BillingRest"));
+        Assert.True(plan.Ok, plan.Error);
+        Assert.False(Directory.Exists(Path.Combine(repo, "src/Shop.Infrastructure.BillingRest")));
+        var applied = Run("add_adapter", repo, apply: true, ("system", "BillingRest"));
+        Assert.True(applied.Ok, applied.Error);
+        var csproj = File.ReadAllText(Path.Combine(repo, "src/Shop.Infrastructure.BillingRest/Shop.Infrastructure.BillingRest.csproj"));
+        Assert.Contains("<PackageId>Acme.Shop.Adapters.BillingRest</PackageId>", csproj, StringComparison.Ordinal);
+        Assert.Contains("AdapterVersion", csproj, StringComparison.Ordinal);
+        Assert.Contains("Shop.Domain.csproj", csproj, StringComparison.Ordinal);
+        Assert.DoesNotContain("Shop.Application", csproj, StringComparison.Ordinal);
+        Assert.Contains("AddBillingRestAdapter", File.ReadAllText(Path.Combine(repo, "src/Shop.Infrastructure.BillingRest/DependencyInjection.cs")), StringComparison.Ordinal);
+        Assert.True(File.Exists(Path.Combine(repo, "src/Shop.Infrastructure.BillingRest/settings.schema.json")));
+        Assert.Empty(Run("add_adapter", repo, apply: true, ("system", "BillingRest")).Plan!);
+
+        Assert.True(Run("move_code", repo, apply: true, ("from", "Shop.Infrastructure"), ("to", "Shop.Infrastructure.BillingRest"), ("files", "ServiceClients")).Ok);
+        Assert.True(Run("split_registration", repo, apply: true, ("adapter", "BillingRest")).Ok);
+
+        var after = DoctorRunner.Run(repo);
+        Assert.DoesNotContain(after.Findings, f => f.Id == "DA-AD09");
+        Assert.Contains("AddHttpClient<IBillingClient, BillingClient>", File.ReadAllText(Path.Combine(repo, "src/Shop.Infrastructure.BillingRest/DependencyInjection.cs")), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Move_code_refuses_an_unknown_project_and_a_missing_file()
     {
         var repo = Repo();
