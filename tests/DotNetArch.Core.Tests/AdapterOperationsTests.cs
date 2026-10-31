@@ -105,6 +105,25 @@ public sealed class AdapterOperationsTests : IDisposable
     }
 
     [Fact]
+    public void Describe_module_lists_capabilities_from_the_feature_folders()
+    {
+        var repo = Repo();
+        Write(repo, "src/Shop.Application/Features/Orders/Queries/GetOrder/GetOrderQuery.cs", "namespace Shop.Application;\npublic sealed class GetOrderQuery { }\n");
+        Write(repo, "src/Shop.Application/Features/Orders/Commands/PlaceOrder/PlaceOrderCommand.cs", "namespace Shop.Application;\npublic sealed class PlaceOrderCommand { }\n");
+        Write(repo, "src/Shop.Application/Features/Coupons/Actions/ListCoupons/ListCouponsAction.cs", "namespace Shop.Application;\npublic sealed class ListCouponsAction { }\n");
+        Write(repo, "src/Shop.Application/Features/Coupons/Actions/RedeemCoupon/RedeemCouponAction.cs", "namespace Shop.Application;\npublic sealed class RedeemCouponAction { }\n");
+
+        var result = Run("describe_module", repo, apply: true);
+
+        Assert.True(result.Ok, result.Error);
+        var yaml = File.ReadAllText(Path.Combine(repo, "module.yaml"));
+        Assert.Contains("- id: Shop.Orders.GetOrder\n    access: read", yaml, StringComparison.Ordinal);
+        Assert.Contains("- id: Shop.Orders.PlaceOrder\n    access: write", yaml, StringComparison.Ordinal);
+        Assert.Contains("- id: Shop.Coupons.ListCoupons\n    access: read", yaml, StringComparison.Ordinal);
+        Assert.Contains("- id: Shop.Coupons.RedeemCoupon\n    access: write", yaml, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Move_code_refuses_an_unknown_project_and_a_missing_file()
     {
         var repo = Repo();

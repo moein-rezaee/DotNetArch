@@ -114,6 +114,11 @@ internal static partial class ModuleOperations
         foreach (var port in ports.OrderBy(p => p.Name, StringComparer.Ordinal))
             yaml.Append($"  - name: {Quote(port.Name)}\n    namespace: {Quote(port.Namespace)}\n    project: {Quote(port.Project)}\n");
 
+        var capabilities = Capabilities(ctx, module);
+        yaml.Append(capabilities.Count == 0 ? "capabilities: []\n" : "capabilities:\n");
+        foreach (var (id, access) in capabilities)
+            yaml.Append($"  - id: {Quote(id)}\n    access: {access}\n");
+
         var adapters = AdapterChecks.Adapters(ctx).OrderBy(a => a.Name, StringComparer.Ordinal).ToList();
         yaml.Append(adapters.Count == 0 ? "adapters: []\n" : "adapters:\n");
         foreach (var adapter in adapters)
@@ -167,6 +172,37 @@ internal static partial class ModuleOperations
         var plan = new List<FixAction> { new(new PlannedChange("module.yaml", ctx.Has("module.yaml") ? "modify" : "create", "derived from the code", "describe_module"), yaml.ToString()) };
         return Planned("describe_module", root, plan, request.Apply, manual);
     }
+
+    /// <summary>
+    /// The capabilities of a module: one per use case folder <c>Features/&lt;Area&gt;/(Queries|Commands|Actions)/&lt;Operation&gt;</c> of the Application
+    /// layer, id <c>&lt;Module&gt;.&lt;Area&gt;.&lt;Operation&gt;</c>. Queries are <c>read</c>, Commands are <c>write</c>; an Action is read when its name starts
+    /// with a reading verb (Get, List, Search, Find, Check, Verify, Validate, Preview), otherwise write.
+    /// </summary>
+    private static List<(string Id, string Access)> Capabilities(RepoContext ctx, string module)
+    {
+        var found = new SortedDictionary<string, string>(StringComparer.Ordinal);
+        foreach (var file in ctx.Files)
+        {
+            if (!file.EndsWith(".cs", StringComparison.Ordinal) || file.Contains("/obj/", StringComparison.Ordinal) || file.Contains("/bin/", StringComparison.Ordinal))
+                continue;
+            var m = CapabilityFolder().Match(file);
+            if (!m.Success)
+                continue;
+            var operation = m.Groups["op"].Value;
+            var access = m.Groups["kind"].Value switch
+            {
+                "Queries" => "read",
+                "Commands" => "write",
+                _ => Regex.IsMatch(operation, @"^(Get|List|Search|Find|Check|Verify|Validate|Preview)", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1)) ? "read" : "write",
+            };
+            found[$"{module}.{m.Groups["area"].Value}.{operation}"] = access;
+        }
+
+        return found.Select(kv => (kv.Key, kv.Value)).ToList();
+    }
+
+    [GeneratedRegex(@"\.Application/Features/(?<area>[^/]+)/(?<kind>Queries|Commands|Actions)/(?<op>[^/]+?)(?:\.cs)?(?:/|$)", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 2000)]
+    private static partial Regex CapabilityFolder();
 
     private static string NamespaceOf(string text) => NamespaceDeclaration().Match(text) is { Success: true } m ? m.Groups["ns"].Value : string.Empty;
 

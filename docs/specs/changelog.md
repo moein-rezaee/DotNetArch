@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2.0.0 (unreleased)
+- `describe_module` lists the capabilities (use cases) of a module with read or write access (R-K8, AC-61).
 - `split_registration` (R-K7, AC-60): the registration method of the shared Infrastructure is split per adapter by the tool.
 - DA-AD08: the core projects an adapter depends on are packages at the module version (R-K6, AC-59).
 - `scaffold_adapter` and the adapters rule DA-AD07 (R-K5, AC-58).
