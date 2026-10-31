@@ -74,13 +74,23 @@ internal static partial class AdapterOperations
         }
         else
         {
+            // a central version below what the host already resolves would make the adapter a downgrade (NU1605): such a candidate is left out, the packages the moved code brings supply it
+            var resolved = NamespaceIndex(Path.Combine(root, host.Dir));
+            bool Downgrade(string candidate)
+            {
+                if (central == null)
+                    return false;
+                var pinned = Regex.Match(central, $"PackageVersion\\s+Include=\"{Regex.Escape(candidate)}\"\\s+Version=\"(?<v>[^\"]+)\"", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
+                return pinned.Success && resolved.Values.Any(r => r.Id.Equals(candidate, StringComparison.OrdinalIgnoreCase) && Version.TryParse(r.Version, out var have) && Version.TryParse(pinned.Groups["v"].Value, out var want) && want < have);
+            }
+
             foreach (var candidates in new[] { DependencyInjectionPackages, ConfigurationPackages })
             {
-                var chosen = candidates.FirstOrDefault(c => central != null
+                var chosen = candidates.FirstOrDefault(c => !Downgrade(c) && (central != null
                     ? central.Contains($"PackageVersion Include=\"{c}\"", StringComparison.OrdinalIgnoreCase)
-                    : hostText.Contains($"PackageReference Include=\"{c}\"", StringComparison.OrdinalIgnoreCase));
+                    : hostText.Contains($"PackageReference Include=\"{c}\"", StringComparison.OrdinalIgnoreCase)));
                 if (chosen == null)
-                    manual.Add($"add a reference to one of {string.Join(", ", candidates)} (the registration method needs it)");
+                    manual.Add($"no reference to {string.Join(" / ", candidates)} was added (none fits the versions in use): move_code and split_registration bring the packages the code needs");
                 else if (central != null)
                     packages.Append($"    <PackageReference Include=\"{chosen}\" />\n");
                 else
