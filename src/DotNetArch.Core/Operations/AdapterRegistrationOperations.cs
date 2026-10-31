@@ -22,7 +22,7 @@ internal static partial class AdapterOperations
             new OperationParameter("adapter", "Adapter name (the part after <App>.Infrastructure.).", Required: true),
             new OperationParameter("from", "Project that holds the shared registration method (default: <App>.Infrastructure)."),
             new OperationParameter("method", "Name of the shared registration method (default: the first Add...Infrastructure method)."),
-            new OperationParameter("also", "Comma-separated names (for example an Add... extension method of a kit) that also make a statement belong to the adapter, though they are not types of its project."),
+            new OperationParameter("also", "Comma-separated texts (an Add... extension method of a kit, a service name in quotes) that also make a statement belong to the adapter, though it names no type of its project. A statement that contains the text moves."),
         },
         RunSplitRegistration);
 
@@ -68,7 +68,8 @@ internal static partial class AdapterOperations
         foreach (var statement in statements)
         {
             var isReturn = Regex.IsMatch(statement, @"^\s*return\b", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(2));
-            var belongs = !isReturn && Word().Matches(StripComments(statement)).Any(w => adapterTypes.Contains(w.Value) || also.Contains(w.Value));
+            var code = StripComments(statement);
+            var belongs = !isReturn && (Word().Matches(code).Any(w => adapterTypes.Contains(w.Value)) || also.Any(a => code.Contains(a, StringComparison.Ordinal)));
             (belongs ? moved : kept).Add(statement);
         }
 
