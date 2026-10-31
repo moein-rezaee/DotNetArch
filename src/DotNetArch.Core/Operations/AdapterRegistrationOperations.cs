@@ -114,6 +114,8 @@ internal static partial class AdapterOperations
         var newSourceText = sourceText;
         foreach (var edit in edits.OrderByDescending(e => e.Start))
             newSourceText = newSourceText[..edit.Start] + edit.Text + newSourceText[edit.End..];
+        // the shared project cannot reference the adapter, so a using of the adapter's namespace tree has no use left in it
+        newSourceText = Regex.Replace(newSourceText, @"(?m)^[ \t]*using\s+" + Regex.Escape(adapter.Name) + @"(?:\.[A-Za-z_]\w*)*\s*;[ \t]*\r?\n", string.Empty, RegexOptions.CultureInvariant, TimeSpan.FromSeconds(2));
         plan.Add(new FixAction(new PlannedChange(sourceFile, "modify", $"{moved.Count} registration statement(s) moved out to {adapter.Name}", "split_registration"), newSourceText));
 
         // the packages the copied usings need in the adapter project

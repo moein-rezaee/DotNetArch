@@ -125,6 +125,7 @@ public sealed class AdapterOperationsTests : IDisposable
         var adapter = File.ReadAllText(Path.Combine(repo, "src/Shop.Infrastructure.Acme/DependencyInjection.cs"));
         Assert.DoesNotContain("BaseUrl", shared, StringComparison.Ordinal);
         Assert.DoesNotContain("Only the acme statement", shared, StringComparison.Ordinal);
+        Assert.DoesNotContain("using Shop.Infrastructure.Acme.Prices;", shared, StringComparison.Ordinal);
         Assert.Contains("private static string Shared", shared, StringComparison.Ordinal);
         Assert.Contains("private static string Trim", shared, StringComparison.Ordinal);
         Assert.Contains("private static string BaseUrl", adapter, StringComparison.Ordinal);
