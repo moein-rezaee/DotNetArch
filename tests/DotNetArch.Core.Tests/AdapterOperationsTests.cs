@@ -105,22 +105,19 @@ public sealed class AdapterOperationsTests : IDisposable
     }
 
     [Fact]
-    public void Describe_module_lists_capabilities_from_the_feature_folders()
+    public void Describe_module_lists_the_permissions_of_the_modules_own_catalog()
     {
         var repo = Repo();
-        Write(repo, "src/Shop.Application/Features/Orders/Queries/GetOrder/GetOrderQuery.cs", "namespace Shop.Application;\npublic sealed class GetOrderQuery { }\n");
-        Write(repo, "src/Shop.Application/Features/Orders/Commands/PlaceOrder/PlaceOrderCommand.cs", "namespace Shop.Application;\npublic sealed class PlaceOrderCommand { }\n");
-        Write(repo, "src/Shop.Application/Features/Coupons/Actions/ListCoupons/ListCouponsAction.cs", "namespace Shop.Application;\npublic sealed class ListCouponsAction { }\n");
-        Write(repo, "src/Shop.Application/Features/Coupons/Actions/RedeemCoupon/RedeemCouponAction.cs", "namespace Shop.Application;\npublic sealed class RedeemCouponAction { }\n");
+        Write(repo, ".corevia/mcp/shop-api-permissions.yaml",
+            "permissions:\n  - key: Shop.Order.Create\n    status: active\n    action: write\n    authorizationPolicy: ShopServiceAccess\n  - key: Shop.Order.GetById\n    status: active\n    action: read\n    authorizationPolicy: AllowAnonymous\n  - key: Shop.Token.Raw\n    status: inventory-only\n    action: read\n    authorizationPolicy: none\n");
 
         var result = Run("describe_module", repo, apply: true);
 
         Assert.True(result.Ok, result.Error);
         var yaml = File.ReadAllText(Path.Combine(repo, "module.yaml"));
-        Assert.Contains("- id: Shop.Orders.GetOrder\n    access: read", yaml, StringComparison.Ordinal);
-        Assert.Contains("- id: Shop.Orders.PlaceOrder\n    access: write", yaml, StringComparison.Ordinal);
-        Assert.Contains("- id: Shop.Coupons.ListCoupons\n    access: read", yaml, StringComparison.Ordinal);
-        Assert.Contains("- id: Shop.Coupons.RedeemCoupon\n    access: write", yaml, StringComparison.Ordinal);
+        Assert.Contains("- key: Shop.Order.Create\n    access: write\n    policy: ShopServiceAccess", yaml, StringComparison.Ordinal);
+        Assert.Contains("- key: Shop.Order.GetById\n    access: read\n    policy: AllowAnonymous", yaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("Shop.Token.Raw", yaml, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -114,10 +114,10 @@ internal static partial class ModuleOperations
         foreach (var port in ports.OrderBy(p => p.Name, StringComparer.Ordinal))
             yaml.Append($"  - name: {Quote(port.Name)}\n    namespace: {Quote(port.Namespace)}\n    project: {Quote(port.Project)}\n");
 
-        var capabilities = Capabilities(ctx, module);
-        yaml.Append(capabilities.Count == 0 ? "capabilities: []\n" : "capabilities:\n");
-        foreach (var (id, access) in capabilities)
-            yaml.Append($"  - id: {Quote(id)}\n    access: {access}\n");
+        var permissions = Permissions(ctx);
+        yaml.Append(permissions.Count == 0 ? "permissions: []\n" : "permissions:\n");
+        foreach (var permission in permissions)
+            yaml.Append($"  - key: {Quote(permission.Key)}\n    access: {permission.Access}\n    policy: {Quote(permission.Policy)}\n");
 
         var adapters = AdapterChecks.Adapters(ctx).OrderBy(a => a.Name, StringComparer.Ordinal).ToList();
         yaml.Append(adapters.Count == 0 ? "adapters: []\n" : "adapters:\n");
@@ -174,35 +174,28 @@ internal static partial class ModuleOperations
     }
 
     /// <summary>
-    /// The capabilities of a module: one per use case folder <c>Features/&lt;Area&gt;/(Queries|Commands|Actions)/&lt;Operation&gt;</c> of the Application
-    /// layer, id <c>&lt;Module&gt;.&lt;Area&gt;.&lt;Operation&gt;</c>. Queries are <c>read</c>, Commands are <c>write</c>; an Action is read when its name starts
-    /// with a reading verb (Get, List, Search, Find, Check, Verify, Validate, Preview), otherwise write.
+    /// The permissions a module declares in its own permission catalog (<c>.corevia/mcp/*-api-permissions.yaml</c>, the file the authorization policies and the
+    /// MCP permission parity check already use): key, action (read or write) and the authorization policy that guards it. Identity owns who holds them (roles and
+    /// scopes); the module only declares them. Only active entries are listed.
     /// </summary>
-    private static List<(string Id, string Access)> Capabilities(RepoContext ctx, string module)
+    private static List<(string Key, string Access, string Policy)> Permissions(RepoContext ctx)
     {
-        var found = new SortedDictionary<string, string>(StringComparer.Ordinal);
-        foreach (var file in ctx.Files)
+        var found = new List<(string, string, string)>();
+        foreach (var file in ctx.Files.Where(f => f.StartsWith(".corevia/mcp/", StringComparison.Ordinal) && f.EndsWith("-api-permissions.yaml", StringComparison.Ordinal)))
         {
-            if (!file.EndsWith(".cs", StringComparison.Ordinal) || file.Contains("/obj/", StringComparison.Ordinal) || file.Contains("/bin/", StringComparison.Ordinal))
-                continue;
-            var m = CapabilityFolder().Match(file);
-            if (!m.Success)
-                continue;
-            var operation = m.Groups["op"].Value;
-            var access = m.Groups["kind"].Value switch
+            foreach (var block in Regex.Split(ctx.Read(file), @"(?m)^  - key:", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(2)).Skip(1))
             {
-                "Queries" => "read",
-                "Commands" => "write",
-                _ => Regex.IsMatch(operation, @"^(Get|List|Search|Find|Check|Verify|Validate|Preview)", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1)) ? "read" : "write",
-            };
-            found[$"{module}.{m.Groups["area"].Value}.{operation}"] = access;
+                var key = Regex.Match(block, @"^\s*(?<v>[\w.]+)", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1)).Groups["v"].Value;
+                string Field(string name) => Regex.Match(block, $@"(?m)^\s+{name}:\s*(?<v>\S+)", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1)).Groups["v"].Value.Trim('"');
+                if (key.Length == 0 || Field("status") != "active")
+                    continue;
+                var action = Field("action");
+                found.Add((key, action == "read" ? "read" : "write", Field("authorizationPolicy")));
+            }
         }
 
-        return found.Select(kv => (kv.Key, kv.Value)).ToList();
+        return found.OrderBy(f => f.Item1, StringComparer.Ordinal).ToList();
     }
-
-    [GeneratedRegex(@"\.Application/Features/(?<area>[^/]+)/(?<kind>Queries|Commands|Actions)/(?<op>[^/]+?)(?:\.cs)?(?:/|$)", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 2000)]
-    private static partial Regex CapabilityFolder();
 
     private static string NamespaceOf(string text) => NamespaceDeclaration().Match(text) is { Success: true } m ? m.Groups["ns"].Value : string.Empty;
 
