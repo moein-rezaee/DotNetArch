@@ -121,7 +121,7 @@ internal static partial class AdapterChecks
         {
             foreach (var file in ctx.Files.Where(f => f.StartsWith(host.Dir + "/", StringComparison.Ordinal) && f.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)))
             {
-                if (OutboundHttp().IsMatch(ctx.Read(file)))
+                if (OutboundHttp().IsMatch(Comments().Replace(ctx.Read(file), string.Empty)))
                     outbound.Add(file);
             }
         }
@@ -214,6 +214,9 @@ internal static partial class AdapterChecks
 
     [GeneratedRegex(@"public\s+static\s+IServiceCollection\s+Add\w+\s*\(\s*this\s+IServiceCollection", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 2000)]
     private static partial Regex Registration();
+
+    [GeneratedRegex(@"//[^\n]*|/\*.*?\*/", RegexOptions.CultureInvariant | RegexOptions.Singleline, matchTimeoutMilliseconds: 2000)]
+    private static partial Regex Comments();
 
     [GeneratedRegex(@"\b(?:AddHttpClient|IHttpClientFactory|HttpClient)\b", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 2000)]
     private static partial Regex OutboundHttp();

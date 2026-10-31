@@ -22,6 +22,7 @@ internal static partial class AdapterOperations
             new OperationParameter("adapter", "Adapter name (the part after <App>.Infrastructure.).", Required: true),
             new OperationParameter("from", "Project that holds the shared registration method (default: <App>.Infrastructure)."),
             new OperationParameter("method", "Name of the shared registration method (default: the first Add...Infrastructure method)."),
+            new OperationParameter("also", "Comma-separated names (for example an Add... extension method of a kit) that also make a statement belong to the adapter, though they are not types of its project."),
         },
         RunSplitRegistration);
 
@@ -61,12 +62,13 @@ internal static partial class AdapterOperations
             foreach (Match m in TypeDeclaration().Matches(ctx.Read(file)))
                 adapterTypes.Add(m.Groups["name"].Value);
 
+        var also = (request.Get("also") ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToHashSet(StringComparer.Ordinal);
         var moved = new List<string>();
         var kept = new List<string>();
         foreach (var statement in statements)
         {
             var isReturn = Regex.IsMatch(statement, @"^\s*return\b", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(2));
-            var belongs = !isReturn && Word().Matches(StripComments(statement)).Any(w => adapterTypes.Contains(w.Value));
+            var belongs = !isReturn && Word().Matches(StripComments(statement)).Any(w => adapterTypes.Contains(w.Value) || also.Contains(w.Value));
             (belongs ? moved : kept).Add(statement);
         }
 
@@ -109,7 +111,10 @@ internal static partial class AdapterOperations
         plan.Add(new FixAction(new PlannedChange(adapterFile, "modify", $"{moved.Count} registration statement(s) moved in" + (movedHelpers.Count == 0 ? string.Empty : $" with {movedHelpers.Count} helper method(s)"), "split_registration"), newAdapterText));
 
         // source file: the moved statements and their helpers leave
-        var edits = new List<(int Start, int End, string Text)> { (sourceStart, sourceEnd, string.Concat(kept)) };
+        // the closing brace keeps its indentation: the whitespace that followed the last statement stays
+        var originalBody = sourceText[sourceStart..sourceEnd];
+        var keptBody = string.Concat(kept) + originalBody[originalBody.TrimEnd().Length..].TrimStart('\r', '\n');
+        var edits = new List<(int Start, int End, string Text)> { (sourceStart, sourceEnd, keptBody) };
         edits.AddRange(movedHelpers.Select(h => (h.Start, h.End, string.Empty)));
         var newSourceText = sourceText;
         foreach (var edit in edits.OrderByDescending(e => e.Start))

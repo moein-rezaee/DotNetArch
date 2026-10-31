@@ -130,6 +130,7 @@ public sealed class AdapterOperationsTests : IDisposable
         Assert.DoesNotContain("BaseUrl", shared, StringComparison.Ordinal);
         Assert.DoesNotContain("Only the acme statement", shared, StringComparison.Ordinal);
         Assert.DoesNotContain("using Shop.Infrastructure.Acme.Prices;", shared, StringComparison.Ordinal);
+        Assert.Contains("        return services;\n    }\n", shared, StringComparison.Ordinal);
         Assert.Contains("private static string Shared", shared, StringComparison.Ordinal);
         Assert.Contains("private static string Trim", shared, StringComparison.Ordinal);
         Assert.Contains("private static string BaseUrl", adapter, StringComparison.Ordinal);
@@ -137,6 +138,19 @@ public sealed class AdapterOperationsTests : IDisposable
         Assert.DoesNotContain("private static string Trim", adapter, StringComparison.Ordinal);
         Assert.Contains("helper 'Trim'", applied.Text, StringComparison.Ordinal);
         Assert.Contains("Acme.Http", File.ReadAllText(Path.Combine(repo, "src/Shop.Infrastructure.Acme/Shop.Infrastructure.Acme.csproj")), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Split_registration_also_moves_a_statement_named_by_the_also_option()
+    {
+        var repo = Repo();
+        Write(repo, "src/Shop.Infrastructure/DependencyInjection.cs",
+            "using Microsoft.Extensions.Configuration;\nusing Microsoft.Extensions.DependencyInjection;\n\nnamespace Shop.Infrastructure;\n\npublic static class DependencyInjection\n{\n    public static IServiceCollection AddShopInfrastructure(this IServiceCollection services, IConfiguration configuration)\n    {\n        services.AddKitHttp(configuration);\n        services.AddSingleton(\"kept\");\n        return services;\n    }\n}\n");
+
+        Assert.True(Run("split_registration", repo, apply: true, ("adapter", "Acme"), ("also", "AddKitHttp")).Ok);
+
+        Assert.DoesNotContain("AddKitHttp", File.ReadAllText(Path.Combine(repo, "src/Shop.Infrastructure/DependencyInjection.cs")), StringComparison.Ordinal);
+        Assert.Contains("services.AddKitHttp(configuration);", File.ReadAllText(Path.Combine(repo, "src/Shop.Infrastructure.Acme/DependencyInjection.cs")), StringComparison.Ordinal);
     }
 
     [Fact]
