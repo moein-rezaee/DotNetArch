@@ -318,6 +318,24 @@ public sealed class AdapterOperationsTests : IDisposable
     }
 
     [Fact]
+    public void Add_composition_registers_an_always_adapter_and_regenerate_adds_its_reference()
+    {
+        var repo = Repo();
+        Assert.True(Run("add_composition", repo, apply: true, ("adapters", "Acme")).Ok);
+        Write(repo, "src/Shop.Infrastructure.Peer/Shop.Infrastructure.Peer.csproj", Csproj(new[] { "Shop.Domain" }));
+        Write(repo, "src/Shop.Infrastructure.Peer/DependencyInjection.cs",
+            "using Microsoft.Extensions.Configuration;\nusing Microsoft.Extensions.DependencyInjection;\n\nnamespace Shop.Infrastructure.Peer;\n\npublic static class DependencyInjection\n{\n    public static IServiceCollection AddPeerAdapter(this IServiceCollection services, IConfiguration configuration)\n    {\n        return services;\n    }\n}\n");
+
+        var applied = Run("add_composition", repo, apply: true, ("adapters", "Acme"), ("always", "Peer"), ("regenerate", "true"));
+
+        Assert.True(applied.Ok, applied.Error);
+        var code = File.ReadAllText(Path.Combine(repo, "src/Shop.Composition/DependencyInjection.cs"));
+        Assert.Contains("services.AddPeerAdapter(configuration);", code, StringComparison.Ordinal);
+        Assert.Contains("AddAcmeAdapter(configuration, registerBackgroundWorkers)", code, StringComparison.Ordinal);
+        Assert.Contains("Shop.Infrastructure.Peer.csproj", File.ReadAllText(Path.Combine(repo, "src/Shop.Composition/Shop.Composition.csproj")), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Describe_module_lists_ports_adapters_and_what_they_implement_and_read()
     {
         var repo = Repo();

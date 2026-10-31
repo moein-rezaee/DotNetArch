@@ -53,7 +53,8 @@ internal static partial class AdapterOperations
             new OperationParameter("selector_key", "Configuration key that selects the adapter (default: ServiceProvider:DefaultProvider).", Default: "ServiceProvider:DefaultProvider"),
             new OperationParameter("selector_env", "Environment variable read when the key is not configured (a historical fallback)."),
             new OperationParameter("aliases", "Comma-separated Adapter=Alias pairs: another value that selects an adapter (for example SepidarDB=DB)."),
-            new OperationParameter("regenerate", "Rewrite DependencyInjection.cs of an existing composition project (the file is generated); references and call sites are left as they are.", ParameterType.Flag),
+            new OperationParameter("always", "Comma-separated adapter names that are registered whatever the selector says (an adapter that calls another module: it has no alternative until an in-process or event adapter exists)."),
+            new OperationParameter("regenerate", "Rewrite DependencyInjection.cs of an existing composition project (the file is generated) and add the references to adapters it does not reference yet; call sites are left as they are.", ParameterType.Flag),
         },
         RunAddComposition);
 
@@ -424,25 +425,30 @@ internal static partial class AdapterOperations
         if (!infraParameters.Contains("IServiceCollection services", StringComparison.Ordinal) || !infraParameters.Contains("IConfiguration configuration", StringComparison.Ordinal))
             throw new ArgumentException($"{infraMethod.Groups["name"].Value} must take 'IServiceCollection services' and 'IConfiguration configuration' (the generated method forwards them).");
 
+        var always = (request.Get("always") ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         var adapters = new List<(string Name, ProjectInfo Project, string Namespace, string Method, bool Workers, string? WorkersName)>();
-        foreach (var name in names)
+        var alwaysAdapters = new List<(string Name, ProjectInfo Project, string Namespace, string Method, bool Workers, string? WorkersName)>();
+        foreach (var (list, group) in new[] { (names, adapters), (always, alwaysAdapters) })
         {
-            var project = ctx.Source.FirstOrDefault(p => p.Name.Equals($"{app}.Infrastructure.{name}", StringComparison.OrdinalIgnoreCase))
-                          ?? throw new ArgumentException($"No adapter project {app}.Infrastructure.{name}.");
-            var di = ctx.Files.FirstOrDefault(f => f.StartsWith(project.Dir + "/", StringComparison.Ordinal) && f.EndsWith("DependencyInjection.cs", StringComparison.Ordinal))
-                     ?? throw new ArgumentException($"{project.Name} has no DependencyInjection.cs.");
-            var text = ctx.Read(di);
-            var method = RegistrationMethod().Matches(text).Cast<Match>().FirstOrDefault()
-                         ?? throw new ArgumentException($"{di} has no public registration extension method.");
-            var workers = WorkersParameter().Match(method.Groups["params"].Value);
-            adapters.Add((name, project, NamespaceDeclaration().Match(text).Groups["ns"].Value, method.Groups["name"].Value, workers.Success, workers.Success ? workers.Groups["name"].Value : null));
+            foreach (var name in list)
+            {
+                var project = ctx.Source.FirstOrDefault(p => p.Name.Equals($"{app}.Infrastructure.{name}", StringComparison.OrdinalIgnoreCase))
+                              ?? throw new ArgumentException($"No adapter project {app}.Infrastructure.{name}.");
+                var di = ctx.Files.FirstOrDefault(f => f.StartsWith(project.Dir + "/", StringComparison.Ordinal) && f.EndsWith("DependencyInjection.cs", StringComparison.Ordinal))
+                         ?? throw new ArgumentException($"{project.Name} has no DependencyInjection.cs.");
+                var text = ctx.Read(di);
+                var method = RegistrationMethod().Matches(text).Cast<Match>().FirstOrDefault()
+                             ?? throw new ArgumentException($"{di} has no public registration extension method.");
+                var workers = WorkersParameter().Match(method.Groups["params"].Value);
+                group.Add((name, project, NamespaceDeclaration().Match(text).Groups["ns"].Value, method.Groups["name"].Value, workers.Success, workers.Success ? workers.Groups["name"].Value : null));
+            }
         }
 
         // one background-workers flag for the whole composition: the name the Infrastructure method uses, else the first adapter's
         var infraWorkers = WorkersParameter().Match(infraParameters) is { Success: true } iw ? iw.Groups["name"].Value : null;
-        var workersName = infraWorkers ?? adapters.Where(a => a.Workers).Select(a => a.WorkersName).FirstOrDefault();
+        var workersName = infraWorkers ?? adapters.Concat(alwaysAdapters).Where(a => a.Workers).Select(a => a.WorkersName).FirstOrDefault();
         var usings = new SortedSet<string>(StringComparer.Ordinal) { "Microsoft.Extensions.Configuration", "Microsoft.Extensions.DependencyInjection", infraNs };
-        foreach (var adapter in adapters)
+        foreach (var adapter in adapters.Concat(alwaysAdapters))
             usings.Add(adapter.Namespace);
         var code = new StringBuilder();
         foreach (var u in usings)
@@ -458,6 +464,8 @@ internal static partial class AdapterOperations
         code.Append($"    public static IServiceCollection Add{module}Composition({signature})\n    {{\n");
         var infraCall = $"services.{infraMethod.Groups["name"].Value}(configuration{(infraWorkers == null ? string.Empty : $", {infraWorkers}")});";
         code.Append($"        {infraCall}\n");
+        foreach (var a in alwaysAdapters)
+            code.Append($"        services.{a.Method}(configuration{(a.Workers && workersName != null ? $", {workersName}" : string.Empty)});\n");
         code.Append(selectorEnv == null
             ? "        var selected = configuration[AdapterKey];\n"
             : $"        var selected = configuration[AdapterKey] ?? Environment.GetEnvironmentVariable(\"{selectorEnv}\");\n");
@@ -477,7 +485,7 @@ internal static partial class AdapterOperations
         var dir = $"{infrastructure.Dir[..infrastructure.Dir.LastIndexOf('/')]}/{compositionName}";
         var csprojPath = $"{dir}/{compositionName}.csproj";
         var references = new StringBuilder();
-        foreach (var target in new[] { infrastructure }.Concat(adapters.Select(a => a.Project)))
+        foreach (var target in new[] { infrastructure }.Concat(adapters.Concat(alwaysAdapters).Select(a => a.Project)))
             references.Append($"    <ProjectReference Include=\"{Path.GetRelativePath(dir, target.File).Replace('/', '\\')}\" />\n");
         var csproj = $"<Project Sdk=\"Microsoft.NET.Sdk\">\n\n  <PropertyGroup>\n    <TargetFramework>{framework}</TargetFramework>\n    <ImplicitUsings>enable</ImplicitUsings>\n    <Nullable>enable</Nullable>\n  </PropertyGroup>\n\n  <ItemGroup>\n{references}  </ItemGroup>\n\n</Project>\n";
         var solution = ctx.Files.FirstOrDefault(f => !f.Contains('/') && f.EndsWith(".sln", StringComparison.OrdinalIgnoreCase));
@@ -486,7 +494,19 @@ internal static partial class AdapterOperations
             plan.Add(new(new PlannedChange(csprojPath, "create", $"composition project of {module}", "add_composition"), csproj, solution == null ? null : () => RegisterInSolution(root, solution, csprojPath)));
         plan.Add(new(new PlannedChange($"{existing?.Dir ?? dir}/DependencyInjection.cs", existing == null ? "create" : "modify", $"Add{module}Composition", "add_composition"), code.ToString()));
         if (existing != null)
-            return Planned("add_composition", root, plan, request.Apply, new[] { "regenerated DependencyInjection.cs only" });
+        {
+            var existingText = ctx.Read(existing.File);
+            var added = new List<string>();
+            foreach (var target in adapters.Concat(alwaysAdapters).Select(a => a.Project).Where(p => !existing.ProjectReferences.Any(r => Path.GetFileNameWithoutExtension(r).Equals(p.Name, StringComparison.OrdinalIgnoreCase))))
+            {
+                existingText = AddItem(existingText, "ProjectReference", Path.GetRelativePath(existing.Dir, target.File).Replace('/', '\\'));
+                added.Add(target.Name);
+            }
+
+            if (added.Count > 0)
+                plan.Add(new FixAction(new PlannedChange(existing.File, "modify", $"references {string.Join(", ", added)}", "add_composition"), existingText));
+            return Planned("add_composition", root, plan, request.Apply, new[] { "regenerated DependencyInjection.cs and the adapter references; run fix --rules=DA-A11 for the Dockerfile restore lines" });
+        }
 
         // call sites outside Infrastructure and the new project now use the composition method
         var callPattern = new Regex(@"(?<=\.)" + Regex.Escape(infraMethod.Groups["name"].Value) + @"(?=\s*\()", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(2));
