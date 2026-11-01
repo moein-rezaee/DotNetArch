@@ -48,7 +48,7 @@ internal static partial class AdapterOperations
         new[]
         {
             PathParam(),
-            new OperationParameter("adapters", "Comma-separated adapter names (the part after <App>.Infrastructure.); the first is the default.", Required: true),
+            new OperationParameter("adapters", "Comma-separated adapter names (the part after <App>.Infrastructure., or Peer + Transport for a link); the first is the default. Optional when every adapter is listed in always (no alternatives, so no selector)."),
             new OperationParameter("module", "Module name for the method Add<Module>Composition (default: the application name without a Service suffix)."),
             new OperationParameter("selector_key", "Configuration key that selects the adapter (default: ServiceProvider:DefaultProvider).", Default: "ServiceProvider:DefaultProvider"),
             new OperationParameter("selector_env", "Environment variable read when the key is not configured (a historical fallback)."),
@@ -426,7 +426,7 @@ internal static partial class AdapterOperations
         var module = request.Get("module") ?? (app.EndsWith("Service", StringComparison.Ordinal) ? app[..^"Service".Length] : app);
         var selector = request.Get("selector_key") ?? "ServiceProvider:DefaultProvider";
         var names = (request.Get("adapters") ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (names.Length == 0)
+        if (names.Length == 0 && string.IsNullOrWhiteSpace(request.Get("always")))
             throw new ArgumentException("Name at least one adapter.");
         var compositionName = $"{app}.Composition";
         var existing = ctx.Projects.FirstOrDefault(p => p.Name.Equals(compositionName, StringComparison.OrdinalIgnoreCase));
@@ -437,11 +437,8 @@ internal static partial class AdapterOperations
             .Select(a => a.Split('=', 2)).Where(a => a.Length == 2).ToLookup(a => a[0].Trim(), a => a[1].Trim(), StringComparer.OrdinalIgnoreCase);
         var selectorEnv = request.Get("selector_env");
 
-        var infraDi = ctx.Files.FirstOrDefault(f => f.StartsWith(infrastructure.Dir + "/", StringComparison.Ordinal) && f.EndsWith("DependencyInjection.cs", StringComparison.Ordinal))
-                      ?? throw new ArgumentException($"{infrastructure.Name} has no DependencyInjection.cs.");
-        var infraText = ctx.Read(infraDi);
-        var infraMethod = RegistrationMethod().Matches(infraText).Cast<Match>().FirstOrDefault(m => m.Groups["name"].Value.EndsWith("Infrastructure", StringComparison.Ordinal))
-                          ?? throw new ArgumentException($"{infraDi} has no public Add...Infrastructure extension method.");
+        var (infraDi, infraText, infraMethod) = FindRegistration(ctx, infrastructure, m => m.Groups["name"].Value.EndsWith("Infrastructure", StringComparison.Ordinal))
+                                                ?? throw new ArgumentException($"{infrastructure.Name} has no public Add...Infrastructure extension method.");
         var infraNs = NamespaceDeclaration().Match(infraText).Groups["ns"].Value;
         var infraParameters = Regex.Replace(infraMethod.Groups["params"].Value.Trim(), @"\s+", " ", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(2));
         if (!infraParameters.Contains("IServiceCollection services", StringComparison.Ordinal) || !infraParameters.Contains("IConfiguration configuration", StringComparison.Ordinal))
@@ -456,11 +453,8 @@ internal static partial class AdapterOperations
             {
                 var project = AdapterChecks.FindAdapter(ctx, app, name)
                               ?? throw new ArgumentException($"No adapter project {app}.Infrastructure.{name} or {app}.Link.<Peer>.<Transport>.");
-                var di = ctx.Files.FirstOrDefault(f => f.StartsWith(project.Dir + "/", StringComparison.Ordinal) && f.EndsWith("DependencyInjection.cs", StringComparison.Ordinal))
-                         ?? throw new ArgumentException($"{project.Name} has no DependencyInjection.cs.");
-                var text = ctx.Read(di);
-                var method = RegistrationMethod().Matches(text).Cast<Match>().FirstOrDefault()
-                             ?? throw new ArgumentException($"{di} has no public registration extension method.");
+                var (di, text, method) = FindRegistration(ctx, project, m => m.Groups["params"].Value.Contains("IConfiguration configuration", StringComparison.Ordinal))
+                                         ?? throw new ArgumentException($"{project.Name} has no public registration extension method taking IServiceCollection services and IConfiguration configuration.");
                 var workers = WorkersParameter().Match(method.Groups["params"].Value);
                 group.Add((name, project, NamespaceDeclaration().Match(text).Groups["ns"].Value, method.Groups["name"].Value, workers.Success, workers.Success ? workers.Groups["name"].Value : null));
             }
@@ -477,17 +471,33 @@ internal static partial class AdapterOperations
             code.Append($"using {u};\n");
         code.Append($"\nnamespace {compositionName};\n\n");
         code.Append("/// <summary>\n");
-        code.Append($"/// Composition root of the {module} module: registers the module's Infrastructure and the adapter selected by the configuration key <see cref=\"AdapterKey\"/>.\n");
-        code.Append($"/// A missing or unknown value selects <c>{adapters[0].Name}</c>. Generated by dotnet-arch add_composition; it stands in for the host a composition generates later.\n");
-        code.Append("/// </summary>\n");
-        code.Append("public static class DependencyInjection\n{\n");
-        code.Append($"    /// <summary>Configuration key that selects the adapter.</summary>\n    public const string AdapterKey = \"{selector}\";\n\n");
+        if (adapters.Count == 0)
+        {
+            code.Append($"/// Composition root of the {module} module: registers the module's Infrastructure and every adapter (none has an alternative, so there is no selector).\n");
+            code.Append("/// Generated by dotnet-arch add_composition; it stands in for the host a composition generates later.\n");
+            code.Append("/// </summary>\n");
+            code.Append("public static class DependencyInjection\n{\n");
+        }
+        else
+        {
+            code.Append($"/// Composition root of the {module} module: registers the module's Infrastructure and the adapter selected by the configuration key <see cref=\"AdapterKey\"/>.\n");
+            code.Append($"/// A missing or unknown value selects <c>{adapters[0].Name}</c>. Generated by dotnet-arch add_composition; it stands in for the host a composition generates later.\n");
+            code.Append("/// </summary>\n");
+            code.Append("public static class DependencyInjection\n{\n");
+            code.Append($"    /// <summary>Configuration key that selects the adapter.</summary>\n    public const string AdapterKey = \"{selector}\";\n\n");
+        }
         var signature = "this IServiceCollection services, IConfiguration configuration" + (workersName == null ? string.Empty : $", bool {workersName} = true");
         code.Append($"    public static IServiceCollection Add{module}Composition({signature})\n    {{\n");
         var infraCall = $"services.{infraMethod.Groups["name"].Value}(configuration{(infraWorkers == null ? string.Empty : $", {infraWorkers}")});";
         code.Append($"        {infraCall}\n");
         foreach (var a in alwaysAdapters)
             code.Append($"        services.{a.Method}(configuration{(a.Workers && workersName != null ? $", {workersName}" : string.Empty)});\n");
+        if (adapters.Count == 0)
+        {
+            code.Append("        return services;\n    }\n}\n");
+        }
+        else
+        {
         code.Append(selectorEnv == null
             ? "        var selected = configuration[AdapterKey];\n"
             : $"        var selected = configuration[AdapterKey] ?? Environment.GetEnvironmentVariable(\"{selectorEnv}\");\n");
@@ -502,6 +512,7 @@ internal static partial class AdapterOperations
         var d = adapters[0];
         code.Append($"        return services.{d.Method}(configuration{(d.Workers && workersName != null ? $", {workersName}" : string.Empty)});\n");
         code.Append("    }\n}\n");
+        }
 
         var framework = XDocument.Load(Path.Combine(root, infrastructure.File)).Descendants("TargetFramework").FirstOrDefault()?.Value ?? "net9.0";
         var dir = $"{infrastructure.Dir[..infrastructure.Dir.LastIndexOf('/')]}/{compositionName}";
@@ -527,6 +538,10 @@ internal static partial class AdapterOperations
 
             if (added.Count > 0)
                 plan.Add(new FixAction(new PlannedChange(existing.File, "modify", $"references {string.Join(", ", added)}", "add_composition"), existingText));
+            var hostEdits = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            AddHostReferences(ctx, infrastructure, module, compositionName, existing.File, hostEdits);
+            foreach (var (file, text) in hostEdits)
+                plan.Add(new FixAction(new PlannedChange(file, "modify", $"references {compositionName}", "add_composition"), text));
             return Planned("add_composition", root, plan, request.Apply, new[] { "regenerated DependencyInjection.cs and the adapter references; run fix --rules=DA-A11 for the Dockerfile restore lines" });
         }
 
@@ -557,6 +572,8 @@ internal static partial class AdapterOperations
             }
         }
 
+        AddHostReferences(ctx, infrastructure, module, compositionName, csprojPath, projectEdits);
+
         foreach (var (file, text) in projectEdits)
             plan.Add(new FixAction(new PlannedChange(file, "modify", $"references {compositionName}", "add_composition"), text));
         var manual = new List<string>
@@ -565,6 +582,21 @@ internal static partial class AdapterOperations
             $"{infrastructure.Name} must no longer reference the adapter projects: move adapter-specific code out with move_code, then remove the references",
         };
         return Planned("add_composition", root, plan, request.Apply, manual);
+    }
+
+    /// <summary>A host that already calls the composition method (written before the run) only needs the project reference.</summary>
+    private static void AddHostReferences(RepoContext ctx, ProjectInfo infrastructure, string module, string compositionName, string csprojPath, Dictionary<string, string> projectEdits)
+    {
+        var composedCall = new Regex(@"(?<=\.)Add" + Regex.Escape(module) + @"Composition(?=\s*\()", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(2));
+        foreach (var file in ctx.Files.Where(f => f.EndsWith(".cs", StringComparison.OrdinalIgnoreCase) && !f.StartsWith(infrastructure.Dir + "/", StringComparison.Ordinal)))
+        {
+            if (!composedCall.IsMatch(ctx.Read(file)))
+                continue;
+            var owner = ctx.Projects.Where(p => file.StartsWith(p.Dir + "/", StringComparison.Ordinal)).OrderByDescending(p => p.Dir.Length).FirstOrDefault();
+            if (owner != null && !owner.Name.Equals(compositionName, StringComparison.OrdinalIgnoreCase) && !owner.ProjectReferences.Any(r => Path.GetFileNameWithoutExtension(r).Equals(compositionName, StringComparison.OrdinalIgnoreCase))
+                && !projectEdits.ContainsKey(owner.File))
+                projectEdits[owner.File] = AddItem(ctx.Read(owner.File), "ProjectReference", Path.GetRelativePath(owner.Dir, csprojPath).Replace('/', '\\'));
+        }
     }
 
     /// <summary>
@@ -797,6 +829,28 @@ internal static partial class AdapterOperations
 
     [GeneratedRegex(@"(?m)^\s*(?:\[[^\]]*\]\s*)*internal\b", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 2000)]
     private static partial Regex InternalDeclaration();
+
+    /// <summary>
+    /// The registration extension method of a project and the file that holds it: DependencyInjection.cs first, then any other source file of the project
+    /// (a project may name its registration file after its own convention, such as <c>...ServiceCollectionExtensions.cs</c>).
+    /// </summary>
+    private static (string File, string Text, Match Method)? FindRegistration(RepoContext ctx, ProjectInfo project, Func<Match, bool> accept)
+    {
+        var files = ctx.Files
+            .Where(f => f.StartsWith(project.Dir + "/", StringComparison.Ordinal) && f.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)
+                        && !f.Contains("/obj/", StringComparison.Ordinal) && !f.Contains("/bin/", StringComparison.Ordinal))
+            .OrderBy(f => f.EndsWith("DependencyInjection.cs", StringComparison.Ordinal) ? 0 : 1)
+            .ThenBy(f => f, StringComparer.Ordinal);
+        foreach (var file in files)
+        {
+            var text = ctx.Read(file);
+            var method = RegistrationMethod().Matches(text).Cast<Match>().FirstOrDefault(accept);
+            if (method != null)
+                return (file, text, method);
+        }
+
+        return null;
+    }
 
     [GeneratedRegex(@"\b[A-Za-z_]\w*\b", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 2000)]
     private static partial Regex Word();
