@@ -326,6 +326,24 @@ public sealed class AdapterOperationsTests : IDisposable
     }
 
     [Fact]
+    public void Rename_symbol_renames_a_whole_word_and_leaves_a_file_that_already_uses_the_new_name()
+    {
+        var repo = Repo();
+        Write(repo, "src/Shop.Application/Uses.cs", "namespace Shop.Application;\npublic sealed class Uses { public string LegacyKey { get; set; } public string LegacyKeys { get; set; } public string Read() => \"LegacyKey\" + LegacyKey; }\n");
+        Write(repo, "src/Shop.Application/Both.cs", "namespace Shop.Application;\npublic sealed class Both { public string LegacyKey { get; set; } public string NewKey { get; set; } }\n");
+
+        var plan = Run("rename_symbol", repo, apply: false, ("from", "LegacyKey"), ("to", "NewKey"));
+        Assert.True(plan.Ok, plan.Error);
+        Assert.Contains("LegacyKey", File.ReadAllText(Path.Combine(repo, "src/Shop.Application/Uses.cs")), StringComparison.Ordinal);
+
+        Assert.True(Run("rename_symbol", repo, apply: true, ("from", "LegacyKey"), ("to", "NewKey")).Ok);
+        var uses = File.ReadAllText(Path.Combine(repo, "src/Shop.Application/Uses.cs"));
+        Assert.Contains("public string NewKey { get; set; } public string LegacyKeys", uses, StringComparison.Ordinal);
+        Assert.Contains("\"NewKey\" + NewKey", uses, StringComparison.Ordinal);
+        Assert.Contains("LegacyKey ", File.ReadAllText(Path.Combine(repo, "src/Shop.Application/Both.cs")), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void The_core_projects_an_adapter_depends_on_become_packages_at_the_module_version()
     {
         var repo = Repo(profile: "name: acme\nversion: 1.0.0\nadapter_package: \"Acme.{Module}.Adapters.{System}\"\nmodule_package: \"Acme.{Module}.{Layer}\"\n");
