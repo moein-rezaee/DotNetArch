@@ -311,6 +311,21 @@ public sealed class AdapterOperationsTests : IDisposable
     }
 
     [Fact]
+    public void Add_composition_with_only_always_adapters_has_no_selector_and_finds_a_registration_file_by_its_method()
+    {
+        var repo = Repo();
+        File.Move(Path.Combine(repo, "src/Shop.Infrastructure.Acme/DependencyInjection.cs"), Path.Combine(repo, "src/Shop.Infrastructure.Acme/AcmeExtensions.cs"));
+        File.Move(Path.Combine(repo, "src/Shop.Infrastructure/DependencyInjection.cs"), Path.Combine(repo, "src/Shop.Infrastructure/ShopRegistration.cs"));
+
+        var applied = Run("add_composition", repo, apply: true, ("always", "Acme"));
+
+        Assert.True(applied.Ok, applied.Error);
+        var code = File.ReadAllText(Path.Combine(repo, "src/Shop.Composition/DependencyInjection.cs"));
+        Assert.Contains("services.AddAcmeAdapter(configuration", code, StringComparison.Ordinal);
+        Assert.DoesNotContain("AdapterKey", code, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void The_core_projects_an_adapter_depends_on_become_packages_at_the_module_version()
     {
         var repo = Repo(profile: "name: acme\nversion: 1.0.0\nadapter_package: \"Acme.{Module}.Adapters.{System}\"\nmodule_package: \"Acme.{Module}.{Layer}\"\n");
