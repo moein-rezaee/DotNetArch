@@ -344,6 +344,20 @@ public sealed class AdapterOperationsTests : IDisposable
     }
 
     [Fact]
+    public void Rename_symbol_renames_the_file_that_is_named_after_the_identifier()
+    {
+        var repo = Repo();
+        Write(repo, "src/Shop.Application/OldName.cs", "namespace Shop.Application;\npublic sealed class OldName { }\n");
+        Write(repo, "src/Shop.Application/User.cs", "namespace Shop.Application;\npublic sealed class User { public OldName Value { get; set; } = new(); }\n");
+
+        Assert.True(Run("rename_symbol", repo, apply: true, ("from", "OldName"), ("to", "NewName")).Ok);
+
+        Assert.False(File.Exists(Path.Combine(repo, "src/Shop.Application/OldName.cs")));
+        Assert.Contains("class NewName", File.ReadAllText(Path.Combine(repo, "src/Shop.Application/NewName.cs")), StringComparison.Ordinal);
+        Assert.Contains("NewName Value", File.ReadAllText(Path.Combine(repo, "src/Shop.Application/User.cs")), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void The_core_projects_an_adapter_depends_on_become_packages_at_the_module_version()
     {
         var repo = Repo(profile: "name: acme\nversion: 1.0.0\nadapter_package: \"Acme.{Module}.Adapters.{System}\"\nmodule_package: \"Acme.{Module}.{Layer}\"\n");
