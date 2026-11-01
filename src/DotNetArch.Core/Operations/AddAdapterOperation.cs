@@ -20,6 +20,7 @@ internal static partial class AdapterOperations
         {
             PathParam(),
             new OperationParameter("system", "Name of the system on the other side (the part after <App>.Infrastructure.), for example InvoiceRest.", Required: true),
+            new OperationParameter("peer", "true when the adapter is a link to another module of the platform (a peer, not a provider): the project is <App>.Link.<Peer>.<Transport> and the system must end in Rest, InProc or Event."),
         },
         RunAddAdapter);
 
@@ -37,6 +38,14 @@ internal static partial class AdapterOperations
         var host = AdapterChecks.Host(ctx) ?? throw new ArgumentException("The module has no shared <App>.Infrastructure project to take the application name from.");
         var app = host.Name[..^".Infrastructure".Length];
         var name = $"{app}.Infrastructure.{system}";
+        if (string.Equals(request.Get("peer"), "true", StringComparison.OrdinalIgnoreCase))
+        {
+            var transport = Regex.Match(system, @"^(?<peer>[A-Za-z][A-Za-z0-9]*?)(?<transport>Rest|InProc|Event)$", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
+            if (!transport.Success)
+                throw new ArgumentException("A peer adapter system ends in Rest, InProc or Event (for example OtpRest).");
+            name = $"{app}.Link.{transport.Groups["peer"].Value}.{transport.Groups["transport"].Value}";
+        }
+
         if (ctx.Source.Any(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
             return new OperationResult(true, $"add_adapter: {name} already exists (0 changes).", Plan: Array.Empty<PlannedChange>());
         var domain = ctx.OfLayer(ProjectLayer.Domain).FirstOrDefault() ?? throw new ArgumentException("The module has no Domain project for the adapter to reference.");

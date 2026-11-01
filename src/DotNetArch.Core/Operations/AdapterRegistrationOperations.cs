@@ -1,3 +1,4 @@
+using DotNetArch.Core.Doctor;
 using System.Text;
 using System.Text.RegularExpressions;
 using DotNetArch.Core.NetArch;
@@ -36,7 +37,7 @@ internal static partial class AdapterOperations
             : ctx.Source.FirstOrDefault(p => p.Name.EndsWith(".Infrastructure", StringComparison.Ordinal))
               ?? throw new ArgumentException("No <App>.Infrastructure project found.");
         var app = source.Name.EndsWith(".Infrastructure", StringComparison.Ordinal) ? source.Name[..^".Infrastructure".Length] : source.Name;
-        var adapter = Project(ctx, $"{app}.Infrastructure.{adapterName}", "adapter");
+        var adapter = AdapterChecks.FindAdapter(ctx, app, adapterName) ?? throw new ArgumentException($"No adapter project for {adapterName} ({app}.Infrastructure.{adapterName} or {app}.Link.<Peer>.<Transport>).");
 
         var sourceFile = ctx.Files.FirstOrDefault(f => f.StartsWith(source.Dir + "/", StringComparison.Ordinal) && f.EndsWith("DependencyInjection.cs", StringComparison.Ordinal))
                          ?? throw new ArgumentException($"{source.Name} has no DependencyInjection.cs.");

@@ -19,13 +19,33 @@ internal static partial class AdapterChecks
     {
         if (project.IsTest || project.Layer != ProjectLayer.Infrastructure)
             return null;
+        var link = LinkProject().Match(project.Name);
         var index = project.Name.IndexOf(Marker, StringComparison.Ordinal);
-        if (index < 0)
+        if (index < 0 && !link.Success)
             return null;
-        var system = project.Name[(index + Marker.Length)..];
+        var system = link.Success ? link.Groups["peer"].Value + link.Groups["transport"].Value : project.Name[(index + Marker.Length)..];
         // persistence and other Infrastructure projects that are not adapters of an external system are named in the profile (non_adapters)
         return ctx.Profile?.NonAdapters.Contains(system, StringComparer.OrdinalIgnoreCase) == true ? null : system;
     }
+
+    /// <summary>A peer adapter project <c>&lt;App&gt;.Link.&lt;Peer&gt;.&lt;Transport&gt;</c> (Transport: Rest, InProc or Event); its system name is Peer + Transport (<c>OtpRest</c>).</summary>
+    [GeneratedRegex(@"\.Link\.(?<peer>[A-Za-z][A-Za-z0-9]*)\.(?<transport>Rest|InProc|Event)$")]
+    public static partial Regex LinkProject();
+
+    /// <summary>The application part of an adapter project name (<c>OrderService</c> in <c>OrderService.Infrastructure.SepidarRest</c> or <c>OrderService.Link.Catalog.Rest</c>).</summary>
+    public static string AppOf(string projectName)
+    {
+        var link = LinkProject().Match(projectName);
+        if (link.Success)
+            return projectName[..link.Index];
+        var index = projectName.IndexOf(Marker, StringComparison.Ordinal);
+        return index < 0 ? projectName : projectName[..index];
+    }
+
+    /// <summary>The adapter project of a system: <c>&lt;App&gt;.Infrastructure.&lt;System&gt;</c>, or the peer form <c>&lt;App&gt;.Link.&lt;Peer&gt;.&lt;Transport&gt;</c> when that exists.</summary>
+    public static ProjectInfo? FindAdapter(RepoContext ctx, string app, string system) =>
+        ctx.Source.FirstOrDefault(p => p.Name.Equals($"{app}.Infrastructure.{system}", StringComparison.OrdinalIgnoreCase))
+        ?? ctx.Source.FirstOrDefault(p => p.Name.StartsWith(app + ".Link.", StringComparison.OrdinalIgnoreCase) && SystemOf(ctx, p)?.Equals(system, StringComparison.OrdinalIgnoreCase) == true);
 
     public static IEnumerable<ProjectInfo> Adapters(RepoContext ctx) => ctx.Source.Where(p => SystemOf(ctx, p) != null);
 

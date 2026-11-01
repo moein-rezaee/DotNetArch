@@ -192,7 +192,7 @@ internal sealed class RepoContext
             return ProjectLayer.Domain;
         if (core.EndsWith(".Application", StringComparison.Ordinal))
             return ProjectLayer.Application;
-        if (core.Contains(".Infrastructure", StringComparison.Ordinal))
+        if (core.Contains(".Infrastructure", StringComparison.Ordinal) || AdapterChecks.LinkProject().IsMatch(core))
             return ProjectLayer.Infrastructure;
         if (core.EndsWith(".Api", StringComparison.Ordinal) || core.EndsWith(".API", StringComparison.Ordinal))
             return ProjectLayer.Api;

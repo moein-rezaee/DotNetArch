@@ -275,6 +275,42 @@ public sealed class AdapterOperationsTests : IDisposable
     }
 
     [Fact]
+    public void A_peer_adapter_is_a_link_project_the_rules_and_operations_recognise()
+    {
+        var repo = Repo(profile: "name: acme\nversion: 1.0.0\nadapter_package: \"Acme.{Module}.Adapters.{System}\"\n");
+        Write(repo, "src/Shop.Domain/Ports/IBillingClient.cs", "namespace Shop.Domain.Ports;\npublic interface IBillingClient { Task<int> Count(); }\n");
+        Write(repo, "src/Shop.Infrastructure/ServiceClients/BillingClient.cs",
+            "using Shop.Domain.Ports;\n\nnamespace Shop.Infrastructure.ServiceClients;\n\ninternal sealed class BillingClient(HttpClient http) : IBillingClient\n{\n    public Task<int> Count() => Task.FromResult(0);\n}\n");
+        Write(repo, "src/Shop.Infrastructure/DependencyInjection.cs",
+            "using Microsoft.Extensions.Configuration;\nusing Microsoft.Extensions.DependencyInjection;\nusing Shop.Domain.Ports;\nusing Shop.Infrastructure.ServiceClients;\n\nnamespace Shop.Infrastructure;\n\npublic static class DependencyInjection\n{\n    public static IServiceCollection AddShopInfrastructure(this IServiceCollection services, IConfiguration configuration)\n    {\n        services.AddHttpClient<IBillingClient, BillingClient>();\n        return services;\n    }\n}\n");
+
+        Assert.True(Run("add_adapter", repo, apply: true, ("system", "BillingRest"), ("peer", "true")).Ok);
+        var project = "src/Shop.Link.Billing.Rest/Shop.Link.Billing.Rest.csproj";
+        Assert.Contains("<PackageId>Acme.Shop.Adapters.BillingRest</PackageId>", File.ReadAllText(Path.Combine(repo, project)), StringComparison.Ordinal);
+        Assert.True(Run("move_code", repo, apply: true, ("from", "Shop.Infrastructure"), ("to", "Shop.Link.Billing.Rest"), ("files", "ServiceClients")).Ok);
+        Assert.True(Run("split_registration", repo, apply: true, ("adapter", "BillingRest")).Ok);
+
+        Assert.DoesNotContain(DoctorRunner.Run(repo).Findings, f => f.Id == "DA-AD09");
+        Assert.Contains("AddHttpClient<IBillingClient, BillingClient>", File.ReadAllText(Path.Combine(repo, "src/Shop.Link.Billing.Rest/DependencyInjection.cs")), StringComparison.Ordinal);
+        Assert.True(Run("add_composition", repo, apply: true, ("adapters", "Acme,BillingRest")).Ok);
+        Assert.Contains("Shop.Link.Billing.Rest", File.ReadAllText(Path.Combine(repo, "src/Shop.Composition/Shop.Composition.csproj")), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Package_lines_go_inside_a_property_group_written_on_one_line()
+    {
+        var repo = Repo(profile: "name: acme\nversion: 1.0.0\nadapter_package: \"Acme.{Module}.Adapters.{System}\"\n");
+        Write(repo, "src/Shop.Infrastructure.Acme/Shop.Infrastructure.Acme.csproj",
+            "<Project Sdk=\"Microsoft.NET.Sdk\">\n  <PropertyGroup><TargetFramework>net9.0</TargetFramework></PropertyGroup>\n  <ItemGroup>\n    <ProjectReference Include=\"..\\Shop.Domain\\Shop.Domain.csproj\" />\n  </ItemGroup>\n</Project>\n");
+
+        Assert.True(Run("fix", repo, apply: true, ("rules", "DA-AD05")).Ok);
+
+        var text = File.ReadAllText(Path.Combine(repo, "src/Shop.Infrastructure.Acme/Shop.Infrastructure.Acme.csproj"));
+        var doc = System.Xml.Linq.XDocument.Parse(text);
+        Assert.Contains(doc.Descendants("PropertyGroup"), g => g.Element("PackageId") != null && g.Element("TargetFramework") != null);
+    }
+
+    [Fact]
     public void The_core_projects_an_adapter_depends_on_become_packages_at_the_module_version()
     {
         var repo = Repo(profile: "name: acme\nversion: 1.0.0\nadapter_package: \"Acme.{Module}.Adapters.{System}\"\nmodule_package: \"Acme.{Module}.{Layer}\"\n");

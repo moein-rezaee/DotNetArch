@@ -454,8 +454,8 @@ internal static partial class AdapterOperations
         {
             foreach (var name in list)
             {
-                var project = ctx.Source.FirstOrDefault(p => p.Name.Equals($"{app}.Infrastructure.{name}", StringComparison.OrdinalIgnoreCase))
-                              ?? throw new ArgumentException($"No adapter project {app}.Infrastructure.{name}.");
+                var project = AdapterChecks.FindAdapter(ctx, app, name)
+                              ?? throw new ArgumentException($"No adapter project {app}.Infrastructure.{name} or {app}.Link.<Peer>.<Transport>.");
                 var di = ctx.Files.FirstOrDefault(f => f.StartsWith(project.Dir + "/", StringComparison.Ordinal) && f.EndsWith("DependencyInjection.cs", StringComparison.Ordinal))
                          ?? throw new ArgumentException($"{project.Name} has no DependencyInjection.cs.");
                 var text = ctx.Read(di);

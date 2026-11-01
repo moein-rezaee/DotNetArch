@@ -1,6 +1,7 @@
 # تغییرات
 
 ## 2.0.0 (منتشرنشده)
+- آداپتر همسایه (R-K9): پروژهٔ `<App>.Link.<Peer>.<Transport>` (‏Rest و InProc و Event) مثل `<App>.Infrastructure.<System>` آداپتر است؛ ‏`add_adapter --peer=true` آن را می‌سازد و قاعده‌ها و `move_code` و `split_registration` و `add_composition` و `describe_module` آن را می‌یابند. ‏`fix` برای DA-AD05 و DA-AD08 خط‌های بسته را داخل PropertyGroup یک‌خطی می‌نویسد.
 - ‏DA-AD09 و `add_adapter` (R-K9، ‏AC-62): HTTP خروجی از Infrastructure مشترک به پروژهٔ آداپتری می‌رود که ابزار می‌سازد.
 - فایل‌های migration از editorconfig پیروی می‌کنند (R-J22، ‏AC-53): byte order markی که EF می‌نویسد برداشته می‌شود تا کار lint روی سرویس تازه پاس شود.
 - چندمستاجری روی سیستم مرجع بیرونی (R-J21، ‏AC-52): ‏`add_tenancy --wire_only` فقط kit چندمستاجری را وصل می‌کند.

@@ -10,6 +10,15 @@ namespace DotNetArch.Core.Operations;
 /// </summary>
 internal static partial class AdapterFixers
 {
+    /// <summary>Inserts property lines before the closing tag of the PropertyGroup at <paramref name="group"/>. A group written on one line gets the properties inline, so the file stays valid.</summary>
+    private static string InsertIntoGroup(string text, int group, string lines, string closingIndent)
+    {
+        var lineStart = text.LastIndexOf('\n', group) + 1;
+        if (string.IsNullOrWhiteSpace(text[lineStart..group]))
+            return text.Insert(lineStart, lines + closingIndent);
+        return text.Insert(group, lines.Replace("\n", string.Empty, StringComparison.Ordinal).Replace("    ", string.Empty, StringComparison.Ordinal));
+    }
+
     public static readonly HashSet<string> RuleIds = new(StringComparer.OrdinalIgnoreCase) { "DA-AD01", "DA-AD02", "DA-AD03", "DA-AD05", "DA-AD06", "DA-AD08" };
 
     public static IReadOnlyList<FixAction> Plan(string rule, RepoContext ctx, IList<string> manual) => rule.ToUpperInvariant() switch
@@ -132,7 +141,7 @@ internal static partial class AdapterFixers
                 var group = changed.IndexOf("</PropertyGroup>", StringComparison.Ordinal);
                 if (group < 0)
                     continue;
-                changed = changed.Insert(changed.LastIndexOf('\n', group) + 1, $"    <IsPackable>true</IsPackable>\n    <PackageId>{id}</PackageId>\n    <Version>{version}</Version>\n    <Description>The {layer} of the {module} module.</Description>\n  ");
+                changed = InsertIntoGroup(changed, group, $"    <IsPackable>true</IsPackable>\n    <PackageId>{id}</PackageId>\n    <Version>{version}</Version>\n    <Description>The {layer} of the {module} module.</Description>\n", "  ");
             }
             else if (!changed.Contains($"<Version>{version}</Version>", StringComparison.Ordinal))
             {
@@ -192,18 +201,18 @@ internal static partial class AdapterFixers
             var reasons = new List<string>();
             if (!changed.Contains("<PackageId>", StringComparison.Ordinal))
             {
-                var app = adapter.Name[..adapter.Name.IndexOf(".Infrastructure.", StringComparison.Ordinal)];
+                var app = AdapterChecks.AppOf(adapter.Name);
                 var module = app.EndsWith("Service", StringComparison.Ordinal) ? app[..^"Service".Length] : app;
                 var system = AdapterChecks.SystemOf(ctx, adapter)!;
                 var id = pattern.Replace("{Module}", module, StringComparison.Ordinal).Replace("{System}", system, StringComparison.Ordinal);
-                changed = changed.Insert(changed.LastIndexOf('\n', group) + 1, $"    <IsPackable>true</IsPackable>\n    <PackageId>{id}</PackageId>\n    <Description>The {system} adapter of the {module} module.</Description>\n");
+                changed = InsertIntoGroup(changed, group, $"    <IsPackable>true</IsPackable>\n    <PackageId>{id}</PackageId>\n    <Description>The {system} adapter of the {module} module.</Description>\n", string.Empty);
                 reasons.Add($"package {id}");
             }
 
             if (!changed.Contains("AdapterVersion", StringComparison.Ordinal))
             {
                 var current = changed.IndexOf("</PropertyGroup>", StringComparison.Ordinal);
-                changed = changed.Insert(changed.LastIndexOf('\n', current) + 1, versionLines);
+                changed = InsertIntoGroup(changed, current, versionLines, string.Empty);
                 reasons.Add("version from the adapter tag");
             }
 

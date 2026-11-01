@@ -72,6 +72,9 @@ internal static partial class StateBuilder
         };
         if (project.Layer == ProjectLayer.Infrastructure)
         {
+            var link = Doctor.AdapterChecks.LinkProject().Match(project.Name);
+            if (link.Success)
+                return $"infrastructure:{link.Groups["peer"].Value}{link.Groups["transport"].Value}";
             var marker = ".Infrastructure.";
             var index = project.Name.IndexOf(marker, StringComparison.Ordinal);
             if (index >= 0)
