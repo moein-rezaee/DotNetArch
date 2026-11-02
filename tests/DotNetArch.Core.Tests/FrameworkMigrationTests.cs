@@ -126,4 +126,52 @@ public sealed class FrameworkMigrationTests : IDisposable
         Assert.False(result.Ok);
         Assert.Contains("6 or higher", result.Error);
     }
+
+    private static string FakeDotnetRoot(string folder)
+    {
+        Write(folder, "packs/Microsoft.NETCore.App.Ref/10.0.3/data/PackageOverrides.txt", "System.Text.Json|10.0.0\n");
+        Write(folder, "packs/Microsoft.AspNetCore.App.Ref/10.0.3/data/PackageOverrides.txt", "Microsoft.Extensions.Configuration.Binder|10.0.0\nMicrosoft.Extensions.Http|10.0.0\n");
+        return folder;
+    }
+
+    [Fact]
+    public void From_net10_references_the_framework_now_provides_are_removed_in_web_projects_and_their_dependents()
+    {
+        var repo = Path.Combine(_root, "web");
+        var refs = "  <ItemGroup>\n    <PackageReference Include=\"Microsoft.Extensions.Configuration.Binder\" />\n    <PackageReference Include=\"System.Text.Json\" />\n    <PackageReference Include=\"Serilog\" />\n  </ItemGroup>\n";
+        Write(repo, "src/App.Api/App.Api.csproj", "<Project Sdk=\"Microsoft.NET.Sdk.Web\">\n  <PropertyGroup>\n    <TargetFramework>net9.0</TargetFramework>\n  </PropertyGroup>\n" + refs + "</Project>\n");
+        Write(repo, "test/App.Api.Tests/App.Api.Tests.csproj", "<Project Sdk=\"Microsoft.NET.Sdk\">\n  <PropertyGroup>\n    <TargetFramework>net9.0</TargetFramework>\n  </PropertyGroup>\n  <ItemGroup>\n    <ProjectReference Include=\"..\\..\\src\\App.Api\\App.Api.csproj\" />\n    <PackageReference Include=\"Microsoft.Extensions.Http\" />\n  </ItemGroup>\n</Project>\n");
+        Write(repo, "src/App.Core/App.Core.csproj", "<Project Sdk=\"Microsoft.NET.Sdk\">\n  <PropertyGroup>\n    <TargetFramework>net9.0</TargetFramework>\n  </PropertyGroup>\n" + refs + "</Project>\n");
+        Write(repo, "Directory.Packages.props", "<Project>\n  <ItemGroup>\n    <PackageVersion Include=\"Microsoft.Extensions.Configuration.Binder\" Version=\"9.0.0\" />\n    <PackageVersion Include=\"Microsoft.Extensions.Http\" Version=\"9.0.0\" />\n    <PackageVersion Include=\"System.Text.Json\" Version=\"9.0.0\" />\n    <PackageVersion Include=\"Serilog\" Version=\"4.0.0\" />\n  </ItemGroup>\n</Project>\n");
+
+        var result = OperationRegistry.Execute(OperationRegistry.Find("migrate_framework")!,
+            new Dictionary<string, string> { ["path"] = repo, ["target"] = "10", ["dotnet_root"] = FakeDotnetRoot(Path.Combine(_root, "sdk")) }, apply: true);
+
+        Assert.True(result.Ok);
+        var api = Read(repo, "src/App.Api/App.Api.csproj");
+        Assert.DoesNotContain("Configuration.Binder", api);
+        Assert.DoesNotContain("System.Text.Json", api);
+        Assert.Contains("Include=\"Serilog\"", api);
+        var tests = Read(repo, "test/App.Api.Tests/App.Api.Tests.csproj");
+        Assert.DoesNotContain("Microsoft.Extensions.Http", tests);
+        var library = Read(repo, "src/App.Core/App.Core.csproj");
+        Assert.Contains("Configuration.Binder", library);
+        Assert.DoesNotContain("System.Text.Json", library);
+    }
+
+    [Fact]
+    public void Without_the_target_sdk_nothing_is_removed_and_the_plan_says_so()
+    {
+        var repo = Path.Combine(_root, "nosdk");
+        Write(repo, "src/App.Api/App.Api.csproj", "<Project Sdk=\"Microsoft.NET.Sdk.Web\">\n  <PropertyGroup>\n    <TargetFramework>net9.0</TargetFramework>\n  </PropertyGroup>\n  <ItemGroup>\n    <PackageReference Include=\"Microsoft.Extensions.Configuration.Binder\" />\n  </ItemGroup>\n</Project>\n");
+        var empty = Path.Combine(_root, "empty-sdk");
+        Directory.CreateDirectory(empty);
+
+        var result = OperationRegistry.Execute(OperationRegistry.Find("migrate_framework")!,
+            new Dictionary<string, string> { ["path"] = repo, ["target"] = "10", ["dotnet_root"] = empty }, apply: true);
+
+        Assert.Contains("Configuration.Binder", Read(repo, "src/App.Api/App.Api.csproj"));
+        var manual = ((IEnumerable<string>)result.Data!.GetType().GetProperty("manual")!.GetValue(result.Data)!).ToList();
+        Assert.Contains(manual, m => m.Contains("NU1510"));
+    }
 }

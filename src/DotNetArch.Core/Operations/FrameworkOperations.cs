@@ -16,6 +16,9 @@ internal static partial class FrameworkOperations
     /// <summary>The oldest version the operation moves from or to: before it the target-framework names have a different shape.</summary>
     private const int Oldest = 6;
 
+    /// <summary>From this version the SDK reports a package the framework already provides as NU1510 (an error where warnings are errors).</summary>
+    private const int PruningFrom = 10;
+
     private static readonly string[] RuntimePackagePrefixes = { "Microsoft.Extensions.", "Microsoft.AspNetCore.", "Microsoft.EntityFrameworkCore", "System.Text.Json" };
 
     private static readonly string[] ThirdPartyCoupled = { "Npgsql.EntityFrameworkCore.PostgreSQL", "Pomelo.EntityFrameworkCore.MySql", "Npgsql", "Swashbuckle.AspNetCore", "Microsoft.AspNetCore.OpenApi" };
@@ -30,6 +33,7 @@ internal static partial class FrameworkOperations
         {
             new OperationParameter("path", "Repository root (default: current folder).", Positional: true, Default: "@cwd"),
             new OperationParameter("target", "The .NET major version to move to, for example 10.", Required: true, Choices: new[] { "8", "9", "10" }),
+            new OperationParameter("dotnet_root", "Folder of an installed .NET SDK of the target version; its package list decides which references the framework now provides (NU1510, .NET 10 and later). Default: found from DOTNET_ROOT, the dotnet on the path and the usual folders."),
         },
         request =>
         {
@@ -40,7 +44,7 @@ internal static partial class FrameworkOperations
                 throw new ArgumentException($"The target must be a .NET major version of {Oldest} or higher, for example 10.");
 
             var ctx = new RepoContext(root, NetArchStore.ResolveProfile(root, null, out _), new RuleSettings(), Enumerable.Empty<string>());
-            var plan = Plan(ctx, target, out var manual);
+            var plan = Plan(ctx, target, request.Get("dotnet_root"), out var manual);
             if (request.Apply)
                 PlanApplier.Apply(root, plan);
 
@@ -51,11 +55,16 @@ internal static partial class FrameworkOperations
             return new OperationResult(true, text, new { target = $"net{target}.0", manual }, changes, request.Apply);
         });
 
-    internal static IReadOnlyList<FixAction> Plan(RepoContext ctx, int target, out List<string> manual)
+    internal static IReadOnlyList<FixAction> Plan(RepoContext ctx, int target, string? dotnetRoot, out List<string> manual)
     {
         manual = new List<string>();
         var actions = new List<FixAction>();
         var newest = 0;
+        var overrides = target >= PruningFrom ? FrameworkPackages.Find(target, dotnetRoot) : null;
+        var web = target >= PruningFrom ? WebProjects(ctx) : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var centralVersions = CentralVersions(ctx);
+        if (target >= PruningFrom && overrides is null)
+            manual.Add($"The .NET {target} SDK was not found, so packages the framework now provides (NU1510) were not removed. Install it (or pass dotnet_root) and run this again.");
 
         foreach (var file in ctx.Files)
         {
@@ -73,6 +82,12 @@ internal static partial class FrameworkOperations
 
                 var packages = MoveRuntimePackages(updated, target, manual, file);
                 if (packages != updated) { updated = packages; reasons.Add($"runtime packages move to {target}.0.0"); }
+
+                if (overrides is not null && file.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase))
+                {
+                    var pruned = PruneProvided(updated, overrides, web.Contains(file), centralVersions, manual, file);
+                    if (pruned != updated) { updated = pruned; reasons.Add("references the framework now provides are removed (NU1510)"); }
+                }
             }
             else if (name.Equals("global.json", StringComparison.OrdinalIgnoreCase))
             {
@@ -95,7 +110,7 @@ internal static partial class FrameworkOperations
                 ? $"Nothing to change: the repository is already on net{newest}.0 (target net{target}.0)."
                 : "Nothing to change: no target framework below the target was found.");
         else
-            manual.Add($"Install the .NET {target} SDK before building; then run restore, build and the tests, and update the changelog.");
+            manual.Add($"Install the .NET {target} SDK before building; then run restore, build and the tests. Source that no longer compiles on the new language version (for example a call that became ambiguous between overloads) is a code change for a person; then update the changelog.");
 
         return actions;
     }
@@ -132,6 +147,66 @@ internal static partial class FrameworkOperations
                 manual.Add($"{file}: {id} {m.Groups["major"].Value}.x follows the runtime; move it to a version built for net{target}.0.");
             return m.Value;
         });
+
+    /// <summary>Projects that use the ASP.NET Core shared framework: a Web SDK project or a framework reference, and every project that references one.</summary>
+    private static HashSet<string> WebProjects(RepoContext ctx)
+    {
+        var projects = ctx.Files.Where(f => f.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase)).ToList();
+        var web = projects.Where(f => ctx.Read(f) is var t && (t.Contains("Microsoft.NET.Sdk.Web", StringComparison.Ordinal) || t.Contains("FrameworkReference Include=\"Microsoft.AspNetCore.App\"", StringComparison.Ordinal)))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var references = projects.ToDictionary(f => f, f => ProjectReferenceMatch().Matches(ctx.Read(f))
+            .Select(m => NormalizePath(Path.GetDirectoryName(f) ?? string.Empty, m.Groups["path"].Value)).ToList(), StringComparer.OrdinalIgnoreCase);
+        for (var changed = true; changed;)
+        {
+            changed = false;
+            foreach (var project in projects)
+                if (!web.Contains(project) && references[project].Any(web.Contains))
+                    changed = web.Add(project) || changed;
+        }
+
+        return web;
+    }
+
+    private static string NormalizePath(string baseDir, string reference)
+    {
+        var parts = new List<string>(baseDir.Split('/', StringSplitOptions.RemoveEmptyEntries));
+        foreach (var part in reference.Replace('\\', '/').Split('/', StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (part == "..") { if (parts.Count > 0) parts.RemoveAt(parts.Count - 1); }
+            else if (part != ".") parts.Add(part);
+        }
+
+        return string.Join('/', parts);
+    }
+
+    private static Dictionary<string, string> CentralVersions(RepoContext ctx)
+    {
+        var versions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var file in ctx.Files.Where(f => Path.GetFileName(f).Equals("Directory.Packages.props", StringComparison.OrdinalIgnoreCase)))
+            foreach (Match m in CentralPackage().Matches(ctx.Read(file)))
+                versions[m.Groups["id"].Value] = m.Groups["version"].Value;
+        return versions;
+    }
+
+    /// <summary>Removes a single-line package reference the framework of the project already provides at the same or a higher version.</summary>
+    private static string PruneProvided(string text, FrameworkPackages provided, bool web, IReadOnlyDictionary<string, string> central, List<string> manual, string file) =>
+        SelfClosingReference().Replace(text, m =>
+        {
+            var id = m.Groups["id"].Value;
+            if (!provided.Provides(id, web, out var shipped))
+                return m.Value;
+            var version = m.Groups["version"].Success ? m.Groups["version"].Value : central.GetValueOrDefault(id);
+            return FrameworkPackages.IsAtMost(version, shipped) ? string.Empty : m.Value;
+        });
+
+    [GeneratedRegex(@"<ProjectReference\s+Include=""(?<path>[^""]+)""", RegexOptions.CultureInvariant)]
+    private static partial Regex ProjectReferenceMatch();
+
+    [GeneratedRegex(@"<PackageVersion\s+Include=""(?<id>[^""]+)""\s+Version=""(?<version>[^""]+)""", RegexOptions.CultureInvariant)]
+    private static partial Regex CentralPackage();
+
+    [GeneratedRegex(@"^[ \t]*<PackageReference\s+Include=""(?<id>[^""]+)""(?:\s+Version=""(?<version>[^""]+)"")?\s*/>[ \t]*\r?\n", RegexOptions.CultureInvariant | RegexOptions.Multiline)]
+    private static partial Regex SelfClosingReference();
 
     [GeneratedRegex(@"(?<![\w.])net(?<major>\d{1,2})\.0(?![\d.\w-])", RegexOptions.CultureInvariant)]
     private static partial Regex FrameworkToken();
