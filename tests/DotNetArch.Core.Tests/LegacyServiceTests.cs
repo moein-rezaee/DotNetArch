@@ -143,12 +143,12 @@ public sealed class LegacyServiceTests : IDisposable
     public void Swap_kit_replaces_the_old_kit_in_place_with_the_profile_kits_and_repeating_changes_nothing()
     {
         Write("src/Shop.Api/Program.cs", "using Org.Kit.OldAuth;\nusing Shop.Application;\n\nvar builder = WebApplication.CreateBuilder(args);\nbuilder.Services.AddOldAuth(builder.Configuration);\nbuilder.Services.AddAuthorization();\nvar app = builder.Build();\napp.Run();\n");
-        Write("src/Shop.Api/Shop.Api.csproj", "<Project Sdk=\"Microsoft.NET.Sdk.Web\">\n  <ItemGroup>\n    <PackageReference Include=\"Corevia.Kit.OldAuth.Core\" />\n  </ItemGroup>\n</Project>\n");
-        Write("Directory.Packages.props", "<Project>\n  <ItemGroup>\n    <PackageVersion Include=\"Corevia.Kit.OldAuth.Core\" Version=\"1.0.0\" />\n  </ItemGroup>\n</Project>\n");
+        Write("src/Shop.Api/Shop.Api.csproj", "<Project Sdk=\"Microsoft.NET.Sdk.Web\">\n  <ItemGroup>\n    <PackageReference Include=\"Corevia.Kit.OldAuth.Core\" />\n    <PackageReference Include=\"Corevia.Kit.OldAuth.Abstractions\" />\n  </ItemGroup>\n</Project>\n");
+        Write("Directory.Packages.props", "<Project>\n  <ItemGroup>\n    <PackageVersion Include=\"Corevia.Kit.OldAuth.Core\" Version=\"1.0.0\" />\n    <PackageVersion Include=\"Corevia.Kit.OldAuth.Abstractions\" Version=\"1.0.0\" />\n  </ItemGroup>\n</Project>\n");
         Write("new.profile.yml", "name: new\nversion: 1.0.0\nexternal_kits:\n  - area: NewAuth\n    packages:\n      - { id: Corevia.Kit.NewAuth.Core, version: 2.0.0, projects: [api] }\n    hosts:\n      api: { usings: [Corevia.Kit.NewAuth], builder: [\"builder.Services.AddNewAuth(builder.Configuration);\", \"builder.Services.AddNewAuthProvider(builder.Configuration);\"] }\n");
         var profile = Path.Combine(_root, "new.profile.yml");
 
-        var applied = Run("swap_kit", apply: true, ("profile", profile), ("from", "OldAuth"), ("old_call", "AddOldAuth"), ("old_using", "Org.Kit.OldAuth"));
+        var applied = Run("swap_kit", apply: true, ("profile", profile), ("from", "OldAuth"), ("old_call", "AddOldAuth"), ("old_using", "Org.Kit.OldAuth"), ("keep", "Corevia.Kit.OldAuth.Abstractions"));
 
         Assert.True(applied.Ok, applied.Text);
         var program = Read("src/Shop.Api/Program.cs");
@@ -158,11 +158,12 @@ public sealed class LegacyServiceTests : IDisposable
         Assert.True(program.IndexOf("AddNewAuth(", StringComparison.Ordinal) < program.IndexOf("AddAuthorization()", StringComparison.Ordinal), "the new lines take the place of the old call");
         Assert.True(program.IndexOf("AddNewAuth(", StringComparison.Ordinal) < program.IndexOf("AddNewAuthProvider(", StringComparison.Ordinal));
         var packages = Read("src/Shop.Api/Shop.Api.csproj") + Read("Directory.Packages.props");
-        Assert.DoesNotContain("OldAuth", packages, StringComparison.Ordinal);
+        Assert.DoesNotContain("OldAuth.Core", packages, StringComparison.Ordinal);
+        Assert.Contains("OldAuth.Abstractions", packages, StringComparison.Ordinal);
         Assert.Contains("Corevia.Kit.NewAuth.Core", packages, StringComparison.Ordinal);
         Assert.Contains("Version=\"2.0.0\"", packages, StringComparison.Ordinal);
 
-        var again = Run("swap_kit", apply: false, ("profile", profile), ("from", "OldAuth"), ("old_call", "AddOldAuth"), ("old_using", "Org.Kit.OldAuth"));
+        var again = Run("swap_kit", apply: false, ("profile", profile), ("from", "OldAuth"), ("old_call", "AddOldAuth"), ("old_using", "Org.Kit.OldAuth"), ("keep", "Corevia.Kit.OldAuth.Abstractions"));
         Assert.Empty(again.Plan ?? Array.Empty<PlannedChange>());
     }
 

@@ -385,6 +385,7 @@ internal static partial class ScaffoldOperations
             new OperationParameter("from", "The kit area to remove, for example JwtSecurity.", Required: true),
             new OperationParameter("old_call", "Name of the extension method the old kit was registered with, for example AddJwtSecurityExtension."),
             new OperationParameter("old_using", "Namespace of the old kit to remove from the host, for example Corevia.Kit.JwtSecurityExtension."),
+            new OperationParameter("keep", "Comma-separated package ids of the old area that stay (code still uses them)."),
         },
         request => InSolution(request, "swap_kit", config =>
         {
@@ -392,7 +393,7 @@ internal static partial class ScaffoldOperations
             var shared = File.Exists(full) ? NetArchStore.LoadProfileFile(full) : null;
             if (shared is null)
                 throw new ArgumentException($"Profile file not found or empty: {request.Get("profile")}");
-            ExternalKitWiring.Swap(config, shared, request.Get("from")!, request.Get("old_call"), request.Get("old_using"));
+            ExternalKitWiring.Swap(config, shared, request.Get("from")!, request.Get("old_call"), request.Get("old_using"), (request.Get("keep") ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
         }, normalize: false));
 
     private static OperationDefinition AddCli() => Mutating(

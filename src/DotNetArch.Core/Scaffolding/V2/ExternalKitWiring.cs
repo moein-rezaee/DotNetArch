@@ -61,10 +61,10 @@ public static class ExternalKitWiring
     /// line that registered it (<paramref name="oldCall"/>) is replaced, at the same place, by the registration lines of the profile's host, its using is
     /// removed, and the profile's kits are wired as <see cref="Apply"/> does. A second run changes nothing.
     /// </summary>
-    public static void Swap(SolutionConfig config, ProfileDefinition profile, string fromArea, string? oldCall, string? oldUsing)
+    public static void Swap(SolutionConfig config, ProfileDefinition profile, string fromArea, string? oldCall, string? oldUsing, IReadOnlyCollection<string>? keep = null)
     {
         Identifier.RequireIdentifier(fromArea, "kit area");
-        RemoveAreaPackages(config, fromArea);
+        RemoveAreaPackages(config, fromArea, keep ?? Array.Empty<string>());
 
         foreach (var host in profile.ExternalKits.SelectMany(k => k.Hosts.Keys).Distinct(StringComparer.OrdinalIgnoreCase))
         {
@@ -96,7 +96,7 @@ public static class ExternalKitWiring
         Apply(config, profile);
     }
 
-    private static void RemoveAreaPackages(SolutionConfig config, string area)
+    private static void RemoveAreaPackages(SolutionConfig config, string area, IReadOnlyCollection<string> keep)
     {
         var prefix = Regex.Escape($"Corevia.Kit.{area}.");
         var reference = new Regex($@"^[ \t]*<Package(?:Reference|Version) Include=""{prefix}[^""]*""[^>]*/>[ \t]*\r?\n", RegexOptions.Multiline | RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
@@ -106,7 +106,7 @@ public static class ExternalKitWiring
         foreach (var file in files)
         {
             var text = File.ReadAllText(file);
-            var updated = reference.Replace(text, string.Empty);
+            var updated = reference.Replace(text, m => keep.Any(k => m.Value.Contains($"Include=\"{k}\"", StringComparison.Ordinal)) ? m.Value : string.Empty);
             if (updated != text)
                 File.WriteAllText(file, updated, new UTF8Encoding(false));
         }
