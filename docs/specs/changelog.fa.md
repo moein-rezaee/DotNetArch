@@ -1,6 +1,7 @@
 # تغییرات
 
 ## 2.0.0 (منتشرنشده)
+- ‏`swap_kit` (R-K11، ‏AC-64): یک حوزهٔ kit را در همان جا با kitهای یک profile مشترک عوض می‌کند (بسته‌ها، خط ثبت، using). ۴۵ عملیات.
 - ‏`migrate_framework` (R-K10، ‏AC-63): مخزن را به نسخهٔ .NET که ورودی است می‌برد (frameworkها، پین SDK، تگ imageها، بسته‌های همراه runtime)؛ بسته‌های شخص ثالث وابسته به runtime فهرست می‌شوند. ۴۴ عملیات.
 - آداپتر همسایه (R-K9): پروژهٔ `<App>.Link.<Peer>.<Transport>` (‏Rest و InProc و Event) مثل `<App>.Infrastructure.<System>` آداپتر است؛ ‏`add_adapter --peer=true` آن را می‌سازد و قاعده‌ها و `move_code` و `split_registration` و `add_composition` و `describe_module` آن را می‌یابند. ‏`fix` برای DA-AD05 و DA-AD08 خط‌های بسته را داخل PropertyGroup یک‌خطی می‌نویسد.
 - ‏DA-AD09 و `add_adapter` (R-K9، ‏AC-62): HTTP خروجی از Infrastructure مشترک به پروژهٔ آداپتری می‌رود که ابزار می‌سازد.

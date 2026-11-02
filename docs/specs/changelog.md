@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2.0.0 (unreleased)
+- `swap_kit` (R-K11, AC-64): replaces one kit area by the kits of a shared profile in place (packages, registration line, using). 45 operations.
 - `migrate_framework` (R-K10, AC-63): moves a repository to a .NET version given as input (frameworks, SDK pin, image tags, runtime-shipped packages); third-party runtime-bound packages are listed. 44 operations.
 - Peer adapters (R-K9): a project `<App>.Link.<Peer>.<Transport>` (Rest, InProc, Event) is an adapter like `<App>.Infrastructure.<System>`; `add_adapter --peer=true` creates it, and the rules, `move_code`, `split_registration`, `add_composition` and `describe_module` find it. `fix` for DA-AD05/DA-AD08 writes package lines inside a property group written on one line.
 - DA-AD09 and `add_adapter` (R-K9, AC-62): outbound HTTP leaves the shared Infrastructure for an adapter project the tool creates.
