@@ -49,6 +49,7 @@ internal static partial class ScaffoldOperations
         AddKit(),
         AddMcp(),
         ApplyProfileOperation(),
+        SwapKit(),
         ApplyBlueprintOperation(),
         AddCli(),
         CiAdd(),
@@ -373,6 +374,26 @@ internal static partial class ScaffoldOperations
         "Wire (or upgrade) the external kits of a shared profile in an existing solution: kit package versions, host registration lines, settings, secrets. Safe to repeat. Plan first; writes only with apply.",
         new[] { PathParam(), new OperationParameter("profile", "Shared profile file (path).", Required: true) },
         request => InSolution(request, "apply_profile", config => ApplyProfile(config.SolutionPath, request.Get("profile")!), normalize: false));
+
+    private static OperationDefinition SwapKit() => Mutating(
+        "swap_kit",
+        "Replace one kit area by the kits of a shared profile in an existing solution (for example JwtSecurity by Authentication and Authorization): the old packages go, the old registration line is replaced in place by the profile's lines, the new kits are wired. Safe to repeat. Plan first; writes only with apply.",
+        new[]
+        {
+            PathParam(),
+            new OperationParameter("profile", "Shared profile file (path) that lists the new kits.", Required: true),
+            new OperationParameter("from", "The kit area to remove, for example JwtSecurity.", Required: true),
+            new OperationParameter("old_call", "Name of the extension method the old kit was registered with, for example AddJwtSecurityExtension."),
+            new OperationParameter("old_using", "Namespace of the old kit to remove from the host, for example Corevia.Kit.JwtSecurityExtension."),
+        },
+        request => InSolution(request, "swap_kit", config =>
+        {
+            var full = System.IO.Path.GetFullPath(request.Get("profile")!);
+            var shared = File.Exists(full) ? NetArchStore.LoadProfileFile(full) : null;
+            if (shared is null)
+                throw new ArgumentException($"Profile file not found or empty: {request.Get("profile")}");
+            ExternalKitWiring.Swap(config, shared, request.Get("from")!, request.Get("old_call"), request.Get("old_using"));
+        }, normalize: false));
 
     private static OperationDefinition AddCli() => Mutating(
         "add_cli",

@@ -56,6 +56,62 @@ public static class ExternalKitWiring
         ToolHost.Success($"Kits wired from the profile ({profile.ExternalKits.Count}).", string.Join(", ", profile.ExternalKits.Select(k => k.Area)));
     }
 
+    /// <summary>
+    /// Replaces one kit area by the areas of a profile in an existing solution: the packages of <paramref name="fromArea"/> go (references and central pins), the
+    /// line that registered it (<paramref name="oldCall"/>) is replaced, at the same place, by the registration lines of the profile's host, its using is
+    /// removed, and the profile's kits are wired as <see cref="Apply"/> does. A second run changes nothing.
+    /// </summary>
+    public static void Swap(SolutionConfig config, ProfileDefinition profile, string fromArea, string? oldCall, string? oldUsing)
+    {
+        Identifier.RequireIdentifier(fromArea, "kit area");
+        RemoveAreaPackages(config, fromArea);
+
+        foreach (var host in profile.ExternalKits.SelectMany(k => k.Hosts.Keys).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            var project = HostProject(config, host);
+            var path = Path.Combine(config.SolutionPath, project, "Program.cs");
+            if (!File.Exists(path))
+                continue;
+
+            var text = File.ReadAllText(path);
+            var newLines = profile.ExternalKits
+                .SelectMany(k => k.Hosts.Where(h => h.Key.Equals(host, StringComparison.OrdinalIgnoreCase)).SelectMany(h => h.Value.Builder))
+                .Select(l => Token(config, l)).ToList();
+            if (!string.IsNullOrWhiteSpace(oldCall) && newLines.Count > 0)
+            {
+                var line = Regex.Match(text, $@"^(?<indent>[ \t]*)[^\r\n]*\.{Regex.Escape(oldCall)}\([^\r\n]*\);[ \t]*\r?\n", RegexOptions.Multiline | RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
+                if (line.Success)
+                {
+                    var nl = text.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
+                    var add = newLines.Where(l => !text.Contains(l, StringComparison.Ordinal)).Select(l => line.Groups["indent"].Value + l + nl);
+                    text = text.Remove(line.Index, line.Length).Insert(line.Index, string.Concat(add));
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(oldUsing))
+                text = Regex.Replace(text, $@"^using {Regex.Escape(oldUsing)};[ \t]*\r?\n", string.Empty, RegexOptions.Multiline | RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
+            File.WriteAllText(path, text, new UTF8Encoding(false));
+        }
+
+        Apply(config, profile);
+    }
+
+    private static void RemoveAreaPackages(SolutionConfig config, string area)
+    {
+        var prefix = Regex.Escape($"Corevia.Kit.{area}.");
+        var reference = new Regex($@"^[ \t]*<Package(?:Reference|Version) Include=""{prefix}[^""]*""[^>]*/>[ \t]*\r?\n", RegexOptions.Multiline | RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
+        var files = Directory.EnumerateFiles(config.SolutionPath, "*.csproj", SearchOption.AllDirectories)
+            .Concat(Directory.EnumerateFiles(config.SolutionPath, "Directory.Packages.props", SearchOption.TopDirectoryOnly))
+            .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}") && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"));
+        foreach (var file in files)
+        {
+            var text = File.ReadAllText(file);
+            var updated = reference.Replace(text, string.Empty);
+            if (updated != text)
+                File.WriteAllText(file, updated, new UTF8Encoding(false));
+        }
+    }
+
     private static string HostProject(SolutionConfig config, string host)
     {
         if (!HostSuffix.TryGetValue(host, out var suffix))
