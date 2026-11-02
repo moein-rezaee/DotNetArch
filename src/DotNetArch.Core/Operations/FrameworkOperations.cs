@@ -33,6 +33,7 @@ internal static partial class FrameworkOperations
         {
             new OperationParameter("path", "Repository root (default: current folder).", Positional: true, Default: "@cwd"),
             new OperationParameter("target", "The .NET major version to move to, for example 10.", Required: true, Choices: new[] { "8", "9", "10" }),
+            new OperationParameter("packages", "Exact versions for packages the migration cannot derive, as Id=Version separated by commas (for example the EF Core database provider built for the new runtime). They are applied wherever the package is referenced."),
             new OperationParameter("dotnet_root", "Folder of an installed .NET SDK of the target version; its package list decides which references the framework now provides (NU1510, .NET 10 and later). Default: found from DOTNET_ROOT, the dotnet on the path and the usual folders."),
         },
         request =>
@@ -44,7 +45,7 @@ internal static partial class FrameworkOperations
                 throw new ArgumentException($"The target must be a .NET major version of {Oldest} or higher, for example 10.");
 
             var ctx = new RepoContext(root, NetArchStore.ResolveProfile(root, null, out _), new RuleSettings(), Enumerable.Empty<string>());
-            var plan = Plan(ctx, target, request.Get("dotnet_root"), out var manual);
+            var plan = Plan(ctx, target, request.Get("dotnet_root"), ParsePins(request.Get("packages")), out var manual);
             if (request.Apply)
                 PlanApplier.Apply(root, plan);
 
@@ -55,7 +56,21 @@ internal static partial class FrameworkOperations
             return new OperationResult(true, text, new { target = $"net{target}.0", manual }, changes, request.Apply);
         });
 
-    internal static IReadOnlyList<FixAction> Plan(RepoContext ctx, int target, string? dotnetRoot, out List<string> manual)
+    internal static IReadOnlyDictionary<string, string> ParsePins(string? text)
+    {
+        var pins = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var part in (text ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var pair = part.Split('=', 2, StringSplitOptions.TrimEntries);
+            if (pair.Length != 2 || pair[0].Length == 0 || pair[1].Length == 0)
+                throw new ArgumentException($"A package must be written Id=Version, got '{part}'.");
+            pins[pair[0]] = pair[1];
+        }
+
+        return pins;
+    }
+
+    internal static IReadOnlyList<FixAction> Plan(RepoContext ctx, int target, string? dotnetRoot, IReadOnlyDictionary<string, string> pins, out List<string> manual)
     {
         manual = new List<string>();
         var actions = new List<FixAction>();
@@ -80,7 +95,7 @@ internal static partial class FrameworkOperations
                 var moved = FrameworkToken().Replace(updated, m => Below(m.Groups["major"].Value, target) ? $"net{target}.0" : m.Value);
                 if (moved != updated) { updated = moved; reasons.Add($"target framework moves to net{target}.0"); }
 
-                var packages = MoveRuntimePackages(updated, target, manual, file);
+                var packages = MoveRuntimePackages(updated, target, pins, manual, file);
                 if (packages != updated) { updated = packages; reasons.Add($"runtime packages move to {target}.0.0"); }
 
                 if (overrides is not null && file.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase))
@@ -134,11 +149,13 @@ internal static partial class FrameworkOperations
     }
 
     /// <summary>Moves the runtime-shipped packages whose major version is below the target; lists third-party packages that follow the runtime.</summary>
-    private static string MoveRuntimePackages(string text, int target, List<string> manual, string file) =>
+    private static string MoveRuntimePackages(string text, int target, IReadOnlyDictionary<string, string> pins, List<string> manual, string file) =>
         PackageVersion().Replace(text, m =>
         {
             var id = m.Groups["id"].Value;
             var major = m.Groups["major"].Value;
+            if (pins.TryGetValue(id, out var pinned))
+                return $"{m.Groups["head"].Value}{pinned}\"";
             if (!Below(major, target))
                 return m.Value;
             if (RuntimePackagePrefixes.Any(p => id.StartsWith(p, StringComparison.Ordinal)))
@@ -217,6 +234,6 @@ internal static partial class FrameworkOperations
     [GeneratedRegex(@"(?<image>(?:[\w.${}-]+(?::\d+)?/)*dotnet/(?:nightly/)?(?:sdk|aspnet|runtime|runtime-deps)):(?<major>\d{1,2})\.\d+(?:\.\d+)?(?=[-\s""'$]|$)", RegexOptions.CultureInvariant | RegexOptions.Multiline)]
     private static partial Regex ImageTag();
 
-    [GeneratedRegex(@"(?<head><Package(?:Version|Reference)\s+Include=""(?<id>[^""]+)""\s+Version="")(?<major>\d{1,2})\.\d+\.\d+[^""]*""", RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"(?<head><Package(?:Version|Reference)\s+Include=""(?<id>[^""]+)""\s+(?:Version|VersionOverride)="")(?<major>\d{1,2})\.\d+\.\d+[^""]*""", RegexOptions.CultureInvariant)]
     private static partial Regex PackageVersion();
 }

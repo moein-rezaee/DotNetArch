@@ -174,4 +174,29 @@ public sealed class FrameworkMigrationTests : IDisposable
         var manual = ((IEnumerable<string>)result.Data!.GetType().GetProperty("manual")!.GetValue(result.Data)!).ToList();
         Assert.Contains(manual, m => m.Contains("NU1510"));
     }
+
+    [Fact]
+    public void Version_overrides_move_too_and_pinned_packages_get_exactly_the_given_version()
+    {
+        var repo = Path.Combine(_root, "pins");
+        Write(repo, "src/App/App.csproj", "<Project Sdk=\"Microsoft.NET.Sdk\">\n  <PropertyGroup>\n    <TargetFramework>net9.0</TargetFramework>\n  </PropertyGroup>\n  <ItemGroup>\n    <PackageReference Include=\"Microsoft.Extensions.Options\" VersionOverride=\"9.0.1\" />\n    <PackageReference Include=\"Npgsql.EntityFrameworkCore.PostgreSQL\" Version=\"9.0.2\" />\n  </ItemGroup>\n</Project>\n");
+
+        var result = OperationRegistry.Execute(OperationRegistry.Find("migrate_framework")!,
+            new Dictionary<string, string> { ["path"] = repo, ["target"] = "10", ["packages"] = "Npgsql.EntityFrameworkCore.PostgreSQL=10.0.0" }, apply: true);
+
+        Assert.True(result.Ok);
+        var project = Read(repo, "src/App/App.csproj");
+        Assert.Contains("Include=\"Microsoft.Extensions.Options\" VersionOverride=\"10.0.0\"", project);
+        Assert.Contains("Include=\"Npgsql.EntityFrameworkCore.PostgreSQL\" Version=\"10.0.0\"", project);
+    }
+
+    [Fact]
+    public void A_malformed_package_pin_is_refused()
+    {
+        var result = OperationRegistry.Execute(OperationRegistry.Find("migrate_framework")!,
+            new Dictionary<string, string> { ["path"] = Repo(), ["target"] = "10", ["packages"] = "Npgsql" }, apply: false);
+
+        Assert.False(result.Ok);
+        Assert.Contains("Id=Version", result.Error);
+    }
 }
