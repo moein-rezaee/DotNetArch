@@ -33,8 +33,11 @@ public sealed class FrameworkMigrationTests : IDisposable
         return repo;
     }
 
-    private static OperationResult Run(string repo, string target, bool apply) =>
-        OperationRegistry.Execute(OperationRegistry.Find("migrate_framework")!, new Dictionary<string, string> { ["path"] = repo, ["target"] = target }, apply);
+    /// <summary>An SDK folder with no reference packs, so the result never depends on the SDK installed on the machine running the tests.</summary>
+    private string NoSdk() => Directory.CreateDirectory(Path.Combine(_root, "no-sdk")).FullName;
+
+    private OperationResult Run(string repo, string target, bool apply) =>
+        OperationRegistry.Execute(OperationRegistry.Find("migrate_framework")!, new Dictionary<string, string> { ["path"] = repo, ["target"] = target, ["dotnet_root"] = NoSdk() }, apply);
 
     private static string Read(string repo, string relative) => File.ReadAllText(Path.Combine(repo, relative));
 
