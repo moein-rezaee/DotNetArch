@@ -27,6 +27,7 @@ public static class OperationRegistry
         .Concat(AdapterOperations.All)
         .Concat(ModuleOperations.All)
         .Concat(FrameworkOperations.All)
+        .Concat(SolutionFormatOperations.All)
         .ToList();
 
     public static OperationDefinition? Find(string name) =>
