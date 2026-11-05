@@ -146,7 +146,8 @@ internal static partial class SolutionFormatOperations
 
         foreach (var id in order.Where(o => projects[o].Type.Equals(SolutionFolderType, StringComparison.OrdinalIgnoreCase)))
         {
-            var folder = Folder(FolderPath(id) + projects[id].Name + "/");
+            var parent = FolderPath(id);
+            var folder = Folder((parent.Length == 0 ? "/" : parent) + projects[id].Name + "/");
             foreach (var item in projects[id].Items)
                 folder.Add(new XElement("File", new XAttribute("Path", item)));
         }
