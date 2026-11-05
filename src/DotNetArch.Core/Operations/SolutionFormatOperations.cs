@@ -138,9 +138,11 @@ internal static partial class SolutionFormatOperations
         XElement Folder(string path)
         {
             if (folders.TryGetValue(path, out var existing)) return existing;
+            // A nested folder is written flat with its full path (/src/domain/), as the format asks; the parents are created first so they exist too.
             var parentPath = path[..(path.TrimEnd('/').LastIndexOf('/') + 1)];
+            if (parentPath.Length > 1) Folder(parentPath);
             var element = new XElement("Folder", new XAttribute("Name", path));
-            (parentPath.Length > 1 ? Folder(parentPath) : root).Add(element);
+            root.Add(element);
             return folders[path] = element;
         }
 

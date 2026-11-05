@@ -33,7 +33,9 @@ public sealed class SolutionFormatTests : IDisposable
             + "EndProject\n"
             + "Project(\"{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}\") = \"Shop.Tests\", \"test\\Shop.Tests\\Shop.Tests.csproj\", \"{BBBBBBBB-0000-0000-0000-000000000002}\"\n"
             + "EndProject\n"
-            + "Global\n\tGlobalSection(NestedProjects) = preSolution\n\t\t{BBBBBBBB-0000-0000-0000-000000000001} = {AAAAAAAA-0000-0000-0000-000000000001}\n\tEndGlobalSection\nEndGlobal\n");
+            + "Project(\"{2150E333-8FDC-42A3-9474-1A3956D46DE8}\") = \"api\", \"api\", \"{AAAAAAAA-0000-0000-0000-000000000003}\"\nEndProject\n"
+            + "Project(\"{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}\") = \"Shop.Web\", \"src\\Shop.Web\\Shop.Web.csproj\", \"{BBBBBBBB-0000-0000-0000-000000000003}\"\nEndProject\n"
+            + "Global\n\tGlobalSection(NestedProjects) = preSolution\n\t\t{BBBBBBBB-0000-0000-0000-000000000001} = {AAAAAAAA-0000-0000-0000-000000000001}\n\t\t{AAAAAAAA-0000-0000-0000-000000000003} = {AAAAAAAA-0000-0000-0000-000000000001}\n\t\t{BBBBBBBB-0000-0000-0000-000000000003} = {AAAAAAAA-0000-0000-0000-000000000003}\n\tEndGlobalSection\nEndGlobal\n");
         Write(repo, "src/Shop.Api/Shop.Api.csproj", "<Project Sdk=\"Microsoft.NET.Sdk\" />\n");
         Write(repo, "test/Shop.Tests/Shop.Tests.csproj", "<Project Sdk=\"Microsoft.NET.Sdk\" />\n");
         Write(repo, "Dockerfile", "COPY *.sln ./\nRUN dotnet restore Shop.sln\n");
@@ -70,6 +72,9 @@ public sealed class SolutionFormatTests : IDisposable
         Assert.Contains("<Project Path=\"src/Shop.Api/Shop.Api.csproj\" />", slnx);
         Assert.Contains("<Project Path=\"test/Shop.Tests/Shop.Tests.csproj\" />", slnx);
         Assert.Contains("<File Path=\"README.md\" />", slnx);
+        Assert.Contains("<Folder Name=\"/src/api/\">", slnx);
+        Assert.Contains("<Project Path=\"src/Shop.Web/Shop.Web.csproj\" />", slnx);
+        Assert.DoesNotContain("<Folder Name=\"/src/\">\n    <Folder", slnx);
         Assert.Contains("COPY *.slnx ./", File.ReadAllText(Path.Combine(repo, "Dockerfile")));
         Assert.Contains("Shop.slnx", File.ReadAllText(Path.Combine(repo, "Dockerfile")));
     }
