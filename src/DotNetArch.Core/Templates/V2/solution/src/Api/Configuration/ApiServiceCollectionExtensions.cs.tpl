@@ -13,7 +13,7 @@ public static class ApiServiceCollectionExtensions
     /// <summary>Registers everything the Api layer owns: controllers, OpenAPI, problem details, CORS, health checks, localization.</summary>
     public static IServiceCollection AddApi(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddControllers();
+        services.AddControllers().AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
         services.AddEndpoints();
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen();
