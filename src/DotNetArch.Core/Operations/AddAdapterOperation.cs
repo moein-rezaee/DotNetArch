@@ -52,7 +52,10 @@ internal static partial class AdapterOperations
 
         var manual = new List<string>();
         var module = app.EndsWith("Service", StringComparison.Ordinal) ? app[..^"Service".Length] : app;
-        var framework = XDocument.Load(Path.Combine(root, host.File)).Descendants("TargetFramework").FirstOrDefault()?.Value ?? "net9.0";
+        // The framework of the host project, else the one of Directory.Build.props; without either the new project inherits it (no element is written).
+        var props = Path.Combine(root, "Directory.Build.props");
+        var framework = XDocument.Load(Path.Combine(root, host.File)).Descendants("TargetFramework").FirstOrDefault()?.Value
+                        ?? (File.Exists(props) ? XDocument.Load(props).Descendants("TargetFramework").FirstOrDefault()?.Value : null);
         var dir = $"{host.Dir[..host.Dir.LastIndexOf('/')]}/{name}";
         var csprojPath = $"{dir}/{name}.csproj";
 
@@ -108,7 +111,7 @@ internal static partial class AdapterOperations
         }
 
         var domainRef = Path.GetRelativePath(dir, domain.File).Replace('/', '\\');
-        var csproj = $"<Project Sdk=\"Microsoft.NET.Sdk\">\n\n  <PropertyGroup>\n    <TargetFramework>{framework}</TargetFramework>\n    <ImplicitUsings>enable</ImplicitUsings>\n    <Nullable>enable</Nullable>\n{packaging}  </PropertyGroup>\n\n"
+        var csproj = $"<Project Sdk=\"Microsoft.NET.Sdk\">\n\n  <PropertyGroup>\n{(framework is null ? string.Empty : $"    <TargetFramework>{framework}</TargetFramework>\n")}    <ImplicitUsings>enable</ImplicitUsings>\n    <Nullable>enable</Nullable>\n{packaging}  </PropertyGroup>\n\n"
                      + $"  <ItemGroup>\n    <ProjectReference Include=\"{domainRef}\" />\n  </ItemGroup>\n\n  <ItemGroup>\n{packages}  </ItemGroup>\n\n"
                      + "  <ItemGroup>\n    <None Include=\"settings.schema.json\" Pack=\"true\" PackagePath=\"schemas/\" />\n  </ItemGroup>\n\n</Project>\n";
         var code = $"using Microsoft.Extensions.Configuration;\nusing Microsoft.Extensions.DependencyInjection;\n\nnamespace {name};\n\npublic static class DependencyInjection\n{{\n"
