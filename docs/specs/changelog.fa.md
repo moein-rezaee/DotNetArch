@@ -1,6 +1,7 @@
 # تغییرات
 
 ## 2.0.0 (منتشرنشده)
+- بخش پروفایل `database` (R-K15): Kit ‏DatabaseConnection جای کد اتصال خود قالب را می‌گیرد.
 - چندفرهنگی و سلامت به‌صورت پیش‌فرض (R-K12، ‏AC-65): میزبان‌های Api تولیدشده اول فرهنگ درخواست را تعیین می‌کنند (en، fa)، عنوان خطا را از `Resources/SharedMessages*.resx` می‌خوانند و `/health/live` و `/health/ready` را نگاشت می‌کنند.
 - ‏`--export-openapi [file]` روی میزبان‌های Api تولیدشده (R-K13، ‏AC-66) snapshot ‏OpenAPI را بدون سرور می‌نویسد.
 - ‏`migrate_framework` خانوادهٔ بسته‌های runtime را روی یک نسخه می‌برد، runtime نصب‌شدهٔ هدف یا `runtime_version` (R-K14، ‏AC-67).

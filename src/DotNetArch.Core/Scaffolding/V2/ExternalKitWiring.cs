@@ -361,9 +361,42 @@ public static class ExternalKitWiring
                 if (File.Exists(handler))
                     File.Delete(handler);
                 break;
+            case "database":
+                ReplaceDatabase(Path.Combine(config.SolutionPath, $"src/{config.SolutionName}.Infrastructure", "DependencyInjection.cs"));
+                break;
             default:
-                throw new ArgumentException($"Unknown replaced part '{part}' in the profile. Use swagger or exception-handler.");
+                throw new ArgumentException($"Unknown replaced part '{part}' in the profile. Use swagger, exception-handler or database.");
         }
+    }
+
+    /// <summary>
+    /// Kit-First for persistence: the template's own connection-string handling and <c>AddDbContext</c> are replaced by the DatabaseConnection Kit
+    /// (<c>AddCoreviaDatabase&lt;AppDbContext&gt;</c>), which picks the engine from configuration (<c>Database:Provider</c> or <c>DB_PROVIDER</c>:
+    /// Postgres or SqlServer) and builds the connection from <c>POSTGRES_*</c> / <c>SQLSERVER_*</c> values. <c>Database:MigrateOnStartup</c> stays.
+    /// </summary>
+    private static void ReplaceDatabase(string path)
+    {
+        if (!File.Exists(path))
+            return;
+        var text = File.ReadAllText(path);
+        if (text.Contains("AddCoreviaDatabase<", StringComparison.Ordinal))
+            return;
+
+        text = Regex.Replace(text, @"        services\.AddOptions<DatabaseOptions>\(\).*?\.ValidateOnStart\(\);\n",
+            "        services.AddOptions<DatabaseOptions>().Bind(configuration.GetSection(DatabaseOptions.SectionName));\n",
+            RegexOptions.Singleline | RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
+        text = Regex.Replace(text, @"        services\.AddDbContext<AppDbContext>\(.*?\n        \}\);\n",
+            "        // Kit-First: the DatabaseConnection Kit chooses the engine and builds the connection (no hand-written connection string).\n" +
+            "        services.AddCoreviaPostgresProvider().AddCoreviaSqlServerProvider();\n" +
+            "        services.AddCoreviaDatabase<AppDbContext>(configuration, options =>\n" +
+            "        {\n" +
+            "            options.ProviderConfigKeys = new[] { \"Database:Provider\", \"DB_PROVIDER\" };\n" +
+            "        });\n",
+            RegexOptions.Singleline | RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
+        foreach (var name in new[] { "Corevia.Kit.DatabaseConnection.Core", "Corevia.Kit.DatabaseConnection.Providers.Postgres", "Corevia.Kit.DatabaseConnection.Providers.SqlServer" })
+            if (!text.Contains($"using {name};", StringComparison.Ordinal))
+                text = $"using {name};\n" + text;
+        File.WriteAllText(path, text, new UTF8Encoding(false));
     }
 
     private static void RemoveLines(string path, params string[] trimmedLines)

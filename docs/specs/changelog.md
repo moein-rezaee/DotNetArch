@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2.0.0 (unreleased)
+- Profile part `database` (R-K15): the DatabaseConnection Kit replaces the template's own connection code.
 - Multi-culture and health by default (R-K12, AC-65): generated Api hosts set the request culture first (en, fa), read error titles from `Resources/SharedMessages*.resx`, and map `/health/live` and `/health/ready`.
 - `--export-openapi [file]` on generated Api hosts (R-K13, AC-66) writes the OpenAPI snapshot without a server.
 - `migrate_framework` moves the runtime package family to one version, the installed runtime of the target or `runtime_version` (R-K14, AC-67).

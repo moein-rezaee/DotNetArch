@@ -159,5 +159,6 @@ Planned. The cross-repository steps live in the organisation's Composition Migra
 - [x] 15.9 `move_code`, `add_composition`, `describe_module`, `describe_settings`, DA-AD01..DA-AD06 (R-K1..R-K4, AC-54..AC-57), proven on Catalog, Customer, Order and Invoice.
 - [x] 15.12 `swap_kit` (R-K11, AC-64): one kit area is replaced by the kits of a shared profile in place. Needed to move every service from the JwtSecurity kit to Authentication and Authorization with the tool.
 - [x] 15.13 Multi-culture, liveness/readiness and `--export-openapi` in generated hosts; one runtime version in `migrate_framework` (R-K12..R-K14, AC-65..AC-67). Platform plan MS-0.
+- [x] 15.14 Profile part `database`: generated persistence goes through the DatabaseConnection Kit (R-K15).
 - [x] 15.11 `migrate_framework` (R-K10, AC-63): the .NET version of a repository (frameworks, SDK pin, image tags, runtime packages) moves to a target given as input (8, 9, 10 and later) in one plan. Needed to move every service to the newest .NET with the tool instead of by hand.
 - [x] 15.10 DA-AD09 and `add_adapter` (R-K9, AC-62): outbound HTTP in the shared Infrastructure is reported; `add_adapter` creates the empty adapter project so `move_code` and `split_registration` have a destination. Needed to remove the direct service-to-service clients (priority 1 of the composition migration).
