@@ -34,6 +34,7 @@ internal static partial class FrameworkOperations
             new OperationParameter("path", "Repository root (default: current folder).", Positional: true, Default: "@cwd"),
             new OperationParameter("target", "The .NET major version to move to, for example 10.", Required: true, Choices: new[] { "8", "9", "10" }),
             new OperationParameter("packages", "Exact versions for packages the migration cannot derive, as Id=Version separated by commas (for example the EF Core database provider built for the new runtime). They are applied wherever the package is referenced."),
+            new OperationParameter("runtime_version", "The version the runtime-shipped packages move to (for example 10.0.14). Default: the newest runtime of the target major installed with the SDK, otherwise <target>.0.0.", Default: null),
             new OperationParameter("dotnet_root", "Folder of an installed .NET SDK of the target version; its package list decides which references the framework now provides (NU1510, .NET 10 and later). Default: found from DOTNET_ROOT, the dotnet on the path and the usual folders."),
         },
         request =>
@@ -45,7 +46,7 @@ internal static partial class FrameworkOperations
                 throw new ArgumentException($"The target must be a .NET major version of {Oldest} or higher, for example 10.");
 
             var ctx = new RepoContext(root, NetArchStore.ResolveProfile(root, null, out _), new RuleSettings(), Enumerable.Empty<string>());
-            var plan = Plan(ctx, target, request.Get("dotnet_root"), ParsePins(request.Get("packages")), out var manual);
+            var plan = Plan(ctx, target, request.Get("dotnet_root"), ParsePins(request.Get("packages")), out var manual, request.Get("runtime_version"));
             if (request.Apply)
                 PlanApplier.Apply(root, plan);
 
@@ -70,9 +71,11 @@ internal static partial class FrameworkOperations
         return pins;
     }
 
-    internal static IReadOnlyList<FixAction> Plan(RepoContext ctx, int target, string? dotnetRoot, IReadOnlyDictionary<string, string> pins, out List<string> manual)
+    internal static IReadOnlyList<FixAction> Plan(RepoContext ctx, int target, string? dotnetRoot, IReadOnlyDictionary<string, string> pins, out List<string> manual, string? runtimeVersion = null)
     {
         manual = new List<string>();
+        // One version for the whole runtime family: the one asked for, else the installed runtime of the target major, else <target>.0.0.
+        var runtime = !string.IsNullOrWhiteSpace(runtimeVersion) ? runtimeVersion! : FrameworkPackages.InstalledRuntime(target, dotnetRoot) ?? $"{target}.0.0";
         var actions = new List<FixAction>();
         var newest = 0;
         var overrides = target >= PruningFrom ? FrameworkPackages.Find(target, dotnetRoot) : null;
@@ -95,8 +98,8 @@ internal static partial class FrameworkOperations
                 var moved = FrameworkToken().Replace(updated, m => Below(m.Groups["major"].Value, target) ? $"net{target}.0" : m.Value);
                 if (moved != updated) { updated = moved; reasons.Add($"target framework moves to net{target}.0"); }
 
-                var packages = MoveRuntimePackages(updated, target, pins, manual, file);
-                if (packages != updated) { updated = packages; reasons.Add($"runtime packages move to {target}.0.0"); }
+                var packages = MoveRuntimePackages(updated, target, runtime, pins, manual, file);
+                if (packages != updated) { updated = packages; reasons.Add($"runtime packages move to {runtime}"); }
 
                 if (overrides is not null && file.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase))
                 {
@@ -149,7 +152,7 @@ internal static partial class FrameworkOperations
     }
 
     /// <summary>Moves the runtime-shipped packages whose major version is below the target; lists third-party packages that follow the runtime.</summary>
-    private static string MoveRuntimePackages(string text, int target, IReadOnlyDictionary<string, string> pins, List<string> manual, string file) =>
+    private static string MoveRuntimePackages(string text, int target, string runtime, IReadOnlyDictionary<string, string> pins, List<string> manual, string file) =>
         PackageVersion().Replace(text, m =>
         {
             var id = m.Groups["id"].Value;
@@ -159,7 +162,7 @@ internal static partial class FrameworkOperations
             if (!Below(major, target))
                 return m.Value;
             if (RuntimePackagePrefixes.Any(p => id.StartsWith(p, StringComparison.Ordinal)))
-                return $"{m.Groups["head"].Value}{target}.0.0\"";
+                return $"{m.Groups["head"].Value}{runtime}\"";
             if (ThirdPartyCoupled.Contains(id, StringComparer.Ordinal))
                 manual.Add($"{file}: {id} {m.Groups["major"].Value}.x follows the runtime; move it to a version built for net{target}.0.");
             return m.Value;

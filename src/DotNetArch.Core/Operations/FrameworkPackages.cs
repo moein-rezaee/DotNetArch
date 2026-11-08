@@ -29,6 +29,30 @@ internal sealed class FrameworkPackages
         return null;
     }
 
+    /// <summary>
+    /// The runtime version of the target major that is installed (for example <c>10.0.14</c>), searched like <see cref="Find"/>. The runtime-shipped
+    /// packages (<c>Microsoft.Extensions.*</c>, <c>Microsoft.AspNetCore.*</c>, <c>Microsoft.EntityFrameworkCore*</c>) are moved to this version, so the whole
+    /// family matches and a package that pulls an older patch of its neighbours cannot cause a downgrade error or a known-vulnerability error.
+    /// </summary>
+    public static string? InstalledRuntime(int target, string? hint)
+    {
+        foreach (var root in Roots(hint))
+        {
+            var shared = Path.Combine(root, "shared", "Microsoft.NETCore.App");
+            if (!Directory.Exists(shared))
+                continue;
+            var newest = Directory.EnumerateDirectories(shared, target + ".*")
+                .Select(d => Path.GetFileName(d))
+                .Where(name => Version.TryParse(Core(name), out _))
+                .OrderByDescending(name => Version.Parse(Core(name)))
+                .FirstOrDefault();
+            if (newest is not null && !newest.Contains('-', StringComparison.Ordinal))
+                return newest;
+        }
+
+        return null;
+    }
+
     public bool Provides(string id, bool web, out string version)
     {
         if (_netCore.TryGetValue(id, out var shipped) || (web && _aspNet.TryGetValue(id, out shipped)))

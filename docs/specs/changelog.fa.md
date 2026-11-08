@@ -1,6 +1,9 @@
 # تغییرات
 
 ## 2.0.0 (منتشرنشده)
+- چندفرهنگی و سلامت به‌صورت پیش‌فرض (R-K12، ‏AC-65): میزبان‌های Api تولیدشده اول فرهنگ درخواست را تعیین می‌کنند (en، fa)، عنوان خطا را از `Resources/SharedMessages*.resx` می‌خوانند و `/health/live` و `/health/ready` را نگاشت می‌کنند.
+- ‏`--export-openapi [file]` روی میزبان‌های Api تولیدشده (R-K13، ‏AC-66) snapshot ‏OpenAPI را بدون سرور می‌نویسد.
+- ‏`migrate_framework` خانوادهٔ بسته‌های runtime را روی یک نسخه می‌برد، runtime نصب‌شدهٔ هدف یا `runtime_version` (R-K14، ‏AC-67).
 - ‏`swap_kit` (R-K11، ‏AC-64): یک حوزهٔ kit را در همان جا با kitهای یک profile مشترک عوض می‌کند (بسته‌ها، خط ثبت، using). ۴۵ عملیات.
 - ‏`migrate_framework` (R-K10، ‏AC-63): مخزن را به نسخهٔ .NET که ورودی است می‌برد (frameworkها، پین SDK، تگ imageها، بسته‌های همراه runtime)؛ بسته‌های شخص ثالث وابسته به runtime فهرست می‌شوند. ۴۴ عملیات.
 - آداپتر همسایه (R-K9): پروژهٔ `<App>.Link.<Peer>.<Transport>` (‏Rest و InProc و Event) مثل `<App>.Infrastructure.<System>` آداپتر است؛ ‏`add_adapter --peer=true` آن را می‌سازد و قاعده‌ها و `move_code` و `split_registration` و `add_composition` و `describe_module` آن را می‌یابند. ‏`fix` برای DA-AD05 و DA-AD08 خط‌های بسته را داخل PropertyGroup یک‌خطی می‌نویسد.
