@@ -19,7 +19,16 @@ builder.Services
     .AddKits(builder.Configuration);
 
 var app = builder.Build();
+app.UseApiLocalization(); // first: the request's language applies to everything after it, errors included
 // <dotnet-arch:kit-app> (profile middleware, before the Api pipeline)
+
+// `--export-openapi [file]` writes the OpenAPI document and exits: no server, no database (used when the service is registered).
+if (OpenApiExport.TryGetPath(args, out var openApiPath))
+{
+    app.UseApi();
+    await OpenApiExport.WriteAsync(app.Services, openApiPath);
+    return;
+}
 
 await app.Services.InitializeInfrastructureAsync();
 app.UseApi();

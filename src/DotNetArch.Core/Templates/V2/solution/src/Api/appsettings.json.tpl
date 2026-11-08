@@ -11,6 +11,10 @@
     "Provider": "{{Provider}}",
     "MigrateOnStartup": false
   },
+  "Localization": {
+    "DefaultCulture": "en",
+    "SupportedCultures": [ "en", "fa" ]
+  },
   "Cors": {
     "AllowedOrigins": []
   }
