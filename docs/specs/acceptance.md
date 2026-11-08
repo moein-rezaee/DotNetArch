@@ -63,6 +63,7 @@ Nothing is claimed verified unless the script ran; when the SDK is unavailable t
 - AC-58 (R-K5) `scaffold_adapter --apply` writes the package under `Adapters.`, wires the test project, the package list and the docs, and refuses an existing adapter; the doctor reports DA-AD07 for a flat key and for an area key the schema lacks.
 - AC-61 (R-K8) `describe_module --apply` writes one permission per active entry of the module's permission catalog with its access and policy; inactive entries are left out.
 - AC-67 (R-K14) A net9 solution with 9.x packages has every runtime package on 10.0.14 after `migrate_framework --target=10` with the 10.0.403 SDK and builds with no error; with `--runtime_version=10.0.0` they go to 10.0.0.
+- AC-68 (R-K16) A POST body with an enum given by name (for example `"Kind":"Ui"`) is accepted by a generated Api and the answer writes the name; found when a live run of the System Design service refused names.
 - AC-66 (R-K13) `dotnet run --project src/<App>.Api -- --export-openapi docs/api/openapi.json` writes the file and exits with no database; DA-M09 no longer warns.
 - AC-65 (R-K12) With `Accept-Language: fa` a template error response has a Persian title and `Content-Language: fa`; an unsupported culture falls back to `en`; `/health/live` and `/health/ready` answer 200.
 - AC-64 (R-K11) `swap_kit` removes the old kit's packages and using, puts the profile's lines where the old call was (before the lines that followed it), pins the new package versions, and a second plan is empty.

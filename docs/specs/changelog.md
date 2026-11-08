@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2.0.0 (unreleased)
+- Generated Api hosts accept enum names (R-K16, AC-68).
 - Profile part `database` (R-K15): the DatabaseConnection Kit replaces the template's own connection code.
 - Multi-culture and health by default (R-K12, AC-65): generated Api hosts set the request culture first (en, fa), read error titles from `Resources/SharedMessages*.resx`, and map `/health/live` and `/health/ready`.
 - `--export-openapi [file]` on generated Api hosts (R-K13, AC-66) writes the OpenAPI snapshot without a server.
