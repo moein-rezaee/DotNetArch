@@ -1,6 +1,7 @@
 # تغییرات
 
 ## 2.0.0 (منتشرنشده)
+- mapperهای entity در `Application/Features/<Plural>/Mappings` می‌مانند؛ تشخیص DTO بر اساس نوع دادهٔ تعریف‌شده است، نه متدهای extension مثل `ToDto` (‏R-I4، ‏AC-29).
 - میزبان‌های Api تولیدشده نام enum را می‌پذیرند (R-K16، ‏AC-68).
 - بخش پروفایل `database` (R-K15): Kit ‏DatabaseConnection جای کد اتصال خود قالب را می‌گیرد.
 - چندفرهنگی و سلامت به‌صورت پیش‌فرض (R-K12، ‏AC-65): میزبان‌های Api تولیدشده اول فرهنگ درخواست را تعیین می‌کنند (en، fa)، عنوان خطا را از `Resources/SharedMessages*.resx` می‌خوانند و `/health/live` و `/health/ready` را نگاشت می‌کنند.
@@ -11,6 +12,7 @@
 - آداپتر همسایه (R-K9): پروژهٔ `<App>.Link.<Peer>.<Transport>` (‏Rest و InProc و Event) مثل `<App>.Infrastructure.<System>` آداپتر است؛ ‏`add_adapter --peer=true` آن را می‌سازد و قاعده‌ها و `move_code` و `split_registration` و `add_composition` و `describe_module` آن را می‌یابند. ‏`fix` برای DA-AD05 و DA-AD08 خط‌های بسته را داخل PropertyGroup یک‌خطی می‌نویسد.
 - ‏DA-AD09 و `add_adapter` (R-K9، ‏AC-62): HTTP خروجی از Infrastructure مشترک به پروژهٔ آداپتری می‌رود که ابزار می‌سازد.
 - فایل‌های migration از editorconfig پیروی می‌کنند (R-J22، ‏AC-53): byte order markی که EF می‌نویسد برداشته می‌شود تا کار lint روی سرویس تازه پاس شود.
+- ‏`add migration --name=Initial` (R-J23، ‏AC-69) با رجیستری مشترک CLI و MCP یک migration ‏EF می‌سازد و پایگاه‌داده را تغییر نمی‌دهد.
 - چندمستاجری روی سیستم مرجع بیرونی (R-J21، ‏AC-52): ‏`add_tenancy --wire_only` فقط kit چندمستاجری را وصل می‌کند.
 - ساخت Kit (R-J20، AC-51): ‏`scaffold_kit` و `scaffold_provider` ناحیه‌های Kit و بسته‌های ارائه‌دهنده را با تست، مستندات دوزبانه و ورودی فهرست بسته‌ها می‌سازند؛ ‏`fix --rules=DA-A08` کنترلرهای پنهان از توصیف API (‏`IgnoreApi = true`) را رد می‌کند. ۳۵ عملیات، CLI و MCP از یک registry. برای ساخت Kitهای Delivery و Chat استفاده شد.
 - دروازه‌های مستندات و نسخه (R-J19 و AC-50): doctor ‏DA-M10 (لینک زبان یک جفت) و DA-B10 (`<Version>` پروژهٔ Api) با fixer؛ قالب‌های README و docs لینک‌ها، بخش‌های استاندارد README و نسخه را دارند.

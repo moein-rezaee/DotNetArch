@@ -513,7 +513,7 @@ internal static partial class LayerMigration
         var layer = file.Project.Layer;
         if (layer is ProjectLayer.Domain or ProjectLayer.Application && file.Kinds.Count > 0 && file.Kinds.All(k => k == "enum"))
             return ProjectLayer.DomainShared;
-        if (layer == ProjectLayer.Application && (file.Declared.Any(d => d.EndsWith("Dto", StringComparison.Ordinal)) || file.Path.Contains("/Dtos/", StringComparison.Ordinal) || RequestBase().IsMatch(file.Text)))
+        if (layer == ProjectLayer.Application && (DeclaresDto(file) || file.Path.Contains("/Dtos/", StringComparison.Ordinal) || RequestBase().IsMatch(file.Text)))
             return ProjectLayer.ApplicationContracts;
         if (layer == ProjectLayer.Api && ControllerBase().IsMatch(file.Text))
             return ProjectLayer.HttpApi;
@@ -534,13 +534,16 @@ internal static partial class LayerMigration
         {
             // only data shapes (enums, records, structs) leave the Domain; entities and services stay
             ProjectLayer.Domain => shape ? ProjectLayer.DomainShared : (ProjectLayer?)null,
-            ProjectLayer.Application => needer != ProjectLayer.DomainShared && (shape || dependency.Declared.Any(d => d.EndsWith("Dto", StringComparison.Ordinal)) || dependency.Path.Contains("/Dtos/", StringComparison.Ordinal)) ? ProjectLayer.ApplicationContracts : (ProjectLayer?)null,
+            ProjectLayer.Application => needer != ProjectLayer.DomainShared && (shape || DeclaresDto(dependency) || dependency.Path.Contains("/Dtos/", StringComparison.Ordinal)) ? ProjectLayer.ApplicationContracts : (ProjectLayer?)null,
             // HTTP models live in conventional folders of the host; its services and implementations stay
             ProjectLayer.Api => ModelFolder().IsMatch(dependency.Path) ? (UsesAspNet(dependency) ? (needer == ProjectLayer.HttpApi ? ProjectLayer.HttpApi : (ProjectLayer?)null) : ProjectLayer.ApplicationContracts) : (ProjectLayer?)null,
             _ => (ProjectLayer?)null,
         };
         return wanted != null && Rank(wanted.Value) <= Rank(needer) ? wanted : null;
     }
+
+    private static bool DeclaresDto(SourceFile file) =>
+        file.Declared.Any(d => !d.StartsWith("ext:", StringComparison.Ordinal) && d.EndsWith("Dto", StringComparison.Ordinal));
 
     private static IEnumerable<SourceFile> Dependencies(SourceFile file, Dictionary<string, List<SourceFile>> index)
     {

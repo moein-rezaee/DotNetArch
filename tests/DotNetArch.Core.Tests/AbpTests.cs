@@ -24,7 +24,7 @@ public sealed class AbpTests : IDisposable
         Write(repo, "src/Shop.Domain/Products/ProductKind.cs", "namespace Shop.Domain.Products;\npublic enum ProductKind\n{\n    Physical = 1,\n    Digital = 2,\n}\n");
         Write(repo, "src/Shop.Application/Features/Products/ProductDto.cs", "using Shop.Domain.Products;\n\nnamespace Shop.Application.Features.Products;\npublic sealed record ProductDto(int Id, ProductKind Kind);\n");
         Write(repo, "src/Shop.Application/Features/Products/GetProductQuery.cs", "using MediatR;\n\nnamespace Shop.Application.Features.Products;\npublic sealed record GetProductQuery(int Id) : IRequest<ProductDto>;\n");
-        Write(repo, "src/Shop.Application/Features/Products/GetProductQueryHandler.cs", "using MediatR;\nusing Shop.Domain.Products;\n\nnamespace Shop.Application.Features.Products;\npublic sealed class GetProductQueryHandler : IRequestHandler<GetProductQuery, ProductDto>\n{\n    public Task<ProductDto> Handle(GetProductQuery request, CancellationToken cancellationToken) => Task.FromResult(new ProductDto(request.Id, ProductKind.Physical));\n}\n");
+        Write(repo, "src/Shop.Application/Features/Products/GetProductQueryHandler.cs", "using MediatR;\nusing Shop.Application.Features.Products.Dtos;\nusing Shop.Domain.Products;\n\nnamespace Shop.Application.Features.Products;\npublic sealed class GetProductQueryHandler : IRequestHandler<GetProductQuery, ProductDto>\n{\n    public Task<ProductDto> Handle(GetProductQuery request, CancellationToken cancellationToken) => Task.FromResult(new Product().ToDto());\n}\n");
         Write(repo, "src/Shop.Api/Controllers/ProductController.cs", "using MediatR;\nusing Microsoft.AspNetCore.Mvc;\nusing Shop.Application.Features.Products;\n\nnamespace Shop.Api.Controllers;\n[ApiController]\npublic sealed class ProductController : ControllerBase\n{\n    private readonly IMediator _mediator;\n\n    public ProductController(IMediator mediator) { _mediator = mediator; }\n\n    [HttpGet]\n    public async Task<IActionResult> Get(int id) => Ok(await _mediator.Send(new GetProductQuery(id)));\n}\n");
         Write(repo, "src/Shop.Domain/Products/IProductRepository.cs", "namespace Shop.Domain.Products;\npublic interface IProductRepository\n{\n    Task<Product?> GetAsync(int id, CancellationToken cancellationToken = default);\n    IQueryable<Product> Query();\n    Product Find(int id);\n    Task AddAsync(Product product);\n}\npublic sealed class Product { }\npublic sealed class PricingService { }\n");
         Write(repo, "src/Shop.Api/Shop.Api.csproj", "<Project Sdk=\"Microsoft.NET.Sdk.Web\">\n  <ItemGroup><ProjectReference Include=\"..\\Shop.Application\\Shop.Application.csproj\" /></ItemGroup>\n  <ItemGroup><PackageReference Include=\"MediatR\" Version=\"12.2.0\" /></ItemGroup>\n</Project>\n");
@@ -96,9 +96,14 @@ public sealed class AbpTests : IDisposable
         var runner = new FakeProcessRunner();
         var dto = File.ReadAllText(Path.Combine(repo, "src", "Shop.Application", "Features", "Products", "ProductDto.cs"));
         var controller = File.ReadAllText(Path.Combine(repo, "src", "Shop.Api", "Controllers", "ProductController.cs"));
+        // Reproduce the legacy generator output: the mapper is physically in Mappings but
+        // its namespace is Dtos. ToDto is an extension method, not a DTO declaration.
+        Write(repo, "src/Shop.Application/Features/Products/Mappings/ProductMappings.cs", "using Shop.Application.Features.Products;\nusing Shop.Domain.Products;\n\nnamespace Shop.Application.Features.Products.Dtos;\npublic static class ProductMappings\n{\n    public static ProductDto ToDto(this Product product) => null!;\n}\n");
 
         var plan = Run("fix", repo, apply: false, ("rules", "DA-A02"));
         Assert.Contains(plan.Plan!, c => c.Action == "move" && c.Path == "src/Shop.Domain.Shared/Products/ProductKind.cs");
+        Assert.DoesNotContain(plan.Plan!, c => c.Path.EndsWith("ProductMappings.cs", StringComparison.Ordinal));
+        Assert.DoesNotContain(plan.Text, "ProductMappings.cs stays", StringComparison.Ordinal);
         Assert.DoesNotContain(plan.Plan!, c => c.Path.Contains("HttpApi.Client", StringComparison.Ordinal));
         Assert.True(File.Exists(Path.Combine(repo, "src", "Shop.Domain", "Products", "ProductKind.cs")));
 
@@ -109,6 +114,7 @@ public sealed class AbpTests : IDisposable
         Assert.Equal(controller, File.ReadAllText(Path.Combine(repo, "src", "Shop.HttpApi", "Controllers", "ProductController.cs")));
         Assert.True(File.Exists(Path.Combine(repo, "src", "Shop.Application.Contracts", "Features", "Products", "GetProductQuery.cs")));
         Assert.True(File.Exists(Path.Combine(repo, "src", "Shop.Application", "Features", "Products", "GetProductQueryHandler.cs")));
+        Assert.True(File.Exists(Path.Combine(repo, "src", "Shop.Application", "Features", "Products", "Mappings", "ProductMappings.cs")));
         Assert.False(Directory.Exists(Path.Combine(repo, "src", "Shop.HttpApi.Client")));
         Assert.False(Directory.Exists(Path.Combine(repo, "src", "Shop.Api", "Controllers")));
         var contracts = File.ReadAllText(Path.Combine(repo, "src", "Shop.Application.Contracts", "Shop.Application.Contracts.csproj"));

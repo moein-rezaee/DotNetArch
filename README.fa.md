@@ -73,6 +73,7 @@ dotnet run --project src/Shop.Api
 | `exec [--docker|--docker-detach|--docker-stop]` | اجرای API محلی یا در Docker (ابتدا migrationها اعمال می‌شود) |
 | `remove migration` | بازگرداندن و حذف آخرین migration |
 | `doctor [path] [--profile=file] [--json] [--strict]` | تشخیص فقط‌خواندنی ریپوی موجود (لایه‌ها، وابستگی‌ها، تست و پوشش، پیکربندی/secret، Docker/CI، مستندات، قواعد کد، مرز kitها، قواعد پروفایل)؛ در حالت مسدودکننده کد خروج ۳ |
+| `add migration [--name=Initial]` | ساخت migration از مدل فعلی بدون تغییر پایگاه‌داده |
 | `adopt [path] [--profile=file] [--apply]` | پروژهٔ موجود را تحت کنترل می‌آورد: فقط `.net-arch/` را می‌نویسد (state از روی سورس). اول طرح |
 | `fix [path] [--rules=ids] [--apply]` | اصلاحات مکانیکی بهداشتی (global.json، .editorconfig، خط‌های .gitignore، .dockerignore). هرگز کد را ویرایش نمی‌کند. اول طرح |
 | `mcp serve` | شروع سرور MCP روی stdio |

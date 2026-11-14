@@ -8,6 +8,9 @@ exposes itself as an MCP server for agents. It is built in three layers: Cli (co
 2. Generate independent, provider-based Kits for external capabilities (Cache, MessageBroker, MediaStorage ...).
 3. Be usable by agents through MCP.
 4. Be spec-driven and agent-driven: specs and AGENTS.md govern every change, in this repository and in everything it generates.
+5. Expose EF migration creation as a plan-first CLI/MCP operation that writes schema history without changing a database.
+
+Generated DTOs are data contracts. Entity-to-DTO mapping stays in the Application feature's `Mappings/` folder because it references Domain types; a `ToDto` extension method is not itself a DTO.
 
 ## Non-goals
 Runtime hosting, hosting of registries, live verification of kit providers against third-party servers (they are verified with stubs), .NET SDK installation.

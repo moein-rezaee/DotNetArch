@@ -48,33 +48,39 @@ public static class MigrationService
     /// Build and add a <c>{prefix}_{timestamp}</c> migration without touching the database (layout v2: the database is
     /// updated by <c>Database:MigrateOnStartup</c> or <c>exec</c>, so generation works without a running server).
     /// </summary>
-    public static void AddMigration(SolutionConfig config, string prefix)
+    public static bool AddMigration(SolutionConfig config, string prefix)
     {
         if (!HasMigrations(config))
-            return;
+        {
+            ToolHost.Info("No migrations for the selected provider.");
+            return false;
+        }
 
         if (ToolHost.SkipMigrations)
         {
             ToolHost.Info("Migration skipped.", "Add it later with 'dotnet ef migrations add' (see the solution README).");
-            return;
+            return false;
         }
 
         if (!SolutionTooling.EnsureEfTool(config.SolutionPath))
         {
             ToolHost.Error("dotnet-ef is not available; skipping migration.");
-            return;
+            return false;
         }
 
         if (!ToolHost.RunCommand("dotnet build", config.SolutionPath))
         {
             ToolHost.Error("Build failed; skipping migrations.");
-            return;
+            return false;
         }
 
         var (infraProj, startProj) = EfProjects(config);
         var migName = UniqueMigrationName(config, infraProj, prefix);
-        if (ToolHost.RunCommand($"dotnet ef migrations add {migName} --project {infraProj} --startup-project {startProj} --output-dir {PathConstants.MigrationsRelativePath} --no-build", config.SolutionPath))
-            MigrationFiles.NormalizeFor(config, infraProj);
+        if (!ToolHost.RunCommand($"dotnet ef migrations add {migName} --project {infraProj} --startup-project {startProj} --output-dir {PathConstants.MigrationsRelativePath} --no-build", config.SolutionPath))
+            return false;
+
+        MigrationFiles.NormalizeFor(config, infraProj);
+        return true;
     }
 
     /// <summary>EF prepends its own timestamp, so the name only needs to be unique among existing migrations.</summary>

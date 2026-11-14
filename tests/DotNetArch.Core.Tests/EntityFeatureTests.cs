@@ -64,6 +64,9 @@ public sealed class EntityFeatureTests : IDisposable
         Assert.Contains("builder.HasIndex(entity => entity.Owner);", mapping);
         Assert.Contains("entity.Status).HasConversion<string>()", mapping);
         Assert.Contains("BadgeDto(Guid Id, string Code, string Owner, BadgeStatus Status, int Limit, string? Note, DateTime? ExpiresAtUtc, DateTime CreatedAtUtc, DateTime? UpdatedAtUtc)", File.ReadAllText(P("src/Acme.Application/Features/Badges/Dtos/BadgeDto.cs")));
+        var dtoMapping = File.ReadAllText(P("src/Acme.Application/Features/Badges/Mappings/BadgeMappings.cs"));
+        Assert.Contains("namespace Acme.Application.Features.Badges.Mappings;", dtoMapping);
+        Assert.Contains("using Acme.Application.Features.Badges.Dtos;", dtoMapping);
         Assert.DoesNotContain("Hash", File.ReadAllText(P("src/Acme.Application/Features/Badges/Dtos/BadgeDto.cs")));
         Assert.Contains("public string Hash { get; private set; }", entity);
         Assert.Contains("Create_rejects_a_blank_code", File.ReadAllText(P("tests/Acme.Domain.Tests/Entities/BadgeTests.cs")));

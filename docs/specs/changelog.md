@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2.0.0 (unreleased)
+- Keep generated entity mappers under `Application/Features/<Plural>/Mappings`; classify DTOs by declared data types, not extension methods such as `ToDto` (R-I4, AC-29).
 - Generated Api hosts accept enum names (R-K16, AC-68).
 - Profile part `database` (R-K15): the DatabaseConnection Kit replaces the template's own connection code.
 - Multi-culture and health by default (R-K12, AC-65): generated Api hosts set the request culture first (en, fa), read error titles from `Resources/SharedMessages*.resx`, and map `/health/live` and `/health/ready`.
@@ -21,6 +22,7 @@
 - `scaffold_adapter` and the adapters rule DA-AD07 (R-K5, AC-58).
 - Composable modules (R-K1..R-K4, AC-54..AC-57): `move_code`, `add_composition`, `describe_module`, `describe_settings` and the adapters rule set DA-AD01..DA-AD06 (profile keys `adapter_package` and `non_adapters`). Proven on four Sepidar services (Catalog, Customer, Order, Invoice): every existing test passes unchanged.
 - Migration files follow the editorconfig (R-J22, AC-53): the byte order mark EF writes is removed so the lint job passes on a new service.
+- `add migration --name=Initial` (R-J23, AC-69) creates an EF migration through the shared CLI/MCP registry without updating the database.
 - Tenancy over an external system of record (R-J21, AC-52): `add_tenancy --wire_only` wires only the tenancy kit.
 - Kit creation (R-J20, AC-51): `scaffold_kit` and `scaffold_provider` create Kit areas and their provider packages with tests, bilingual docs and the package-list entry; `fix --rules=DA-A08` skips controllers hidden from the API description (`IgnoreApi = true`). 35 operations, CLI and MCP from one registry. Used to create the Delivery and Chat Kits.
 - Documentation and version gates (R-J19, AC-50): doctor DA-M10 (language links of a pair) and DA-B10 (the Api `<Version>`) with fixers; the README and docs templates carry the links, the standard README sections and the version.

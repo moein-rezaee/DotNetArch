@@ -1,5 +1,6 @@
 using {{App}}.Application.Abstractions.Persistence;
 using {{App}}.Application.Features.{{Plural}}.Dtos;
+using {{App}}.Application.Features.{{Plural}}.Mappings;
 using {{App}}.Domain.Entities;
 using MediatR;
 

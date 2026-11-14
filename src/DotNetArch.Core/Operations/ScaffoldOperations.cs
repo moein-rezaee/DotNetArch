@@ -55,6 +55,7 @@ internal static partial class ScaffoldOperations
         CiAdd(),
         DockerAdd(),
         GitSetup(),
+        AddMigration(),
         RemoveMigration(),
         Exec(),
         ListEntities(),
@@ -463,6 +464,27 @@ internal static partial class ScaffoldOperations
             config.SolutionPath = path;
             var ok = MigrationService.RemoveLast(config, path);
             return new OperationResult(ok, ok ? "remove_migration: applied" : "remove_migration: failed", Applied: ok, ExitCode: ok ? 0 : 1, Error: ok ? null : "The migration could not be removed.");
+        });
+
+    private static OperationDefinition AddMigration() => Mutating(
+        "add_migration",
+        "Build the service and add an EF migration for the current model. It does not update the database. Plan first; writes only with apply.",
+        new[] { PathParam(), new OperationParameter("name", "Migration name prefix (letters, digits and underscores).", Default: "Initial") },
+        request =>
+        {
+            var path = FullPath(request.Get("path")!);
+            var name = Identifier.RequireIdentifier(request.Get("name") ?? "Initial", "migration name");
+            var config = ConfigManager.Load(path) ?? throw new ArgumentException($"Solution configuration (dotnet-arch.yml) not found in '{path}'.");
+            config.SolutionPath = path;
+            if (string.IsNullOrWhiteSpace(config.DatabaseProvider) || config.DatabaseProvider.Equals("Mongo", StringComparison.OrdinalIgnoreCase) || config.DatabaseProvider.Equals("None", StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException("The solution's database provider does not support EF migrations.");
+
+            var plan = new[] { new PlannedChange("Migrations", "create", $"Add EF migration with prefix '{name}' for the current model; the database will not be changed.") };
+            if (!request.Apply)
+                return new OperationResult(true, "add_migration: plan (dry run, add --apply to write).", Plan: plan);
+
+            var ok = MigrationService.AddMigration(config, name);
+            return new OperationResult(ok, ok ? "add_migration: applied" : "add_migration: failed", Plan: ok ? plan : null, Applied: ok, ExitCode: ok ? 0 : 1, Error: ok ? null : "The EF migration was not created. Check the build and migration output.");
         });
 
     private static OperationDefinition Exec() => Mutating(

@@ -23,6 +23,7 @@ commands:
   - {name: "fix", status: exists, kind: mutating, plan_apply: true, mcp_tool: fix}
   - {name: "exec", status: exists}
   - {name: "remove migration", status: exists}
+  - {name: "add migration", status: exists, changes: [plan-first, cli-and-mcp, no-database-update]}
 layouts: {legacy: default-when-key-absent, v2: default-for-new-solutions}
 ci_providers: [github, gitlab, azure, bitbucket, none]
 kit_areas_builtin:

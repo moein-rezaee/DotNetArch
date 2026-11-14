@@ -4,6 +4,8 @@ Satisfies R-A1..A8, R-B3..B8, R-E5. Names in `<>` are substituted at generation 
 
 ## 1. DotNetArch tool repository (target, D-17)
 
+`add_migration` is a Core registry operation shared by the CLI and MCP. It delegates schema generation to EF and never updates the database.
+
 ```text
 DotNetArch/
 ├── AGENTS.md  README.md  README.fa.md  DotNetArch.sln  global.json  Directory.Build.props  Directory.Packages.props
@@ -53,7 +55,8 @@ Dependency rule: `Cli -> Core`, `Mcp -> Core`, `Cli -> Mcp`; Core references nei
 │   │   │   ├── Queries/<Name>/       <Name>Query, <Name>Handler, <Name>Validator
 │   │   │   ├── Actions/<Name>/       domain actions (state transitions) command + handler
 │   │   │   ├── Events/               domain event handlers
-│   │   │   └── Dtos/
+│   │   │   ├── Dtos/                 pure contract records; may move to Application.Contracts
+│   │   │   └── Mappings/             entity-to-DTO extensions; stay in Application (they use Domain)
 │   │   └── DependencyInjection.cs    AddApplication()
 │   ├── <App>.Infrastructure/         refs: Application (+Domain). packages: EF Core + provider, Kit Core/Providers
 │   │   ├── Persistence/{Context,Configurations,Migrations,Repositories,UnitOfWork}

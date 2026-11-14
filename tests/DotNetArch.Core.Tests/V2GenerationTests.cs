@@ -149,6 +149,11 @@ public sealed class V2GenerationTests : IDisposable
         })
             Assert.True(File.Exists(Path_(path)), $"missing {path}");
 
+        var mapping = Read($"{feature}/Mappings/CategoryMappings.cs");
+        Assert.Contains("namespace Acme.Application.Features.Categories.Mappings;", mapping);
+        Assert.Contains("using Acme.Application.Features.Categories.Dtos;", mapping);
+        var createHandler = Read($"{feature}/Commands/CreateCategory/CreateCategoryCommandHandler.cs");
+        Assert.Contains("using Acme.Application.Features.Categories.Mappings;", createHandler);
         Assert.True(ConfigManager.Load(Path_(""))!.Entities["Category"].HasCrud);
         Assert.Contains("[Route(\"api/categories\")]", Read("src/Acme.Api/Controllers/Categories/CategoriesController.cs"));
     }

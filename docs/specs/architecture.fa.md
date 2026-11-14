@@ -4,6 +4,8 @@
 
 ## ۱. مخزن ابزار DotNetArch (D-17)
 
+`add_migration` یک عملیات Core در registry مشترک CLI و MCP است. ساخت schema را به EF می‌سپارد و پایگاه‌داده را به‌روزرسانی نمی‌کند.
+
 ```text
 DotNetArch/
 ├── AGENTS.md  README.md  README.fa.md  DotNetArch.sln  global.json  Directory.Build.props  Directory.Packages.props
@@ -53,7 +55,8 @@ DotNetArch/
 │   │   │   ├── Queries/<Name>/       <Name>Query, <Name>Handler, <Name>Validator
 │   │   │   ├── Actions/<Name>/       domain actions (state transitions) command + handler
 │   │   │   ├── Events/               domain event handlers
-│   │   │   └── Dtos/
+│   │   │   ├── Dtos/                 recordهای دادهٔ خالص؛ قابل انتقال به Application.Contracts
+│   │   │   └── Mappings/             نگاشت entity به DTO؛ در Application می‌ماند چون به Domain وابسته است
 │   │   └── DependencyInjection.cs    AddApplication()
 │   ├── <App>.Infrastructure/         refs: Application (+Domain). packages: EF Core + provider, Kit Core/Providers
 │   │   ├── Persistence/{Context,Configurations,Migrations,Repositories,UnitOfWork}

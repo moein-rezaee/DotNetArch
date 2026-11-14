@@ -8,6 +8,9 @@ DotNetArch یک ابزار گلوبال چندسکویی دات‌نت (`dotnet-
 ۲. تولید Kit مستقل مبتنی بر provider برای قابلیت‌های خارجی (Cache، MessageBroker، MediaStorage ...).
 ۳. قابل استفاده برای agentها از طریق MCP.
 ۴. spec-driven و agent-driven: specها و AGENTS.md بر هر تغییر حاکم‌اند، هم در این مخزن و هم در هرچه تولید می‌کند.
+۵. ساخت migration ‏EF را به‌شکل عملیات plan-first در CLI و MCP ارائه کند تا تاریخچهٔ ساختار را بنویسد، بی‌آنکه پایگاه‌داده را تغییر دهد.
+
+DTOهای تولیدشده قراردادهای داده‌اند. نگاشت entity به DTO در پوشهٔ `Mappings/` همان feature در Application می‌ماند، چون به نوع‌های Domain وابسته است؛ متد extension به نام `ToDto` خودش DTO نیست.
 
 ## غیراهداف
 میزبانی runtime، میزبانی registry، راستی‌آزمایی زنده provider kitها با سرور واقعی (با stub تأیید می‌شوند)، نصب .NET SDK.

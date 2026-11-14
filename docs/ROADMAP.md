@@ -125,6 +125,7 @@ Environment: dotnet SDK 8 available (net9 targets cannot be built here; verify n
 - [x] 13.4 `new solution` defaults to layout v3 (closes 12.6); generated solution with crud, action and event builds with 0 warnings, passes tests, no ABP finding
 - [x] 13.5 Typed client tests generated with the client (verb and route of every action, route parity); a client follows new controller routes (partial controller files included), so an added action reaches the client and its tests
 - [x] 13.8 Profile `folder_moves` and `fix` DA-A12 (found migrating the Gateway: route fragments `ocelot/` to `etc/gateway/`) (D-35, AC-32)
+- [ ] 13.9 Keep generated `ToDto` entity mappers in Application during DA-A02; do not classify extension methods as DTO declarations (R-I4, AC-29)
 - [ ] 13.6 Smoke on the packaged tool: install, generate, adopt, delete `.net-arch/`, build and test (also closes 12.8)
 - [ ] 13.7 Interactive confirmation after the plan covers `exec` and `remove migration` end to end on a real database
 
@@ -162,3 +163,6 @@ Planned. The cross-repository steps live in the organisation's Composition Migra
 - [x] 15.14 Profile part `database`: generated persistence goes through the DatabaseConnection Kit (R-K15).
 - [x] 15.11 `migrate_framework` (R-K10, AC-63): the .NET version of a repository (frameworks, SDK pin, image tags, runtime packages) moves to a target given as input (8, 9, 10 and later) in one plan. Needed to move every service to the newest .NET with the tool instead of by hand.
 - [x] 15.10 DA-AD09 and `add_adapter` (R-K9, AC-62): outbound HTTP in the shared Infrastructure is reported; `add_adapter` creates the empty adapter project so `move_code` and `split_registration` have a destination. Needed to remove the direct service-to-service clients (priority 1 of the composition migration).
+
+## Phase 16 - Database schema operations
+- [ ] 16.1 `add migration --name=<Name>` in the shared CLI/MCP registry (R-J23, AC-69); plan first, write the EF migration only, and leave database updates to the service host.

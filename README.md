@@ -78,6 +78,7 @@ One registry feeds the CLI and the MCP server: every command below is also an MC
 | `spec list`, `spec add --name=`, `spec check` | List spec documents, add a bilingual spec pair and index it, check documentation and specs |
 | `graph` | The project graph as data (projects, layers, references, packages, kits) |
 | `doctor`, `adopt`, `fix` | Diagnose, bring an existing project under control (`.net-arch/` only), fix mechanically (opt-in structural rules) |
+| `add migration [--name=Initial]` | Add an EF migration for the current model without updating the database |
 | `remove migration`, `exec`, `list entities`, `describe config` | Remove the last EF migration, run the service, inspect `dotnet-arch.yml` |
 | `mcp serve` | MCP server over stdio |
 
@@ -150,6 +151,12 @@ Interactive scaffolding for:
 - **HttpRequest service wrapper** for calling external APIs
 
 Interfaces and implementations are placed in the appropriate layer and registered automatically.
+
+#### add migration
+```bash
+dotnet-arch add migration --path=Service --name=Initial --apply
+```
+Builds the service and adds a migration under Infrastructure. The database is not changed.
 
 #### exec
 ```bash
